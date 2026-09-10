@@ -3,12 +3,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Activity,
   BarChart3,
   Bell,
   Building2,
   Check,
   Columns3,
   Copy,
+  Network,
   Plus,
   X,
 } from "lucide-react";
@@ -54,6 +56,17 @@ function mergeActions(
 ): SymbolContextMenuAction[] {
   const actions: SymbolContextMenuAction[] = [
     {
+      id: "why-move",
+      label: "Why did this move?",
+      icon: <Activity className="h-3.5 w-3.5" />,
+      onAction: async (nextSymbol) => {
+        const activeTicker = nextSymbol.trim().toUpperCase();
+        if (!activeTicker) return;
+        useStockStore.getState().setTicker(activeTicker);
+        navigate(`/equity/why/${encodeURIComponent(activeTicker)}`);
+      },
+    },
+    {
       id: "view-chart",
       label: "View Chart",
       icon: <BarChart3 className="h-3.5 w-3.5" />,
@@ -63,6 +76,17 @@ function mergeActions(
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
         navigate("/equity/chart-workstation");
+      },
+    },
+    {
+      id: "relationships",
+      label: "Show Relationships",
+      icon: <Network className="h-3.5 w-3.5" />,
+      onAction: async (nextSymbol) => {
+        const activeTicker = nextSymbol.trim().toUpperCase();
+        if (!activeTicker) return;
+        useStockStore.getState().setTicker(activeTicker);
+        navigate(`/equity/relationships/${encodeURIComponent(activeTicker)}`);
       },
     },
     {

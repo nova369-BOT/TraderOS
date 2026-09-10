@@ -2267,3 +2267,65 @@ button.ot-home-widget-strip-chip:hover {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   TradeOS Market Intelligence OS — token extension
+   Semantic roles for intelligence, regime, confidence and motion.
+   Additive: does not modify existing tokens.
+--------------------------------------------------------------------------- */
+:root {
+  /* Intelligence semantics */
+  --ot-color-intel-observed: var(--ot-color-accent-info);      /* blue: raw data */
+  --ot-color-intel-derived: var(--ot-color-system-warning);    /* yellow: heuristic */
+  --ot-color-intel-ai: #b58cff;                                /* purple: model output */
+  --ot-color-intel-ai-soft: rgba(181, 140, 255, 0.14);
+  --ot-color-intel-unavailable: var(--ot-color-text-muted);    /* gray: no data */
+  --ot-color-intel-live: var(--ot-color-accent-secondary);     /* cyan: real-time/system */
+
+  /* Market regime */
+  --ot-color-regime-risk-on: var(--ot-color-market-up);
+  --ot-color-regime-risk-off: var(--ot-color-market-down);
+  --ot-color-regime-neutral: var(--ot-color-market-neutral);
+  --ot-color-regime-vol-high: var(--ot-color-system-critical);
+  --ot-color-regime-vol-low: var(--ot-color-system-ok);
+
+  /* Confidence scale (always paired with explicit number/text) */
+  --ot-color-confidence-high: var(--ot-color-market-up);
+  --ot-color-confidence-medium: var(--ot-color-system-warning);
+  --ot-color-confidence-low: var(--ot-color-market-down);
+
+  /* Graph edges */
+  --ot-color-edge-peer: var(--ot-color-border-strong);
+  --ot-color-edge-portfolio: var(--ot-color-accent-primary);
+  --ot-color-edge-sector: var(--ot-color-accent-info);
+  --ot-color-edge-ownership: var(--ot-color-intel-ai);
+
+  /* Motion: fast, restrained, functional */
+  --ot-motion-instant: 60ms;
+  --ot-motion-fast: 120ms;
+  --ot-motion-normal: 180ms;
+  --ot-motion-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* Density presets (row heights; applied by density setting) */
+  --ot-density-data-compact: 22px;
+  --ot-density-data-standard: 26px;
+  --ot-density-data-comfortable: 32px;
+
+  /* Z-index scale */
+  --ot-z-base: 0;
+  --ot-z-panel: 10;
+  --ot-z-ribbon: 20;
+  --ot-z-shell: 30;
+  --ot-z-overlay: 40;
+  --ot-z-command: 50;
+  --ot-z-toast: 60;
+  --ot-z-modal: 70;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ot-motion-instant: 0ms;
+    --ot-motion-fast: 0ms;
+    --ot-motion-normal: 0ms;
+  }
+}

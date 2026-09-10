@@ -9,6 +9,8 @@ export type CommandFunctionCode =
   | "DES"
   | "GP"
   | "CH"
+  | "WHY"
+  | "REL"
   | "FA"
   | "NEWS"
   | "OPT"
@@ -103,6 +105,8 @@ export const COMMAND_FUNCTIONS: CommandFunctionSpec[] = [
   { code: "DESK", label: "Analyst Desk", description: "Open the cockpit analyst workspace", aliases: ["COCKPIT", "MONITOR"] },
   { code: "DES", label: "Description / Security Hub", description: "Open security hub overview", securityScoped: true, aliases: ["SECURITY", "HUB"] },
   { code: "GP", label: "Graph Price", description: "Open chart tab", securityScoped: true, aliases: ["CHART"] },
+  { code: "WHY", label: "Why did this move?", description: "Movement intelligence for a symbol", securityScoped: true, aliases: ["MOVE", "EXPLAIN", "DRIVER"] },
+  { code: "REL", label: "Relationship Graph", description: "Open the financial relationship graph", securityScoped: true, aliases: ["GRAPH", "LINKS", "NETWORK"] },
   { code: "CH", label: "Chart Workstation", description: "Open chart workstation with active symbol", securityScoped: true, aliases: ["WORKSTATION"] },
   { code: "FA", label: "Financial Analysis", description: "Open financials tab", securityScoped: true, aliases: ["FIN", "FUNDAMENTALS"] },
   { code: "NEWS", label: "News", description: "Open news (global or ticker-specific)", aliases: ["N"] },
@@ -157,6 +161,8 @@ const TICKER_FUNCTION_HINTS: Array<{
   subtitle: string;
 }> = [
   { func: "DES", title: "Overview", subtitle: "Open the security overview" },
+  { func: "WHY", title: "Why did this move?", subtitle: "Movement intelligence: observed drivers, derived signals" },
+  { func: "REL", title: "Relationship graph", subtitle: "Explore peers, sector, portfolio and market links" },
   { func: "FA", title: "Financials", subtitle: "Open financial statements and ratios" },
   { func: "CH", title: "Chart Workstation", subtitle: "Load the symbol into chart workstation" },
   { func: "NEWS", title: "News", subtitle: "Open ticker-specific news" },
@@ -357,6 +363,14 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
 
   if (parsed.kind === "ticker-function") {
     applyTicker(parsed.ticker);
+    if (parsed.func === "WHY") {
+      navigate(`/equity/why/${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: `/equity/why/${parsed.ticker}` };
+    }
+    if (parsed.func === "REL") {
+      navigate(`/equity/relationships/${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: `/equity/relationships/${parsed.ticker}` };
+    }
     if (parsed.func === "DESK") {
       navigate(`/equity/cockpit?ticker=${encodeURIComponent(parsed.ticker)}`);
       return { ok: true, target: "/equity/cockpit" };
@@ -393,6 +407,22 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
         }
         navigate("/equity/cockpit");
         return { ok: true, target: "/equity/cockpit" };
+      case "WHY":
+        if (mod0 && looksLikeTicker(mod0)) {
+          applyTicker(mod0);
+          navigate(`/equity/why/${encodeURIComponent(mod0)}`);
+          return { ok: true, target: `/equity/why/${mod0}` };
+        }
+        navigate("/equity/why");
+        return { ok: true, target: "/equity/why" };
+      case "REL":
+        if (mod0 && looksLikeTicker(mod0)) {
+          applyTicker(mod0);
+          navigate(`/equity/relationships/${encodeURIComponent(mod0)}`);
+          return { ok: true, target: `/equity/relationships/${mod0}` };
+        }
+        navigate("/equity/relationships");
+        return { ok: true, target: "/equity/relationships" };
       case "EQS":
         navigate("/equity/screener");
         return { ok: true, target: "/equity/screener" };

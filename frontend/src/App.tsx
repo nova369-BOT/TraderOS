@@ -19,6 +19,8 @@ const FnoLayout = lazyWithRetry(() => import("./fno/FnoLayout").then((m) => ({ d
 const AccountLayout = lazyWithRetry(() => import("./pages/AccountLayout").then((m) => ({ default: m.AccountLayout })));
 
 const HomePage = lazyWithRetry(() => import("./pages/HomePage").then((m) => ({ default: m.HomePage })));
+const WhyMovePage = lazyWithRetry(() => import("./pages/WhyMovePage").then((m) => ({ default: m.default })));
+const RelationshipsPage = lazyWithRetry(() => import("./pages/RelationshipsPage").then((m) => ({ default: m.default })));
 
 const StockDetailPage = lazyWithRetry(() => import("./pages/StockDetail").then((m) => ({ default: m.StockDetailPage })));
 const SecurityHubPage = lazyWithRetry(() => import("./pages/SecurityHub").then((m) => ({ default: m.SecurityHubPage })));
@@ -139,6 +141,10 @@ function App() {
             <Route path="insider" element={<InsiderActivityPage />} />
             <Route path="stocks/about" element={<AboutPage />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="why" element={<WhyMovePage />} />
+            <Route path="why/:ticker" element={<WhyMovePage />} />
+            <Route path="relationships" element={<RelationshipsPage />} />
+            <Route path="relationships/:ticker" element={<RelationshipsPage />} />
             <Route path="heatmap" element={<MarketHeatmapPage />} />
             <Route path="dividends" element={<DividendDashboardPage />} />
             <Route path="rs" element={<RelativeStrengthPage />} />
