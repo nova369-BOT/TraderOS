@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="TradeOS icon">
+  <!-- TradeOS app icon: emblem on off-white #F2EFE6 tile -->
+  <rect x="0" y="0" width="400" height="400" rx="72" fill="#F2EFE6"/>
+  <g transform="translate(40 40) scale(0.8)" fill="none">
+    <path d="M 266.2 109 A 125 125 0 1 1 133.8 109"
+          stroke="#14181D" stroke-width="34" stroke-linecap="butt"/>
+    <rect x="104" y="212" width="68" height="16" rx="8" fill="#14181D"/>
+    <rect x="228" y="212" width="68" height="16" rx="8" fill="#14181D"/>
+    <rect x="195" y="52" width="10" height="268" rx="5" fill="#C9A227"/>
+    <rect x="169" y="160" width="62" height="130" rx="10" fill="#C9A227"/>
+  </g>
+</svg>
