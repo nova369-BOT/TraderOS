@@ -10,6 +10,8 @@ export function Sidebar() {
   const nav = [
     { label: "Market", path: "/equity/stocks", key: "F1" },
     { label: "Security Hub", path: "/equity/security", key: "SH", hint: "Research" },
+    { label: "Why Did This Move?", path: "/equity/why", key: "WHY", hint: "Intelligence" },
+    { label: "Relationships", path: "/equity/relationships", key: "REL", hint: "Graph" },
     { label: "Economics", path: "/equity/economics", key: "E", hint: "Macro" },
     { label: "Commodities", path: "/equity/commodities", key: "CMDTY", hint: "Macro" },
     { label: "Forex", path: "/equity/forex", key: "FX", hint: "Macro" },
