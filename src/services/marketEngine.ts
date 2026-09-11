@@ -292,14 +292,7 @@ class MarketEngine {
     const key = `${symbol}|${tf}|${count}`;
     const cached = this.candleCache.get(key);
     if (cached) {
-      // merge live price into the forming candle (intraday tfs)
-      const last = cached[cached.length - 1];
-      const st = this.states.get(symbol);
-      if (st && last && TF_SECONDS[tf] < 86400) {
-        last.close = st.price;
-        last.high = Math.max(last.high, st.price);
-        last.low = Math.min(last.low, st.price);
-      }
+      this.rollCache(key, symbol, tf, cached);
       return cached;
     }
     const def = SYMBOL_MAP[symbol] ?? SYMBOLS[0];
@@ -344,9 +337,48 @@ class MarketEngine {
     // bound cache
     if (this.candleCache.size > 60) {
       const first = this.candleCache.keys().next().value;
-      if (first) this.candleCache.delete(first);
+      if (first) {
+        this.candleCache.delete(first);
+        this.barAnchor.delete(first);
+      }
     }
     return candles;
+  }
+
+  private barAnchor = new Map<string, number>(); // session volume at last forming-bar sync
+
+  // Complete finished bars and merge the live price into the forming bar
+  // (intraday timeframes). Previously the cached series never rolled, so the
+  // final bar absorbed the entire session and timeframe semantics broke.
+  private rollCache(key: string, symbol: string, tf: Timeframe, cached: Candle[]): void {
+    const st = this.states.get(symbol);
+    const tfSec = TF_SECONDS[tf];
+    if (!st || cached.length === 0 || tfSec >= 86400) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const aligned = Math.floor(nowSec / tfSec) * tfSec;
+    let guard = 0;
+    while (cached[cached.length - 1].time < aligned && guard++ < cached.length) {
+      const prev = cached[cached.length - 1];
+      const t = prev.time + tfSec;
+      const live = t >= aligned;
+      const o = prev.close;
+      const c = live ? st.price : o;
+      cached.push({
+        time: t, open: o,
+        high: live ? Math.max(o, c) : o,
+        low: live ? Math.min(o, c) : o,
+        close: c, volume: 1,
+      });
+      cached.shift();
+    }
+    const form = cached[cached.length - 1];
+    form.close = st.price;
+    form.high = Math.max(form.high, st.price);
+    form.low = Math.min(form.low, st.price);
+    // accumulate session trade volume into the forming bar
+    const prevVol = this.barAnchor.get(key) ?? st.volume;
+    form.volume += Math.max(0, st.volume - prevVol);
+    this.barAnchor.set(key, st.volume);
   }
 
   // ---------- order book ----------

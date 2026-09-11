@@ -53,6 +53,13 @@ html, body, #root {
 
 ::selection { background: rgba(77, 141, 255, 0.3); }
 
+/* Density: Settings → Appearance → Comfortable adds breathing room. */
+[data-density='comfortable'] .panel-hd { height: 34px; }
+[data-density='comfortable'] .dgrid thead th { padding: 8px 8px; }
+[data-density='comfortable'] .dgrid tbody td { padding: 6px 8px; }
+[data-density='comfortable'] .ttab { font-size: 11.5px; }
+[data-density='comfortable'] .tinput, [data-density='comfortable'] .tselect { min-height: 26px; }
+
 /* ================= z-index layer contract =================
    0-1    base app, in-flow panels
    2      sticky table headers

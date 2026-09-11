@@ -19,6 +19,19 @@ import {
   type BacktestConfig,
 } from '../src/services/backtestService';
 import { getNews, getCalendar, marketBrief } from '../src/services/newsService';
+import { currentSession } from '../src/lib/format';
+import type { Timeframe } from '../src/services/symbols';
+
+// localStorage shim FIRST: the broker persists on every emit
+const mem = new Map<string, string>();
+(globalThis as unknown as { localStorage: Storage }).localStorage = {
+  getItem: (k: string) => mem.get(k) ?? null,
+  setItem: (k: string, v: string) => { mem.set(k, v); },
+  removeItem: (k: string) => { mem.delete(k); },
+  clear: () => mem.clear(),
+  key: (i: number) => [...mem.keys()][i] ?? null,
+  length: 0,
+} as Storage;
 
 let pass = 0;
 let fail = 0;
@@ -99,6 +112,16 @@ for (const tf of TIMEFRAMES) {
   const ohlc = cs.every((c) => c.high >= Math.max(c.open, c.close) && c.low <= Math.min(c.open, c.close) && c.volume > 0);
   ok(cs.length === 120 && asc && ohlc, `candles ${tf} ordered + ohlc-valid`);
 }
+{ // stale cache must roll forward to the current slot, preserving length+order
+  const nowS = Math.floor(Date.now() / 1000);
+  const stale = marketEngine.getCandles('BTCUSDT', '1m', 60).map((c) => ({ ...c, time: c.time - 3600 }));
+  (marketEngine as unknown as { rollCache: (k: string, s: string, t: Timeframe, c: Candle[]) => void })
+    .rollCache('smoke|1m|60', 'BTCUSDT', '1m', stale);
+  const asc = stale.every((c, i) => i === 0 || c.time > stale[i - 1].time);
+  ok(stale.length === 60 && asc && stale[59].time <= nowS && stale[59].time > nowS - 120, 'rollCache completes stale bars');
+  const fresh = marketEngine.getCandles('BTCUSDT', '1s', 120);
+  ok(fresh[fresh.length - 1].time <= nowS && fresh[fresh.length - 1].time > nowS - 5, 'forming bar tracks current slot');
+}
 for (const s of ['BTCUSDT', 'NVDA', 'ES', 'EURUSD']) {
   const book = marketEngine.getBook(s, 15);
   const bidsDesc = book.bids.every((b, i) => i === 0 || b.price < book.bids[i - 1].price);
@@ -161,6 +184,23 @@ finite(broker.equity(), 'equity finite');
 finite(broker.dayPnl(), 'day pnl finite');
 ok(broker.buyingPower() >= 0, 'buying power non-negative');
 ok(broker.fills.length > 0 && broker.fills.every((f) => f.qty > 0 && f.price > 0 && f.fee >= 0), 'fills sane');
+res = broker.placeOrder({ symbol: 'NVDA', side: 'BUY', type: 'LMT', qty: 1, limitPrice: 1, tif: 'DAY' });
+const dayOrder = res.order!;
+res = broker.placeOrder({ symbol: 'NVDA', side: 'BUY', type: 'LMT', qty: 1, limitPrice: 1, tif: 'GTC' });
+const gtcOrder = res.order!;
+(broker as unknown as { dayId: number }).dayId -= 1; // force UTC-day rollover
+tick();
+ok(dayOrder.status === 'CANCELLED', 'DAY order expires on day roll');
+ok(gtcOrder.status === 'WORKING', 'GTC order survives day roll');
+broker.cancelOrder(gtcOrder.id);
+const ordersBefore = broker.orders.length;
+broker.saveState(true);
+ok(mem.has('traderos-broker'), 'broker state persists');
+broker.placeOrder({ symbol: 'NVDA', side: 'BUY', type: 'LMT', qty: 1, limitPrice: 1 });
+broker.loadState();
+ok(broker.orders.length === ordersBefore, 'broker state round-trips');
+broker.resetAccount();
+ok(broker.cash === 250000 && broker.orders.length === 0 && !mem.has('traderos-broker'), 'resetAccount clears state+storage');
 
 // ---------------------------------------------------------------- backtest engine
 section('backtest engine');
@@ -215,15 +255,6 @@ ok(brief.breadth >= 0 && brief.breadth <= 100 && brief.leaders.length === 3, 'ma
 
 // ---------------------------------------------------------------- stores (with DOM shims)
 section('stores');
-const mem = new Map<string, string>();
-(globalThis as unknown as { localStorage: Storage }).localStorage = {
-  getItem: (k: string) => mem.get(k) ?? null,
-  setItem: (k: string, v: string) => { mem.set(k, v); },
-  removeItem: (k: string) => { mem.delete(k); },
-  clear: () => mem.clear(),
-  key: (i: number) => [...mem.keys()][i] ?? null,
-  length: 0,
-} as Storage;
 const { useWorkspaceStore } = await import('../src/store/useWorkspaceStore');
 const { useMarketStore } = await import('../src/store/useMarketStore');
 const { useResearchStore } = await import('../src/store/useResearchStore');
@@ -253,6 +284,13 @@ useResearchStore.getState().duplicateStrategy('tpl-trend-ema');
 ok(useResearchStore.getState().strategies.length === 6, 'strategy duplicates');
 useResearchStore.getState().deleteStrategy(useResearchStore.getState().activeStrategyId);
 ok(useResearchStore.getState().strategies.length === 5, 'strategy deletes');
+
+// ---------------------------------------------------------------- session clock
+section('session clock');
+ok(currentSession(new Date('2026-09-11T15:00:00Z')) === 'US · Open', 'US session 15:00Z Friday');
+ok(currentSession(new Date('2026-09-11T09:00:00Z')) === 'EU · Open', 'EU session 09:00Z Friday');
+ok(currentSession(new Date('2026-09-12T15:00:00Z')) === 'Weekend', 'weekend Saturday');
+ok(currentSession(new Date('2026-09-11T02:00:00Z')) === 'Asia / OSH', 'asia session 02:00Z Friday');
 
 // ---------------------------------------------------------------- summary
 console.log(`\n${'='.repeat(48)}\nPASS: ${pass}  FAIL: ${fail}`);

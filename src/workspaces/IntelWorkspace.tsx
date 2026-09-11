@@ -43,7 +43,7 @@ export function IntelWorkspace(): React.ReactElement {
             <Panel
               className="flex-1 min-h-0"
               title="Terminal Wire"
-              subtitle={`${filtered.length} stories`}
+              subtitle={`${filtered.length} stories · simulated`}
               actions={
                 <>
                   <div className="seg">
@@ -133,7 +133,7 @@ export function IntelWorkspace(): React.ReactElement {
                   </div>
                 </Panel>
                 {/* calendar */}
-                <Panel title="Economic Calendar" subtitle="all events" actions={<Newspaper size={12} className="text-text3" />}>
+                <Panel title="Economic Calendar" subtitle="all events · simulated" actions={<Newspaper size={12} className="text-text3" />}>
                   <div className="divide-y divide-line/60">
                     {cal.map((e) => {
                       const past = e.time < Date.now();

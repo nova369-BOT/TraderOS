@@ -5,7 +5,7 @@ import { SYMBOLS, getSymbol } from '../../services/symbols';
 import { useMarketStore } from '../../store/useMarketStore';
 import { useWorkspaceStore } from '../../store/useWorkspaceStore';
 import { getCalendar, getNews, marketBrief } from '../../services/newsService';
-import { fmtNum, fmtPct, fmtPrice, fmtTimeShort, fmtVol, timeAgo } from '../../lib/format';
+import { currentSession, fmtNum, fmtPct, fmtPrice, fmtTimeShort, fmtVol, timeAgo } from '../../lib/format';
 import { Panel } from '../primitives/Panel';
 import { Sparkline } from '../primitives/Spark';
 import { Delta } from '../primitives/Metric';
@@ -121,7 +121,7 @@ export function CalendarMini({ limit = 6 }: { limit?: number }): React.ReactElem
   const tick = useMarketStore((s) => s.tick);
   void tick;
   return (
-    <Panel title="Economic Calendar" subtitle="upcoming" actions={<CalendarClock size={12} className="text-text3" />}>
+    <Panel title="Economic Calendar" subtitle="upcoming · simulated" actions={<CalendarClock size={12} className="text-text3" />}>
       <div className="divide-y divide-line/60">
         {evts.map((e) => (
           <div key={e.id} className="px-2 py-[7px] flex items-center gap-2">
@@ -143,7 +143,7 @@ export function NewsFeed({ symbol, limit = 14, compact }: { symbol?: string; lim
   const items = useMemo(() => getNews(symbol, limit), [symbol, limit, Math.floor(tick / 20)]); // eslint-disable-line react-hooks/exhaustive-deps
   const setSymbol = useWorkspaceStore((s) => s.setSymbol);
   return (
-    <Panel title={symbol ? `News · ${symbol}` : 'Market News'} subtitle="terminal wire" bodyClassName="!overflow-auto">
+    <Panel title={symbol ? `News · ${symbol}` : 'Market News'} subtitle="terminal wire · simulated" bodyClassName="!overflow-auto">
       <div className="divide-y divide-line/60">
         {items.map((n) => (
           <div key={n.id} className="px-2 py-[7px] hover:bg-hover cursor-pointer">
@@ -213,8 +213,8 @@ export function SessionStats(): React.ReactElement {
     const hiVol = all.filter((q) => q.relVol > 1.5).length;
     const totalTurn = all.reduce((s, q) => s + q.quoteVolume, 0);
     const avgChg = all.length ? all.reduce((s, q) => s + Math.abs(q.changePct), 0) / all.length : 0;
-    const btc = quotes['BTCUSDT'];
-    return { ups, dns: all.length - ups, hiVol, totalTurn, avgChg, btcDom: btc ? 54.2 + btc.changePct * 0.1 : 54 };
+    const vix = quotes['VIX'];
+    return { ups, dns: all.length - ups, hiVol, totalTurn, avgChg, vix: vix?.price ?? 0, session: currentSession() };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quotes]);
   return (
@@ -224,8 +224,8 @@ export function SessionStats(): React.ReactElement {
         { l: 'Avg |move|', v: fmtPct(stats.avgChg) },
         { l: 'High rel-vol', v: fmtNum(stats.hiVol, 0) },
         { l: 'Turnover', v: `$${fmtVol(stats.totalTurn)}` },
-        { l: 'BTC dom', v: `${stats.btcDom.toFixed(1)}%` },
-        { l: 'Session', v: 'US · Open' },
+        { l: 'VIX', v: stats.vix.toFixed(2) },
+        { l: 'Session', v: stats.session },
       ].map((s) => (
         <div key={s.l} className="bg-panel px-2 py-1.5 min-w-0">
           <div className="text-[9px] font-semibold uppercase tracking-wider text-text3">{s.l}</div>

@@ -124,10 +124,11 @@ function Toasts(): React.ReactElement | null {
 
 export default function App(): React.ReactElement {
   const view = useWorkspaceStore((s) => s.view);
+  const density = useWorkspaceStore((s) => s.density);
   useShortcuts();
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-base text-text1">
+    <div data-density={density} className="h-screen w-screen flex flex-col overflow-hidden bg-base text-text1">
       <TopBar />
       <TickerTape />
       <AlertBanner />

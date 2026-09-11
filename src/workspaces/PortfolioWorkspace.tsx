@@ -116,7 +116,7 @@ export function PortfolioWorkspace(): React.ReactElement {
           defaultSize={560} min={380} max={900}
           left={
             <div className="flex-1 min-h-0 flex flex-col gap-2 pr-2 overflow-hidden">
-              <Panel title="Equity curve" subtitle="session · live" className="shrink-0" bodyClassName="p-2">
+              <Panel title="Equity curve" subtitle="session" className="shrink-0" bodyClassName="p-2">
                 <EquityChart data={equityCurve} height={150} />
                 <div className="flex items-center gap-4 mt-1 px-1 text-[10px] text-text3">
                   <span>Peak <span className="num text-text1">{fmtMoney(Math.max(...equityCurve.map((e) => e.equity), equity), 0)}</span></span>

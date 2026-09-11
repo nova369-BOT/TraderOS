@@ -47,6 +47,23 @@ function saveLists(lists: Record<string, string[]>): void {
   try { localStorage.setItem('traderos-watchlists', JSON.stringify(lists)); } catch { /* ignore */ }
 }
 
+interface MarketPersist { alerts: MarketState['alerts']; favorites: string[]; }
+
+function loadMarket(): Partial<MarketPersist> {
+  try {
+    const raw = localStorage.getItem('traderos-market');
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return {};
+}
+
+function saveMarket(get: () => MarketState): void {
+  try {
+    const s = get();
+    localStorage.setItem('traderos-market', JSON.stringify({ alerts: s.alerts, favorites: s.favorites }));
+  } catch { /* ignore */ }
+}
+
 let alertSeq = 1;
 let prevPrices: Record<string, number> = {};
 let subscribed = false;
@@ -66,8 +83,8 @@ export const useMarketStore = create<MarketState>()((set, get) => {
     flash: {},
     watchlists: loadLists(),
     activeWatchlist: 'Main',
-    favorites: ['BTCUSDT', 'NVDA', 'ES'],
-    alerts: [],
+    favorites: loadMarket().favorites ?? ['BTCUSDT', 'NVDA', 'ES'],
+    alerts: loadMarket().alerts ?? [],
     triggeredAlert: null,
 
     refresh: () => {
@@ -145,15 +162,29 @@ export const useMarketStore = create<MarketState>()((set, get) => {
       saveLists(lists);
       set({ watchlists: lists });
     },
-    toggleFavorite: (symbol) => set((s) => ({
-      favorites: s.favorites.includes(symbol)
-        ? s.favorites.filter((f) => f !== symbol)
-        : [...s.favorites, symbol],
-    })),
-    addAlert: (symbol, condition, price) => set((s) => ({
-      alerts: [...s.alerts, { id: `A-${alertSeq++}`, symbol, condition, price, triggered: false, createdAt: Date.now() }],
-    })),
-    removeAlert: (id) => set((s) => ({ alerts: s.alerts.filter((a) => a.id !== id) })),
+    toggleFavorite: (symbol) => {
+      set((s) => ({
+        favorites: s.favorites.includes(symbol)
+          ? s.favorites.filter((f) => f !== symbol)
+          : [...s.favorites, symbol],
+      }));
+      saveMarket(get);
+    },
+    addAlert: (symbol, condition, price) => {
+      set((s) => ({
+        alerts: [...s.alerts, { id: `A-${alertSeq++}`, symbol, condition, price, triggered: false, createdAt: Date.now() }],
+      }));
+      // keep alert ids unique across reloads
+      try {
+        const maxId = get().alerts.reduce((m, a) => Math.max(m, Number(a.id.replace('A-', '')) || 0), 0);
+        alertSeq = Math.max(alertSeq, maxId + 1);
+      } catch { /* ignore */ }
+      saveMarket(get);
+    },
+    removeAlert: (id) => {
+      set((s) => ({ alerts: s.alerts.filter((a) => a.id !== id) }));
+      saveMarket(get);
+    },
     dismissAlert: () => set({ triggeredAlert: null }),
   };
 });

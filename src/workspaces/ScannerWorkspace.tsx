@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { CandlestickChart, Play, Plus, Swords, Trash2, X } from 'lucide-react';
 import { marketEngine } from '../services/marketEngine';
 import { SYMBOLS, getSymbol } from '../services/symbols';
@@ -110,9 +110,13 @@ export function ScannerWorkspace(): React.ReactElement {
   const setPreset = useResearchStore((s) => s.setScanPreset);
   const [running, setRunning] = useState(true);
 
+  const frozen = useRef<ScanRow[] | null>(null);
   const rows = useMemo(() => {
+    if (!running && frozen.current) return frozen.current; // paused: hold last scan
     const all = computeRows();
-    return all.filter((r) => filters.every((f) => pass(r, f)));
+    const out = all.filter((r) => filters.every((f) => pass(r, f)));
+    frozen.current = out;
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick, filters, running]);
 

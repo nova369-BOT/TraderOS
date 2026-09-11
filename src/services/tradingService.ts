@@ -11,7 +11,7 @@ import { uid } from '../lib/utils';
  */
 
 export type Side = 'BUY' | 'SELL';
-export type OrderType = 'MKT' | 'LMT' | 'STP' | 'STP_LMT' | 'TRAIL';
+export type OrderType = 'MKT' | 'LMT' | 'STP' | 'STP_LMT';
 export type OrderStatus = 'WORKING' | 'FILLED' | 'CANCELLED' | 'REJECTED';
 export type TIF = 'DAY' | 'GTC' | 'IOC' | 'FOK';
 
@@ -84,6 +84,12 @@ export interface PlaceOrderInput {
 }
 
 const FEE_BPS = 2.5; // taker fee per side
+const LS_KEY = 'traderos-broker';
+const SAVE_MIN_MS = 5000;
+
+function utcDayId(now = Date.now()): number {
+  return Math.floor(now / 86400000);
+}
 
 class PaperBroker {
   cash = 250_000;
@@ -96,6 +102,8 @@ class PaperBroker {
   equityHistory: Array<{ time: number; equity: number }> = [];
   private listeners = new Set<() => void>();
   private orderSeq = 1000;
+  private dayId = utcDayId();
+  private lastSave = 0;
 
   constructor() {
     // seed a small demo book so the terminal feels alive on first paint
@@ -103,6 +111,7 @@ class PaperBroker {
     for (let i = 60; i >= 1; i--) {
       this.equityHistory.push({ time: now - i * 60000, equity: 250000 + Math.sin(i / 9) * 1400 + (60 - i) * 22 });
     }
+    this.loadState();
     if (typeof window !== 'undefined') {
       marketEngine.subscribe(() => this.onMarketTick());
     }
@@ -115,6 +124,7 @@ class PaperBroker {
 
   private emit(): void {
     this.listeners.forEach((fn) => fn());
+    this.saveState();
   }
 
   // ---------------- order entry ----------------
@@ -275,11 +285,21 @@ class PaperBroker {
 
   // ---------------- matching (runs on every market tick) ----------------
   private onMarketTick(): void {
-    let changed = false;
+    // DAY orders die at the UTC day rollover (previously DAY behaved as GTC)
+    const day = utcDayId();
+    if (day !== this.dayId) {
+      this.dayId = day;
+      for (const o of this.orders) {
+        if (o.status === 'WORKING' && o.tif === 'DAY') {
+          o.status = 'CANCELLED';
+          o.updatedAt = Date.now();
+        }
+      }
+    }
     for (const o of this.orders) {
       if (o.status !== 'WORKING') continue;
       const q = marketEngine.getQuote(o.symbol);
-      if (this.tryFillResting(o, q)) changed = true;
+      this.tryFillResting(o, q);
     }
     // re-mark positions
     for (const p of this.positions.values()) {
@@ -296,9 +316,10 @@ class PaperBroker {
     if (Date.now() - lastT > 20000) {
       this.equityHistory.push({ time: Date.now(), equity: eq });
       if (this.equityHistory.length > 400) this.equityHistory.shift();
-      changed = true;
     }
-    if (changed) this.emit();
+    // Always emit: positions are re-marked every tick and the terminal,
+    // ticket and chart chips must show live marks, not 20s-old snapshots.
+    this.emit();
   }
 
   private tryFillResting(o: Order, q: Quote): boolean {
@@ -451,6 +472,67 @@ class PaperBroker {
     const working = this.orders.filter((o) => o.status === 'WORKING');
     const rest = this.orders.filter((o) => o.status !== 'WORKING').slice(0, 400);
     this.orders = [...working, ...rest];
+  }
+
+  // ---------------- persistence ----------------
+  saveState(force = false): void {
+    const now = Date.now();
+    if (!force && now - this.lastSave < SAVE_MIN_MS) return;
+    this.lastSave = now;
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        cash: this.cash,
+        startingEquity: this.startingEquity,
+        realizedToday: this.realizedToday,
+        feesToday: this.feesToday,
+        orders: this.orders.slice(0, 600),
+        fills: this.fills.slice(0, 600),
+        positions: [...this.positions.values()],
+        equityHistory: this.equityHistory.slice(-400),
+        orderSeq: this.orderSeq,
+        dayId: this.dayId,
+      }));
+    } catch { /* storage full/blocked: session simply isn't persisted */ }
+  }
+
+  loadState(): void {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as {
+        cash: number; startingEquity: number; realizedToday: number; feesToday: number;
+        orders: Order[]; fills: Fill[];
+        positions: Array<Position & { realizedAcc: number }>;
+        equityHistory: Array<{ time: number; equity: number }>;
+        orderSeq: number; dayId: number;
+      };
+      if (!s || typeof s.cash !== 'number' || !Array.isArray(s.orders)) return;
+      this.cash = s.cash;
+      this.startingEquity = s.startingEquity;
+      this.realizedToday = s.realizedToday;
+      this.feesToday = s.feesToday;
+      this.orders = s.orders;
+      this.fills = s.fills;
+      this.positions = new Map(s.positions.map((p) => [p.symbol, p]));
+      this.equityHistory = s.equityHistory.length ? s.equityHistory : this.equityHistory;
+      this.orderSeq = Math.max(1000, s.orderSeq || 1000);
+      this.dayId = s.dayId || utcDayId();
+    } catch { /* corrupt state: fall through to seeded defaults */ }
+  }
+
+  resetAccount(): void {
+    this.cash = 250000;
+    this.startingEquity = 250000;
+    this.realizedToday = 0;
+    this.feesToday = 0;
+    this.orders = [];
+    this.fills = [];
+    this.positions.clear();
+    this.equityHistory = [{ time: Date.now(), equity: 250000 }];
+    this.orderSeq = 1000;
+    this.dayId = utcDayId();
+    try { localStorage.removeItem(LS_KEY); } catch { /* ignore */ }
+    this.emit();
   }
 
   // ---------------- account ----------------

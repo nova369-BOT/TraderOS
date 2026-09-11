@@ -311,9 +311,7 @@ export function runBacktest(cfg: BacktestConfig): BacktestResult {
           target: tgtDist > 0 ? px + dir * tgtDist : null,
           worst: px, best: px,
         };
-        const fee = qty * px * costRate;
-        commission += fee * 0; // entry fee counted at exit (round trip) — keep simple
-        void fee;
+        // Entry leg fee is counted at exit as a round-trip cost (see exit block).
       }
     }
 

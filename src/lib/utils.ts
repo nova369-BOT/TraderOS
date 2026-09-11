@@ -2,10 +2,6 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
 }
 
-export function clamp(v: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, v));
-}
-
 /** deterministic PRNG */
 export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
@@ -25,14 +21,6 @@ export function hashStr(s: string): number {
     h = Math.imul(h, 16777619);
   }
   return h >>> 0;
-}
-
-export function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T {
-  let t: ReturnType<typeof setTimeout> | null = null;
-  return ((...args: never[]) => {
-    if (t) clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  }) as T;
 }
 
 export function uid(prefix = 'id'): string {

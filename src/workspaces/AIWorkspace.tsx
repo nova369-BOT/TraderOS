@@ -225,7 +225,7 @@ function generate(prompt: string): { text: string; ctx: string[] } {
       text: [`**Risk desk**`, '',
         `- Equity \`${fmtMoney(st.equity, 0)}\` · exposure \`${fmtMoney(st.exposure, 0)}\` (${fmtPct((st.exposure / Math.max(1, st.equity)) * 100, 0)} gross) · margin \`${fmtMoney(st.marginUsed, 0)}\``,
         `- House rules I enforce in this terminal: risk ≤2% per idea, ≤6% portfolio heat, stops entered **with** the order (bracket) — never after.`,
-        `- Tell me an entry + stop and I'll compute exact size for 1% risk.`].join('\n'),
+        `- The order ticket computes exact size, max loss and R-multiple live as you type.`].join('\n'),
       ctx: [...ctx, 'risk'],
     };
   }

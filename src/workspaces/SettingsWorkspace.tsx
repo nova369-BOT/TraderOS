@@ -24,14 +24,7 @@ export function SettingsWorkspace(): React.ReactElement {
 
   const resetPaper = (): void => {
     if (!confirm('Reset the paper account to $250,000 and clear all orders/fills?')) return;
-    broker.cash = 250000;
-    broker.startingEquity = 250000;
-    broker.realizedToday = 0;
-    broker.feesToday = 0;
-    broker.orders = [];
-    broker.fills = [];
-    broker.positions.clear();
-    broker.equityHistory = [{ time: Date.now(), equity: 250000 }];
+    broker.resetAccount();
     useTradingStore.getState().refresh();
   };
 

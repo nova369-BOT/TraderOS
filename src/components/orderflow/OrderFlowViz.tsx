@@ -5,7 +5,6 @@ import { useMarketStore } from '../../store/useMarketStore';
 import { fmtNum, fmtPct, fmtPrice, fmtVol } from '../../lib/format';
 import { Panel } from '../primitives/Panel';
 import { Metric } from '../primitives/Metric';
-import { cx } from '../../lib/utils';
 
 // turbo-ish colormap for liquidity intensity
 function heatColor(t: number): string {
@@ -247,14 +246,6 @@ function Cell({ label, value, tone }: { label: string; value: string; tone?: str
   return (
     <div className="bg-panel px-2.5 py-1.5 min-w-0">
       <Metric label={label} value={value} size="sm" tone={(tone as 'up' | 'down') ?? 'neutral'} />
-    </div>
-  );
-}
-
-export function FlowLegend(): React.ReactElement {
-  return (
-    <div className={cx('text-[10px] text-text3')}>
-      Delta = aggressive buys − sells per bar · imbalance shaded when one side ≥ 1.6× the other · walls = largest resting book sizes
     </div>
   );
 }

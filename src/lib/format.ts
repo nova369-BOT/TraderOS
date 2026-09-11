@@ -45,6 +45,17 @@ export function fmtTime(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-GB', { hour12: false });
 }
 
+export function currentSession(now = new Date()): string {
+  // Honest session clock from UTC time (US equity / EU / Asia hours).
+  const h = now.getUTCHours() + now.getUTCMinutes() / 60;
+  const d = now.getUTCDay();
+  if (d === 6 || d === 0) return 'Weekend';
+  if (h >= 13.5 && h < 20) return 'US · Open';
+  if (h >= 7 && h < 13.5) return 'EU · Open';
+  if (h >= 20 || h < 7) return 'Asia / OSH';
+  return 'Pre-market';
+}
+
 export function fmtTimeShort(ts: number): string {
   return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
 }

@@ -125,10 +125,10 @@ export function TopBar(): React.ReactElement {
       <span className="flex-1" />
 
       {/* connection */}
-      <div className="hidden md:flex items-center gap-1.5 px-2" title={connected ? 'Live feed connected' : 'Feed disconnected'}>
+      <div className="hidden md:flex items-center gap-1.5 px-2" title={connected ? 'Simulated feed · streaming' : 'Feed disconnected'}>
         <span className={cx('pulse-dot', connected ? 'live' : 'off')} />
         <span className={cx('text-[10px] font-bold tracking-wider', connected ? 'text-up' : 'text-down')}>
-          {connected ? 'LIVE' : 'OFFLINE'}
+          {connected ? 'SIM' : 'OFFLINE'}
         </span>
         <span className="num text-[10px] text-text3">{latency}ms</span>
         {connected ? <Wifi size={12} className="text-text3" /> : <WifiOff size={12} className="text-down" />}

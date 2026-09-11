@@ -56,6 +56,8 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
   const volRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const ovRefs = useRef<ISeriesApi<'Line'>[]>([]);
   const subRefs = useRef<ISeriesApi<'Line' | 'Histogram'>[]>([]);
+  type OvKind = 'ema9' | 'ema21' | 'ema50' | 'sma200' | 'vwap' | 'bbU' | 'bbM' | 'bbL' | 'rsi' | 'macdM' | 'macdS' | 'macdH';
+  const liveOv = useRef<Array<{ kind: OvKind; s: ISeriesApi<'Line'> | ISeriesApi<'Histogram'> }>>([]);
   const lastTimeRef = useRef<number>(0);
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -143,6 +145,7 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
     } catch { /* ignore */ }
     ovRefs.current = [];
     subRefs.current = [];
+    liveOv.current = [];
     lastTimeRef.current = 0;
 
     const hollow = chartType === 'hollow';
@@ -186,19 +189,22 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
       });
       return s;
     };
-    const line = (vals: Array<number | null>, color: string, w: 1 | 2 = 1): void => {
+    const line = (vals: Array<number | null>, color: string, w: 1 | 2, kind: OvKind): void => {
       const s = mkLine(color, w);
       s.setData(candles.map((c, i) => vals[i] === null ? null : { time: c.time as UTCTimestamp, value: vals[i] as number }).filter(Boolean) as Array<{ time: UTCTimestamp; value: number }>);
       ovRefs.current.push(s);
+      liveOv.current.push({ kind, s });
     };
-    if (indicators.ema9) line(ema(closes, 9), '#f0b90b');
-    if (indicators.ema21) line(ema(closes, 21), '#8b7cff');
-    if (indicators.ema50) line(ema(closes, 50), '#22d3ee');
-    if (indicators.sma200) line(sma(closes, 200), '#f6465d');
-    if (indicators.vwap) line(sessionVwap(candles), '#4d8dff', 2);
+    if (indicators.ema9) line(ema(closes, 9), '#f0b90b', 1, 'ema9');
+    if (indicators.ema21) line(ema(closes, 21), '#8b7cff', 1, 'ema21');
+    if (indicators.ema50) line(ema(closes, 50), '#22d3ee', 1, 'ema50');
+    if (indicators.sma200) line(sma(closes, 200), '#f6465d', 1, 'sma200');
+    if (indicators.vwap) line(sessionVwap(candles), '#4d8dff', 2, 'vwap');
     if (indicators.bb) {
       const b = bollinger(closes);
-      line(b.upper, 'rgba(139,124,255,0.8)'); line(b.middle, 'rgba(139,124,255,0.4)'); line(b.lower, 'rgba(139,124,255,0.8)');
+      line(b.upper, 'rgba(139,124,255,0.8)', 1, 'bbU');
+      line(b.middle, 'rgba(139,124,255,0.4)', 1, 'bbM');
+      line(b.lower, 'rgba(139,124,255,0.8)', 1, 'bbL');
     }
     // subpanes
     const showRsi = !!indicators.rsi;
@@ -211,6 +217,7 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
       const rs = mkLine('#c084fc', 1, 'rsi');
       rs.setData(candles.map((c, i) => r[i] === null ? null : { time: c.time as UTCTimestamp, value: r[i] as number }).filter(Boolean) as Array<{ time: UTCTimestamp; value: number }>);
       subRefs.current.push(rs as never);
+      liveOv.current.push({ kind: 'rsi', s: rs });
       for (const lvl of [70, 50, 30]) {
         rs.createPriceLine({ price: lvl, color: lvl === 50 ? '#3a4a63' : '#f6465d55', lineWidth: 1, lineStyle: LineStyle.Dashed, axisLabelVisible: true, title: '' });
       }
@@ -225,6 +232,7 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
       const mh = chart.addHistogramSeries({ priceScaleId: 'macd', priceLineVisible: false, lastValueVisible: false });
       mh.setData(candles.map((c, i) => m.hist[i] === null ? null : { time: c.time as UTCTimestamp, value: m.hist[i] as number, color: (m.hist[i] as number) >= 0 ? 'rgba(14,203,129,0.5)' : 'rgba(246,70,93,0.5)' }).filter(Boolean) as never);
       subRefs.current.push(ml as never, sl as never, mh as never);
+      liveOv.current.push({ kind: 'macdM', s: ml }, { kind: 'macdS', s: sl }, { kind: 'macdH', s: mh });
     }
 
     // position + alert price lines
@@ -246,24 +254,51 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol, timeframe, chartType, JSON.stringify(indicators), pos?.avgEntry, pos?.stop, pos?.target, symAlerts.length]);
 
-  // live update of the forming bar
+  // live update of the forming bar. series.update() appends when the bar time
+  // is new, so this also handles rollover — for the main series, volume AND
+  // every overlay (previously a rolled bar never rendered and overlays lagged
+  // behind forever). No full rebuild here: that would yank the viewport.
   useEffect(() => {
-    const chart = chartRef.current;
     const main = mainRef.current;
-    if (!chart || !main || candles.length === 0) return;
+    if (!main || candles.length === 0 || !lastTimeRef.current) return;
     const lc = candles[candles.length - 1];
-    if (lc.time !== lastTimeRef.current) {
-      // new bar — full refresh is cheapest correct path
-      lastTimeRef.current = lc.time;
-      setRev((r) => r + 1);
-      return;
-    }
+    const t = lc.time as UTCTimestamp;
+    const hollow = chartType === 'hollow';
     try {
-      if (chartType === 'line' || chartType === 'area') (main as unknown as ISeriesApi<'Line'>).update({ time: lc.time as UTCTimestamp, value: lc.close });
-      else if (chartType === 'bars') (main as unknown as ISeriesApi<'Bar'>).update({ time: lc.time as UTCTimestamp, open: lc.open, high: lc.high, low: lc.low, close: lc.close });
-      else (main as unknown as ISeriesApi<'Candlestick'>).update({ time: lc.time as UTCTimestamp, open: lc.open, high: lc.high, low: lc.low, close: lc.close });
-      volRef.current?.update({ time: lc.time as UTCTimestamp, value: lc.volume, color: lc.close >= lc.open ? 'rgba(14,203,129,0.45)' : 'rgba(246,70,93,0.45)' });
-    } catch { /* ignore */ }
+      if (chartType === 'line' || chartType === 'area') (main as unknown as ISeriesApi<'Line'>).update({ time: t, value: lc.close });
+      else if (chartType === 'bars') (main as unknown as ISeriesApi<'Bar'>).update({ time: t, open: lc.open, high: lc.high, low: lc.low, close: lc.close });
+      else if (hollow) (main as unknown as ISeriesApi<'Candlestick'>).update({ time: t, open: lc.close < lc.open ? lc.close : lc.open, high: lc.high, low: lc.low, close: lc.close < lc.open ? lc.open : lc.close });
+      else (main as unknown as ISeriesApi<'Candlestick'>).update({ time: t, open: lc.open, high: lc.high, low: lc.low, close: lc.close });
+      volRef.current?.update({ time: t, value: lc.volume, color: lc.close >= lc.open ? 'rgba(14,203,129,0.45)' : 'rgba(246,70,93,0.45)' });
+      const live = liveOv.current;
+      if (live.length > 0) {
+        const closes = candles.map((c) => c.close);
+        const need = new Set(live.map((o) => o.kind));
+        const vals = new Map<OvKind, number | null>();
+        const take = (arr: Array<number | null>): number | null => (arr.length ? arr[arr.length - 1] : null);
+        if (need.has('ema9')) vals.set('ema9', take(ema(closes, 9)));
+        if (need.has('ema21')) vals.set('ema21', take(ema(closes, 21)));
+        if (need.has('ema50')) vals.set('ema50', take(ema(closes, 50)));
+        if (need.has('sma200')) vals.set('sma200', take(sma(closes, 200)));
+        if (need.has('vwap')) vals.set('vwap', take(sessionVwap(candles)));
+        if (need.has('bbU') || need.has('bbM') || need.has('bbL')) {
+          const b = bollinger(closes);
+          vals.set('bbU', take(b.upper)); vals.set('bbM', take(b.middle)); vals.set('bbL', take(b.lower));
+        }
+        if (need.has('rsi')) vals.set('rsi', take(rsi(closes, 14)));
+        if (need.has('macdM') || need.has('macdS') || need.has('macdH')) {
+          const m = macd(closes);
+          vals.set('macdM', take(m.macd)); vals.set('macdS', take(m.signal)); vals.set('macdH', take(m.hist));
+        }
+        for (const o of live) {
+          const v = vals.get(o.kind);
+          if (v === null || v === undefined) continue;
+          if (o.kind === 'macdH') (o.s as ISeriesApi<'Histogram'>).update({ time: t, value: v, color: v >= 0 ? 'rgba(14,203,129,0.5)' : 'rgba(246,70,93,0.5)' });
+          else (o.s as ISeriesApi<'Line'>).update({ time: t, value: v });
+        }
+      }
+      lastTimeRef.current = lc.time;
+    } catch { /* series mid-rebuild: next tick repairs */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tick]);
 

@@ -139,7 +139,7 @@ function SymbolInfo({ symbol }: { symbol: string }): React.ReactElement {
         <Row k="ATR(14)" v={v.atr14 ? fmtPrice(v.atr14, def.decimals) : '—'} />
         <Row k="BB %B / width" v={`${v.pctB !== null && v.pctB !== undefined ? (v.pctB * 100).toFixed(0) + '%' : '—'} / ${v.bbWidth?.toFixed(2) ?? '—'}`} />
         <Row k="Stoch K / D" v={`${v.stochK?.toFixed(1) ?? '—'} / ${v.stochD?.toFixed(1) ?? '—'}`} />
-        <Row k="Volume vs avg20" v={v.volSma20 ? `${(q.volume / Math.max(1, v.volSma20 * 20)).toFixed(2)}x` : '—'} />
+        <Row k="Avg bar volume" v={v.volSma20 ? fmtVol(v.volSma20) : '—'} />
       </div>
     </div>
   );
@@ -228,6 +228,7 @@ function SymbolNews({ symbol }: { symbol: string }): React.ReactElement {
   if (items.length === 0) return <div className="p-3 text-[11px] text-text3">No recent headlines for {symbol}.</div>;
   return (
     <div className="divide-y divide-line/60">
+      <div className="px-2.5 py-1 text-[9px] font-semibold uppercase tracking-wider text-text3">Simulated wire</div>
       {items.map((n) => (
         <div key={n.id} className="px-2.5 py-2 hover:bg-hover cursor-pointer">
           <div className="flex items-center gap-1.5 mb-0.5">

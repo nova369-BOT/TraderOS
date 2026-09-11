@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import {
   runBacktest, templateStrategies,
   type BacktestConfig, type BacktestResult, type BuiltStrategy, type RuleSet,
@@ -40,7 +41,9 @@ function initialStrategies(): BuiltStrategy[] {
   return templateStrategies('BTCUSDT', '1h');
 }
 
-export const useResearchStore = create<ResearchState>()((set, get) => ({
+export const useResearchStore = create<ResearchState>()(
+  persist(
+    (set, get) => ({
   strategies: initialStrategies(),
   activeStrategyId: 'tpl-trend-ema',
   backtests: [],
@@ -103,6 +106,20 @@ export const useResearchStore = create<ResearchState>()((set, get) => ({
   clearBacktests: () => set({ backtests: [], compareIds: [] }),
   setScanFilters: (scanFilters) => set({ scanFilters }),
   setScanPreset: (scanPreset) => set({ scanPreset }),
-}));
+    }),
+    {
+      name: 'traderos-research',
+      storage: createJSONStorage(() => localStorage),
+      // Backtest runs are excluded: equity curves are large and any run is
+      // exactly reproducible in one click from its persisted strategy.
+      partialize: (s) => ({
+        strategies: s.strategies,
+        activeStrategyId: s.activeStrategyId,
+        scanFilters: s.scanFilters,
+        scanPreset: s.scanPreset,
+      }),
+    }
+  )
+);
 
 export type { Timeframe };

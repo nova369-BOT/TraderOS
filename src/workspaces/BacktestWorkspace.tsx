@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlaskConical, GitCompare, Play, Square, Trash2 } from 'lucide-react';
-import { TIMEFRAMES, getSymbol, type Timeframe } from '../services/symbols';
+import { SYMBOLS, TIMEFRAMES, getSymbol, type Timeframe } from '../services/symbols';
 import type { BacktestConfig, BacktestResult } from '../services/backtestService';
 import { useResearchStore } from '../store/useResearchStore';
 import { useWorkspaceStore } from '../store/useWorkspaceStore';
@@ -74,7 +74,7 @@ export function BacktestWorkspace(): React.ReactElement {
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Symbol">
                   <select className="tselect num" value={symbol} onChange={(e) => setSymbol(e.target.value)}>
-                    {['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'SPY', 'QQQ', 'NVDA', 'AAPL', 'TSLA', 'MSFT', 'META', 'ES', 'NQ', 'GC', 'CL', 'EURUSD'].map((s) => <option key={s} value={s}>{s}</option>)}
+                    {SYMBOLS.map((d) => <option key={d.symbol} value={d.symbol}>{d.symbol}</option>)}
                   </select>
                 </Field>
                 <Field label="Timeframe">
