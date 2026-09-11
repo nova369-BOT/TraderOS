@@ -45,9 +45,11 @@ export function BottomTerminal(): React.ReactElement {
   };
 
   return (
-    <div className="shrink-0 flex flex-col border-t border-line bg-panel select-none" style={{ height }}>
-      <EdgeHandle edge="top" onResize={nudgeBottom} />
-      <div className="flex items-center gap-1 px-2 h-[30px] border-b border-line bg-panel2 shrink-0 -mt-[5px] pt-[5px]">
+    <div className="shrink-0 flex flex-col border-t border-line bg-panel select-none relative" style={{ height }}>
+      <div className="absolute top-[-4px] left-0 right-0 h-[8px] z-30">
+        <EdgeHandle edge="top" onResize={nudgeBottom} />
+      </div>
+      <div className="flex items-center gap-1 px-2 h-[30px] border-b border-line bg-panel2 shrink-0 overflow-hidden">
         <div className="ttabs">
           {TABS.map((t) => (
             <button key={t.id} className={cx('ttab', tab === t.id && 'active')} onClick={() => setTab(t.id)}>

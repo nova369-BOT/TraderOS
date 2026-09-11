@@ -39,7 +39,7 @@ export function MarketsWorkspace(): React.ReactElement {
                 </div>
               }
               right={
-                <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+                <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-auto">
                   <SymbolSparkRow symbols={['BTCUSDT', 'SPY', 'NVDA', 'ES']} />
                   <Panel title="Active chart" subtitle={`${symbol} · ${timeframe}`} className="flex-1 min-h-[220px]" bodyClassName="!overflow-hidden flex">
                     <TerminalChart symbol={symbol} timeframe={timeframe} showDrawToolbar={false} />

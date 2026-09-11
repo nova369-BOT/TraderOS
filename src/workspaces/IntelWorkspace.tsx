@@ -41,6 +41,7 @@ export function IntelWorkspace(): React.ReactElement {
         left={
           <div className="flex-1 min-h-0 flex pr-2">
             <Panel
+              className="flex-1 min-h-0"
               title="Terminal Wire"
               subtitle={`${filtered.length} stories`}
               actions={
@@ -147,7 +148,7 @@ export function IntelWorkspace(): React.ReactElement {
                             </span>
                           </span>
                           <span className="badge badge-mute shrink-0">{e.country}</span>
-                          {past && e.actual && <Delta value={0} size="sm" />}
+                          {past && e.actual && <span className="badge badge-mute shrink-0">released</span>}
                         </div>
                       );
                     })}

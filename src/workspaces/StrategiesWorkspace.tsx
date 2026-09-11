@@ -34,6 +34,7 @@ export function StrategiesWorkspace(): React.ReactElement {
         left={
           <div className="flex-1 min-h-0 flex pr-2">
             <Panel
+              className="flex-1 min-h-0"
               title="Strategies"
               subtitle={`${strategies.length} saved`}
               actions={<button className="tbtn tbtn-xs" onClick={() => setNewOpen(true)}><Plus size={11} /> New</button>}

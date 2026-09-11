@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  Activity, BarChart3, Bot, Briefcase, CalendarClock, CandlestickChart, ChevronsLeft, ChevronsRight,
-  FlaskConical, Layers, LineChart, Newspaper, Radar, Settings, SlidersHorizontal, Star, Swords, Wallet,
+  Activity, Bot, Briefcase, CalendarClock, CandlestickChart, ChevronsLeft, ChevronsRight,
+  FlaskConical, Layers, Newspaper, Radar, Settings, SlidersHorizontal, Swords, Wallet,
 } from 'lucide-react';
 import { useWorkspaceStore, type ViewId } from '../../store/useWorkspaceStore';
 import { useTradingStore } from '../../store/useTradingStore';
@@ -157,8 +157,6 @@ export function LeftNav(): React.ReactElement {
         </button>
       </div>
 
-      {/* hidden icon preload to keep tree-shake stable */}
-      <span className="hidden"><Star size={1} /><BarChart3 size={1} /><LineChart size={1} /></span>
     </nav>
   );
 }

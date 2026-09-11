@@ -96,7 +96,7 @@ export function PortfolioWorkspace(): React.ReactElement {
       <div className="grid grid-cols-4 md:grid-cols-8 gap-px bg-line border border-line rounded-md overflow-hidden shrink-0">
         {[
           { l: 'Equity', v: fmtMoney(equity), t: undefined },
-          { l: 'Day P&L', v: `${fmtSignedMoney(dayPnl)}`, t: dayPnl >= 0 ? 'up' : 'down' },
+          { l: 'Day P&L', v: `${fmtSignedMoney(dayPnl)} (${fmtPct(dayPnlPct)})`, t: dayPnl >= 0 ? 'up' : 'down' },
           { l: 'Unrealized', v: fmtSignedMoney(unrealized), t: unrealized >= 0 ? 'up' : 'down' },
           { l: 'Realized', v: fmtSignedMoney(realized), t: realized >= 0 ? 'up' : 'down' },
           { l: 'Fees paid', v: fmtMoney(fees), t: 'warn' },
@@ -104,7 +104,7 @@ export function PortfolioWorkspace(): React.ReactElement {
           { l: 'Max DD', v: `−${stats.maxDDPct.toFixed(2)}%`, t: stats.maxDDPct > 4 ? 'down' : undefined },
           { l: 'Leverage', v: `${stats.lev.toFixed(2)}x`, t: stats.lev > 2 ? 'warn' : undefined },
         ].map((m) => (
-          <div key={m.l} className="bg-panel px-2.5 py-2">
+          <div key={m.l} className="bg-panel px-2.5 py-2 min-w-0">
             <Metric label={m.l} value={m.v} size="sm" tone={m.t as 'up' | 'down' | 'warn'} />
           </div>
         ))}

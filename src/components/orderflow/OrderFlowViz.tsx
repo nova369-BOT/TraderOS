@@ -91,6 +91,7 @@ export function LiquidityHeatmap({ symbol }: { symbol: string }): React.ReactEle
 
   return (
     <Panel
+      className="flex-1 min-h-0"
       title="Liquidity Heatmap"
       subtitle={`${symbol} · resting liquidity x time`}
       actions={<span className="flex items-center gap-1 text-[9.5px] text-text3"><span className="inline-block w-[52px] h-[8px] rounded-sm" style={{ background: 'linear-gradient(90deg,#1d4fd7,#22d3ee,#f0b90b,#ff7a50)' }} /> low → high</span>}
@@ -189,6 +190,7 @@ export function FootprintChart({ symbol }: { symbol: string }): React.ReactEleme
 
   return (
     <Panel
+      className="flex-1 min-h-0"
       title="Footprint · 5m"
       subtitle="bid × ask · imbalance shaded · yellow tick = POC"
       actions={
@@ -243,7 +245,7 @@ export function FlowMetrics({ symbol }: { symbol: string }): React.ReactElement 
 
 function Cell({ label, value, tone }: { label: string; value: string; tone?: string }): React.ReactElement {
   return (
-    <div className="bg-panel px-2.5 py-1.5">
+    <div className="bg-panel px-2.5 py-1.5 min-w-0">
       <Metric label={label} value={value} size="sm" tone={(tone as 'up' | 'down') ?? 'neutral'} />
     </div>
   );

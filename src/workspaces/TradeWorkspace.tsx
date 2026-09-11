@@ -33,7 +33,7 @@ export function TradeWorkspace(): React.ReactElement {
           { l: 'Gross exposure', v: fmtMoney(exposure, 0), t: undefined },
           { l: 'Open positions', v: String(positions.length), t: positions.length ? 'accent' : undefined },
         ].map((m) => (
-          <div key={m.l} className="bg-panel px-2.5 py-1.5">
+          <div key={m.l} className="bg-panel px-2.5 py-1.5 min-w-0">
             <Metric label={m.l} value={m.v} size="sm" tone={m.t as 'up' | 'down' | 'accent'} />
           </div>
         ))}
@@ -42,7 +42,7 @@ export function TradeWorkspace(): React.ReactElement {
       <div className="flex-1 min-h-0 flex">
         <SplitPane
           storageKey="trade-ticket"
-          defaultSize={300} min={260} max={420}
+          defaultSize={280} min={240} max={420}
           flip
           left={
             <div className="flex-1 min-h-0 flex pl-2">
@@ -54,7 +54,7 @@ export function TradeWorkspace(): React.ReactElement {
           right={
             <SplitPane
               storageKey="trade-dom"
-              defaultSize={290} min={230} max={420}
+              defaultSize={270} min={220} max={420}
               flip
               left={
                 <div className="flex-1 min-h-0 flex pl-2">

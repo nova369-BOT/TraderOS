@@ -157,6 +157,7 @@ export function ScannerWorkspace(): React.ReactElement {
         left={
           <div className="flex-1 min-h-0 flex pr-2">
             <Panel
+              className="flex-1 min-h-0"
               title="Scan builder"
               subtitle={`${filters.length} filters`}
               actions={

@@ -167,6 +167,7 @@ class PaperBroker {
       // IOC/FOK get one immediate chance
       if (order.tif === 'IOC' || order.tif === 'FOK') this.tryFillResting(order, q);
     }
+    this.trimOrders();
     this.emit();
     return { order, error: null };
   }
@@ -372,10 +373,13 @@ class PaperBroker {
         }
       }
     }
+    this.trimOrders();
   }
 
   private applyFill(f: Fill): void {
     this.fills.unshift(f);
+    // Bound memory + render cost: fill history never grows without limit.
+    if (this.fills.length > 600) this.fills.length = 600;
     this.feesToday += f.fee;
     this.cash -= f.fee;
     const existing = this.positions.get(f.symbol);
@@ -440,6 +444,13 @@ class PaperBroker {
         p.margin = p.notional / Math.max(1, p.leverage);
       }
     }
+  }
+
+  private trimOrders(): void {
+    if (this.orders.length <= 600) return;
+    const working = this.orders.filter((o) => o.status === 'WORKING');
+    const rest = this.orders.filter((o) => o.status !== 'WORKING').slice(0, 400);
+    this.orders = [...working, ...rest];
   }
 
   // ---------------- account ----------------

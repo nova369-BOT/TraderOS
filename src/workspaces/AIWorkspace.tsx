@@ -253,10 +253,6 @@ export function AIWorkspace(): React.ReactElement {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const ctxEquity = useTradingStore((s) => s.equity);
-  const ctxPositions = useTradingStore((s) => s.positions);
-  const ctxRuns = useResearchStore((s) => s.backtests);
-  const ctxLatency = useMarketStore((s) => s.latency);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -322,7 +318,7 @@ export function AIWorkspace(): React.ReactElement {
                       msg.role === 'ai' ? 'bg-violet/20 text-violet' : 'bg-accentdim text-accent')}>
                       {msg.role === 'ai' ? <Bot size={14} /> : <User size={14} />}
                     </span>
-                    <div className={cx('max-w-[78%] rounded-lg px-3 py-2 text-[11.5px] text-text2',
+                    <div className={cx('max-w-[78%] min-w-0 break-words rounded-lg px-3 py-2 text-[11.5px] text-text2',
                       msg.role === 'ai' ? 'bg-panel2 border border-line' : 'bg-accentdim border border-accent/30 text-text1')}>
                       {msg.role === 'ai' ? bold(msg.text) : msg.text}
                       {msg.ctx && (

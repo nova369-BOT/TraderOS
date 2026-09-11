@@ -64,7 +64,7 @@ export function TopBar(): React.ReactElement {
   const liveAlerts = alerts.filter((a) => !a.triggered).length;
 
   return (
-    <header className="h-[46px] shrink-0 flex items-center gap-2 px-2.5 border-b border-line bg-panel select-none">
+    <header className="h-[46px] shrink-0 flex items-center gap-2 px-2.5 border-b border-line bg-panel select-none overflow-x-auto overflow-y-hidden [&>*]:shrink-0">
       {/* brand */}
       <button className="flex items-center gap-2 pr-1" onClick={() => setView('markets')} title="TraderOS — Overview (Alt+1)">
         <Logo />

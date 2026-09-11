@@ -54,7 +54,6 @@ export function Watchlist({ height, sort, onSort }: {
   const [cols, setCols] = useState<ColKey[]>(loadCols);
   const [addOpen, setAddOpen] = useState(false);
   const [newListOpen, setNewListOpen] = useState(false);
-  const [dragIdx, setDragIdx] = useState<number | null>(null);
 
   const persistCols = (c: ColKey[]): void => {
     setCols(c);
@@ -123,6 +122,7 @@ export function Watchlist({ height, sort, onSort }: {
 
   return (
     <Panel
+      className="flex-1 min-h-0"
       title={
         <Dropdown
           trigger={
@@ -187,7 +187,6 @@ export function Watchlist({ height, sort, onSort }: {
           />
         )}
         {/* drag reorder affordance */}
-        <div className="hidden">{dragIdx}</div>
       </div>
       {addOpen && (
         <Modal title="Add to watchlist" subtitle={activeList} onClose={() => setAddOpen(false)} width={480}>

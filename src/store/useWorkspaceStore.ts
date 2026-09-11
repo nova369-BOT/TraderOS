@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Timeframe } from '../services/symbols';
 
 export type ViewId =
@@ -135,6 +135,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: 'traderos-workspace',
+      storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         symbol: s.symbol, timeframe: s.timeframe, chartType: s.chartType,
         leftCollapsed: s.leftCollapsed, rightOpen: s.rightOpen, rightWidth: s.rightWidth,

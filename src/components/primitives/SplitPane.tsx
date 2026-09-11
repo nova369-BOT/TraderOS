@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { cx } from '../../lib/utils';
 
 /** Resizable two-pane splitter (pixel-based first pane). */
@@ -24,6 +24,18 @@ export function SplitPane({ left, right, defaultSize = 300, min = 160, max = 640
   });
   const [drag, setDrag] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const clamped = useRef(false);
+  // Clamp the restored/default size on mount so the flexible pane always keeps
+  // usable space (prevents e.g. a 400px pane crushing its sibling at 720p).
+  useLayoutEffect(() => {
+    if (clamped.current) return;
+    clamped.current = true;
+    const el = ref.current;
+    if (!el) return;
+    const total = direction === 'horizontal' ? el.clientWidth : el.clientHeight;
+    if (total > 0) setSize((s) => Math.min(s, Math.max(min, total - 140)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onMove = useCallback((e: MouseEvent) => {
     const el = ref.current;
@@ -44,10 +56,17 @@ export function SplitPane({ left, right, defaultSize = 300, min = 160, max = 640
         } catch { /* ignore */ }
       }
     };
+    document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
+    document.body.style.userSelect = 'none';
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', up);
-    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', up); };
-  }, [drag, onMove, storageKey]);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', up);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [drag, onMove, storageKey, direction]);
 
   useEffect(() => {
     if (storageKey) {
@@ -86,15 +105,28 @@ export function EdgeHandle({ onResize, edge }: {
       onResize(cur - last.current);
       last.current = cur;
     };
-    const up = (): void => { dragging.current = false; };
+    const up = (): void => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
     return () => { window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
   }, [onResize, edge]);
+  // NOTE: fills its parent — parents absolutely position the grab zone so the
+  // handle never consumes layout space or overlays content unintentionally.
   return (
     <div
-      className={cx('shrink-0 z-20 hover:bg-accent/50 active:bg-accent/70', edge === 'left' ? 'w-[5px] -ml-[2px] resize-handle-x' : 'h-[5px] -mt-[2px] resize-handle-y')}
-      onMouseDown={(e) => { e.preventDefault(); dragging.current = true; last.current = edge === 'left' ? e.clientX : e.clientY; }}
+      className={cx('w-full h-full hover:bg-accent/50 active:bg-accent/70', edge === 'left' ? 'resize-handle-x' : 'resize-handle-y')}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        dragging.current = true;
+        last.current = edge === 'left' ? e.clientX : e.clientY;
+        document.body.style.cursor = edge === 'left' ? 'col-resize' : 'row-resize';
+        document.body.style.userSelect = 'none';
+      }}
     />
   );
 }

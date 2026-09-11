@@ -80,6 +80,16 @@ export function TerminalChart({ symbol, timeframe, showDrawToolbar = true, showL
   const symAlerts = alerts.filter((a) => a.symbol === symbol && !a.triggered);
 
   useEffect(() => { setDrawings(loadDrawings(symbol)); setPending(null); }, [symbol]);
+
+  // Esc cancels a pending (half-placed) drawing, as the on-chart hint promises
+  useEffect(() => {
+    if (!pending) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') { setPending(null); setGhost(null); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [pending]);
   useEffect(() => { saveDrawings(symbol, drawings); }, [symbol, drawings]);
 
   const candles: Candle[] = useMemo(() => {

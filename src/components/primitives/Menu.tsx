@@ -105,27 +105,69 @@ export function ContextMenuHost(): React.ReactElement | null {
 export function Dropdown({ trigger, items, align = 'left' }: {
   trigger: React.ReactNode; items: MenuItem[]; align?: 'left' | 'right';
 }): React.ReactElement {
+  // NOTE: the menu is portaled to <body> so it is never clipped by
+  // overflow-hidden/auto ancestors (toolbars, panel headers, scroll regions).
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  const toggle = (): void => {
+    if (open) { setOpen(false); return; }
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ x: r.left, y: r.bottom + 4, w: r.width, h: r.height });
+    setOpen(true);
+  };
+
   useEffect(() => {
     if (!open) return;
-    const close = (e: MouseEvent): void => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    const close = (): void => setOpen(false);
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close(); };
+    const onDown = (e: MouseEvent): void => {
+      if ((e.target as HTMLElement).closest?.('[data-dropdown-menu]')) return;
+      if (anchorRef.current?.contains(e.target as Node)) return;
+      close();
     };
-    window.addEventListener('mousedown', close);
-    return () => window.removeEventListener('mousedown', close);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+    };
   }, [open ]);
+
+  const MENU_W = 220;
+  const MENU_H = Math.min(400, items.length * 28 + 18);
+  let left = 0;
+  let top = 0;
+  if (rect) {
+    left = align === 'right' ? rect.x + rect.w - MENU_W : rect.x;
+    left = Math.max(8, Math.min(left, window.innerWidth - MENU_W - 8));
+    top = rect.y;
+    if (top + MENU_H > window.innerHeight - 8) {
+      top = Math.max(8, rect.y - rect.h - 4 - MENU_H); // flip upward near viewport bottom
+    }
+  }
+
   return (
-    <div ref={ref} className="relative inline-block">
-      <div onClick={() => setOpen(!open)}>{trigger}</div>
-      {open && (
+    <>
+      <div ref={anchorRef} className="inline-block" onClick={toggle}>{trigger}</div>
+      {open && rect && createPortal(
         <div
-          className={cx('absolute top-full mt-1 rounded-md border border-line2 bg-panel2 shadow-2xl z-50', align === 'right' ? 'right-0' : 'left-0')}
+          data-dropdown-menu
+          className="fixed z-[70] rounded-md border border-line2 bg-panel2 shadow-2xl overflow-y-auto"
+          style={{ left, top, minWidth: Math.max(MENU_W, Math.min(rect.w, 320)), maxHeight: MENU_H }}
           onClick={() => setOpen(false)}
         >
           <MenuList items={items} onDone={() => setOpen(false)} />
-        </div>
+        </div>,
+        document.body,
       )}
-    </div>
+    </>
   );
 }

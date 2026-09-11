@@ -33,7 +33,7 @@ interface DataGridProps<T> {
 
 export function DataGrid<T>({
   columns, rows, rowKey, onRowClick, onRowContext, onRowDouble,
-  activeKey, defaultSort, defaultDir = 'desc', rowClass, empty, flashKey, sort, onSort,
+  activeKey, defaultSort, defaultDir = 'desc', rowClass, empty = 'No rows', flashKey, sort, onSort,
 }: DataGridProps<T>): React.ReactElement {
   const [innerKey, setInnerKey] = useState<string | null>(defaultSort ?? null);
   const [innerDir, setInnerDir] = useState<'asc' | 'desc'>(defaultDir);
@@ -86,6 +86,9 @@ export function DataGrid<T>({
         </tr>
       </thead>
       <tbody>
+        {sorted.length === 0 && (
+          <tr><td colSpan={columns.length} className="!text-center px-3 py-8 text-[11px] text-mute">{empty}</td></tr>
+        )}
         {sorted.map((row, i) => {
           const key = rowKey(row, i);
           return (

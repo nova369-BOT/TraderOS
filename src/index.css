@@ -53,6 +53,20 @@ html, body, #root {
 
 ::selection { background: rgba(77, 141, 255, 0.3); }
 
+/* ================= z-index layer contract =================
+   0-1    base app, in-flow panels
+   2      sticky table headers
+   5      chart drawing overlay (SVG)
+   10     split-pane grab handles, chart legend/chips
+   30     edge resize handles (right panel / bottom terminal)
+   40     maximized panel (in-flow takeover)
+   70     dropdown menus (portaled to body)
+   90     dialogs (portaled to body)
+   95     command palette (portaled to body)
+   96     toast notifications
+   100    context menus (portaled to body, topmost)
+   ============================================================ */
+
 /* ---- terminal primitives ---- */
 .panel {
   background: var(--color-panel);
@@ -70,10 +84,12 @@ html, body, #root {
   gap: 6px;
   height: 30px;
   min-height: 30px;
+  flex-shrink: 0;
   padding: 0 8px;
   border-bottom: 1px solid var(--color-line);
   background: var(--color-panel2);
   user-select: none;
+  overflow: hidden;
 }
 .panel-title {
   font-size: 10px;
@@ -84,8 +100,9 @@ html, body, #root {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
-.panel-body { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.panel-body { flex: 1; min-height: 0; min-width: 0; overflow: auto; position: relative; }
 
 .tbtn {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
@@ -150,7 +167,9 @@ html, body, #root {
 @keyframes flup { 0% { background: rgba(14,203,129,0.22); } 100% { background: transparent; } }
 @keyframes fldn { 0% { background: rgba(246,70,93,0.22); } 100% { background: transparent; } }
 
-.ttabs { display: flex; align-items: center; gap: 2px; height: 100%; }
+.ttabs { display: flex; align-items: center; gap: 2px; height: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; }
+.ttabs::-webkit-scrollbar { display: none; }
+.ttab { flex-shrink: 0; }
 .ttab {
   display: inline-flex; align-items: center; gap: 5px;
   height: 24px; padding: 0 8px; border-radius: 4px 4px 0 0;
@@ -192,6 +211,7 @@ html, body, #root {
 .seg button:hover { color: var(--color-text1); }
 .seg button.active { background: var(--color-panel3); color: var(--color-text1); box-shadow: inset 0 0 0 1px var(--color-line2); }
 
+/* Tick flash must override inherited text colors in any cell context. */
 .tick-up { color: var(--color-up) !important; }
 .tick-down { color: var(--color-down) !important; }
 

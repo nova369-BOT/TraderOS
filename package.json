@@ -3,12 +3,14 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "TraderOS — professional multi-workspace trading terminal",
+  "description": "TraderOS \u2014 professional multi-workspace trading terminal",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --outfile=.verify/smoke.mjs --log-level=error && node .verify/smoke.mjs",
+    "verify": "tsc --noEmit && npm run smoke && vite build"
   },
   "dependencies": {
     "lightweight-charts": "4.2.3",

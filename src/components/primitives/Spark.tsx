@@ -6,8 +6,8 @@ function path(pts: Array<{ x: number; y: number }>): string {
   return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}` + pts.slice(1).map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
 }
 
-export function Sparkline({ data, width = 96, height = 28, tone, fill = true, strokeWidth = 1.25 }: {
-  data: number[]; width?: number; height?: number; tone?: 'up' | 'down' | 'accent'; fill?: boolean; strokeWidth?: number;
+export function Sparkline({ data, width = 96, height = 28, tone, fill = true, strokeWidth = 1.25, fluid }: {
+  data: number[]; width?: number; height?: number; tone?: 'up' | 'down' | 'accent'; fill?: boolean; strokeWidth?: number; fluid?: boolean;
 }): React.ReactElement {
   const gid = useId();
   const { d, area, color } = useMemo(() => {
@@ -22,7 +22,7 @@ export function Sparkline({ data, width = 96, height = 28, tone, fill = true, st
     return { d: path(pts), area: `${path(pts)}L${width - 1},${height}L1,${height}Z`, color: c };
   }, [data, width, height, tone]);
   return (
-    <svg width={width} height={height} className="shrink-0">
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className={fluid ? 'w-full h-auto block' : 'shrink-0'}>
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity={0.35} />

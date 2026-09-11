@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, Pause, Play } from 'lucide-react';
 import { marketEngine } from '../../services/marketEngine';
 import { getSymbol } from '../../services/symbols';
@@ -15,17 +15,22 @@ export function Tape({ symbol, height = 300 }: { symbol: string; height?: number
   const [sideFilter, setSideFilter] = useState<'all' | 'buy' | 'sell'>('all');
   const def = getSymbol(symbol);
 
-  const trades = useMemo(() => {
+  const live = useMemo(() => {
     const all = marketEngine.getTape(symbol, 160);
     const ms = Number(minSize) || 0;
     return all.filter((t) => (sideFilter === 'all' || t.side === sideFilter) && t.size >= ms);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, tick, minSize, sideFilter, paused]);
+  }, [symbol, tick, minSize, sideFilter]);
+  // Pause genuinely freezes the viewport on the last visible prints.
+  const [frozen, setFrozen] = useState(live);
+  useEffect(() => { if (!paused) setFrozen(live); }, [live, paused]);
+  const trades = paused ? frozen : live;
 
   const maxNotional = Math.max(1, ...trades.slice(0, 60).map((t) => t.notional));
 
   return (
     <Panel
+      className="flex-1 min-h-0"
       title="Time & Sales"
       subtitle={`${trades.length} prints`}
       actions={
@@ -41,13 +46,14 @@ export function Tape({ symbol, height = 300 }: { symbol: string; height?: number
           </button>
         </>
       }
-      bodyClassName="!overflow-hidden"
+      bodyClassName="!overflow-hidden flex flex-col"
     >
       <div className="grid grid-cols-[52px_1fr_64px_52px] px-2 h-[20px] items-center text-[9px] font-semibold uppercase tracking-wider text-text3 border-b border-line shrink-0">
         <span>Time</span><span className="text-right">Price</span><span className="text-right">Size</span><span className="text-right">Side</span>
       </div>
+      <div className="flex-1 min-h-0">
       <VirtualList
-        items={paused ? trades : trades}
+        items={trades}
         rowHeight={19}
         height={height}
         render={(t, i) => {
@@ -69,6 +75,7 @@ export function Tape({ symbol, height = 300 }: { symbol: string; height?: number
           );
         }}
       />
+      </div>
     </Panel>
   );
 }

@@ -32,8 +32,10 @@ export function RightPanel(): React.ReactElement {
 
   if (!open) return <></>;
   return (
-    <div className="shrink-0 flex border-l border-line bg-panel select-none" style={{ width }}>
-      <EdgeHandle edge="left" onResize={nudgeRight} />
+    <div className="shrink-0 flex border-l border-line bg-panel select-none relative" style={{ width }}>
+      <div className="absolute left-[-4px] top-0 bottom-0 w-[8px] z-30">
+        <EdgeHandle edge="left" onResize={nudgeRight} />
+      </div>
       <div className="flex-1 min-w-0 flex flex-col">
         <div className="flex items-center gap-0.5 px-1.5 h-[32px] border-b border-line bg-panel2 shrink-0">
           <div className="ttabs flex-1">
@@ -102,7 +104,7 @@ function SymbolInfo({ symbol }: { symbol: string }): React.ReactElement {
             <span>H {fmtPrice(q.high, def.decimals)}</span>
           </div>
           <div className="h-[5px] rounded bg-panel3 relative">
-            <div className="absolute inset-y-0 left-0 rounded bg-gradient-to-r from-down/60 to-up/60" style={{ width: `${rangePos}%` }} />
+            <div className="absolute inset-y-0 left-0 rounded bg-linear-to-r from-down/60 to-up/60" style={{ width: `${rangePos}%` }} />
             <div className="absolute top-[-2px] w-[2px] h-[9px] bg-text1" style={{ left: `${rangePos}%` }} />
           </div>
         </div>

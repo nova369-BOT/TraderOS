@@ -251,7 +251,7 @@ function ResultView({ result }: { result: BacktestResult }): React.ReactElement 
         <>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-px bg-line border border-line rounded-md overflow-hidden">
             {stats.map((s) => (
-              <div key={s.l} className="bg-panel px-2.5 py-2">
+              <div key={s.l} className="bg-panel px-2.5 py-2 min-w-0">
                 <Metric label={s.l} value={s.v} size="sm" tone={s.t} />
               </div>
             ))}
@@ -387,9 +387,9 @@ function CompareView({ runs }: { runs: BacktestResult[] }): React.ReactElement {
               return (
                 <tr key={row.l}>
                   <td className="!text-left text-text2">{row.l}</td>
-                  {runs.map((r, i) => {
+                  {runs.map((r) => {
                     const isBest = row.num && row.num(r) === best && runs.length > 1;
-                    return <td key={r.id} className={cx('num', isBest ? 'text-up font-bold' : '')}>{isBest ? '● ' : ''}{row.get(r)}{i === 0 ? '' : ''}</td>;
+                    return <td key={r.id} className={cx('num', isBest ? 'text-up font-bold' : '')}>{isBest ? '● ' : ''}{row.get(r)}</td>;
                   })}
                 </tr>
               );

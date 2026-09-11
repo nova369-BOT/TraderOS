@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Crosshair } from 'lucide-react';
 import { marketEngine } from '../../services/marketEngine';
 import { getSymbol } from '../../services/symbols';
@@ -11,8 +11,10 @@ import { cx } from '../../lib/utils';
 export function DomLadder({ symbol, rows = 15 }: { symbol: string; rows?: number }): React.ReactElement {
   const tick = useMarketStore((s) => s.tick);
   const [qty, setQty] = useState('1');
-  const [centered, setCentered] = useState(true);
-  void centered;
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const recenter = (): void => {
+    bodyRef.current?.querySelector('[data-spread]')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
   const def = getSymbol(symbol);
 
   const book = useMemo(() => marketEngine.getBook(symbol, rows), [symbol, rows, tick]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -39,13 +41,14 @@ export function DomLadder({ symbol, rows = 15 }: { symbol: string; rows?: number
 
   return (
     <Panel
+      className="flex-1 min-h-0"
       title="Depth of Market"
       subtitle={`${symbol} · ${def.exchange}`}
       actions={
         <>
           <span className="text-[10px] text-text3">Qty</span>
           <input className="tinput !h-[20px] !w-[64px]" value={qty} onChange={(e) => setQty(e.target.value)} inputMode="decimal" />
-          <button className="tbtn tbtn-xs" title="Re-center ladder" onClick={() => setCentered((c) => !c)}><Crosshair size={11} /></button>
+          <button className="tbtn tbtn-xs" title="Re-center ladder" onClick={recenter}><Crosshair size={11} /></button>
         </>
       }
       bodyClassName="!overflow-hidden flex flex-col"
@@ -67,7 +70,7 @@ export function DomLadder({ symbol, rows = 15 }: { symbol: string; rows?: number
         <span className="text-center">Price</span>
         <span className="text-right">Ask size</span>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-1 pb-1 font-mono">
+      <div ref={bodyRef} className="flex-1 min-h-0 overflow-auto px-1 pb-1 font-mono">
         {ladder.map((r, i) => {
           const isSpreadTop = r.side === 'bid' && i === book.asks.length;
           const isSpreadBot = r.side === 'ask' && i === book.asks.length - 1;
@@ -75,7 +78,7 @@ export function DomLadder({ symbol, rows = 15 }: { symbol: string; rows?: number
           return (
             <div key={`${r.price}-${i}`}>
               {isSpreadTop && (
-                <div className="flex items-center justify-center gap-2 h-[20px] my-0.5 rounded bg-panel3 border border-line2">
+                <div data-spread="1" className="flex items-center justify-center gap-2 h-[20px] my-0.5 rounded bg-panel3 border border-line2">
                   <span className="num text-[10px] text-text1 font-bold">{fmtPrice(q.price, def.decimals)}</span>
                   <span className="num text-[9px] text-text3">SPRD {fmtNum(q.spreadBps, 1)}bp</span>
                 </div>

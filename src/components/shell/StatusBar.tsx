@@ -19,7 +19,7 @@ export function StatusBar(): React.ReactElement {
   const positions = useTradingStore((s) => s.positions);
 
   return (
-    <footer className="h-[24px] shrink-0 flex items-center gap-3 px-2.5 border-t border-line bg-panel text-[10px] text-text3 select-none">
+    <footer className="h-[24px] shrink-0 flex items-center gap-3 px-2.5 border-t border-line bg-panel text-[10px] text-text3 select-none overflow-x-auto overflow-y-hidden whitespace-nowrap [&>*]:shrink-0">
       <span className="flex items-center gap-1.5">
         <span className="pulse-dot live" style={{ width: 6, height: 6 }} />
         <span className="font-semibold text-text2">PAPER · SIM FEED</span>

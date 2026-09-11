@@ -227,7 +227,7 @@ export function SessionStats(): React.ReactElement {
         { l: 'BTC dom', v: `${stats.btcDom.toFixed(1)}%` },
         { l: 'Session', v: 'US · Open' },
       ].map((s) => (
-        <div key={s.l} className="bg-panel px-2 py-1.5">
+        <div key={s.l} className="bg-panel px-2 py-1.5 min-w-0">
           <div className="text-[9px] font-semibold uppercase tracking-wider text-text3">{s.l}</div>
           <div className="num text-[13px] font-semibold">{s.v}</div>
         </div>
@@ -250,13 +250,13 @@ export function SymbolSparkRow({ symbols }: { symbols: string[] }): React.ReactE
       {data.map(({ s, spark, q }) => {
         const def = getSymbol(s);
         return (
-          <button key={s} onClick={() => setSymbol(s)} className={cx('rounded-md border px-2 py-1.5 text-left bg-panel hover:border-line2', active === s ? 'border-accent/60' : 'border-line')}>
+          <button key={s} onClick={() => setSymbol(s)} className={cx('rounded-md border px-2 py-1.5 text-left bg-panel hover:border-line2 min-w-0 overflow-hidden', active === s ? 'border-accent/60' : 'border-line')}>
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold">{s}</span>
               <span className={cx('num text-[10px] font-semibold', q.changePct >= 0 ? 'text-up' : 'text-down')}>{fmtPct(q.changePct)}</span>
             </div>
             <div className="num text-[13px] font-semibold">{fmtPrice(q.price, def.decimals)}</div>
-            <Sparkline data={spark} width={130} height={26} />
+            <Sparkline data={spark} width={130} height={26} fluid />
           </button>
         );
       })}

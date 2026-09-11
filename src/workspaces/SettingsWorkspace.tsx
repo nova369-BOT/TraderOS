@@ -7,7 +7,6 @@ import { useTradingStore } from '../store/useTradingStore';
 import { broker } from '../services/tradingService';
 import { fmtMoney } from '../lib/format';
 import { Panel } from '../components/primitives/Panel';
-import { Field } from '../components/primitives/Modal';
 import { cx } from '../lib/utils';
 
 export function SettingsWorkspace(): React.ReactElement {
