@@ -44,7 +44,7 @@ export function TerminalBackground({ className }: { className?: string }) {
     const particleColors = new Float32Array(PARTICLE_COUNT * 3);
     const particleScatterVectors = new Float32Array(PARTICLE_COUNT * 3);
 
-    const amberColor = new THREE.Color("#C9A227");
+    const amberColor = new THREE.Color("#8B7FD4");
     const cyanColor = new THREE.Color("#18ffff");
 
     for (let i = 0; i < PARTICLE_COUNT; i += 1) {

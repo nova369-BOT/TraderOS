@@ -131,11 +131,11 @@ function RankedActivityPanel({
               <XAxis type="number" tick={{ fill: "#94a3b8", fontSize: 11 }} tickFormatter={(value) => `$${Math.round(Number(value) / 1_000_000)}M`} />
               <YAxis type="category" dataKey="symbol" tick={{ fill: "#e2e8f0", fontSize: 11 }} width={90} />
               <Tooltip
-                cursor={{ fill: "rgba(201,162,39,0.08)" }}
+                cursor={{ fill: "rgba(139,127,212,0.08)" }}
                 formatter={(value) => [formatCurrency(Number(value ?? 0)), "Value"]}
                 contentStyle={{ background: "#0f1720", border: "1px solid #334155", color: "#e2e8f0" }}
               />
-              <Bar dataKey="total_value" fill="#C9A227" radius={[0, 3, 3, 0]} />
+              <Bar dataKey="total_value" fill="#8B7FD4" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -295,7 +295,7 @@ export function InsiderActivityPage() {
                 return (
                   <div
                     key={cluster.symbol}
-                    className="rounded-sm border border-terminal-accent/50 bg-terminal-panel p-3 shadow-[0_0_18px_rgba(201,162,39,0.12)]"
+                    className="rounded-sm border border-terminal-accent/50 bg-terminal-panel p-3 shadow-[0_0_18px_rgba(139,127,212,0.12)]"
                     data-testid="cluster-buy-card"
                   >
                     <div className="flex items-start justify-between gap-2">

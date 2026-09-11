@@ -1,6 +1,6 @@
 {
-  "name": "TradeOS",
-  "short_name": "TOS",
+  "name": "ARQOS",
+  "short_name": "ARQOS",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0E1116",

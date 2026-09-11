@@ -89,7 +89,7 @@ export function StrategyExportPage() {
   const errorMessage = error ? extractApiErrorMessage(error, "Strategy export request failed.") : "";
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(201,162,39,0.08),transparent_34rem)] p-3 md:p-5">
+    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(139,127,212,0.08),transparent_34rem)] p-3 md:p-5">
       <main className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
         <section className="rounded-md border border-terminal-border/70 bg-terminal-panel/95 p-4 md:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">

@@ -62,7 +62,7 @@ export function Sidebar() {
   return (
     <aside className="relative z-30 flex h-full w-48 shrink-0 flex-col border-r border-terminal-border bg-terminal-panel p-0">
       <div className="border-b border-terminal-border bg-terminal-panel px-3 py-2">
-        <img src={logo} alt="TradeOS" className="h-8 w-auto object-contain" />
+        <img src={logo} alt="ARQOS" className="h-8 w-auto object-contain" />
       </div>
       <div className="border-b border-terminal-border px-3 py-2 text-[11px] text-terminal-muted">
         NSE EQUITY ANALYTICS

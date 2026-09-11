@@ -719,7 +719,7 @@ export function CommandBar({ onExecute }: Props) {
             : flashState === "error"
               ? "border-rose-500 shadow-[0_0_0_1px_rgba(244,63,94,0.35)]"
               : focused
-                ? "border-[#C9A227] shadow-[0_0_0_1px_rgba(201,162,39,0.28)]"
+                ? "border-[#8B7FD4] shadow-[0_0_0_1px_rgba(139,127,212,0.28)]"
                 : "border-terminal-border",
         ].join(" ")}
       >
@@ -782,7 +782,7 @@ export function CommandBar({ onExecute }: Props) {
             }
           }}
           className="h-8 min-w-0 flex-1 bg-transparent px-0 text-sm text-terminal-text outline-none placeholder:text-[#6E7681] ot-type-data"
-          style={{ caretColor: "#C9A227", fontFamily: '"Fira Code", var(--ot-font-data)' }}
+          style={{ caretColor: "#8B7FD4", fontFamily: '"Fira Code", var(--ot-font-data)' }}
           placeholder="Type ticker, command, or search... (Ctrl+G)"
           aria-label="Command bar"
           role="combobox"
@@ -993,7 +993,7 @@ export function CommandBar({ onExecute }: Props) {
                 <span
                   className={`inline-flex h-5 items-center rounded-sm border px-1.5 text-[10px] ot-type-label ${
                     item.kind === "function"
-                      ? "border-[#C9A227]/40 text-[#C9A227]"
+                      ? "border-[#8B7FD4]/40 text-[#8B7FD4]"
                       : item.kind === "hint"
                         ? "border-violet-500/35 text-violet-300"
                         : item.kind === "disambiguation"

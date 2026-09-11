@@ -1,18 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="TradeOS emblem">
-  <!-- TradeOS emblem: open power-button ring (charcoal #14181D) with a gap at the
-       top, one gold #C9A227 candlestick (rounded body, thin wick rising out
-       through the ring gap), and two short horizontal charcoal depth-bars
-       behind the candle body. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="ARQOS emblem">
+  <!-- ARQOS emblem: open power-button ring (charcoal #16181E) with a gap at the
+       top, one restrained-purple #8B7FD4 candlestick (rounded body, thin wick
+       rising out through the ring gap), and two short horizontal charcoal
+       depth-bars behind the candle body. Quantum Core palette. -->
   <g fill="none">
     <!-- power-button ring with top gap -->
     <path d="M 266.2 109 A 125 125 0 1 1 133.8 109"
-          stroke="#14181D" stroke-width="34" stroke-linecap="butt"/>
+          stroke="#16181E" stroke-width="34" stroke-linecap="butt"/>
     <!-- depth-bars behind the candle body -->
-    <rect x="104" y="212" width="68" height="16" rx="8" fill="#14181D"/>
-    <rect x="228" y="212" width="68" height="16" rx="8" fill="#14181D"/>
+    <rect x="104" y="212" width="68" height="16" rx="8" fill="#16181E"/>
+    <rect x="228" y="212" width="68" height="16" rx="8" fill="#16181E"/>
     <!-- wick: thin vertical line rising out through the ring gap -->
-    <rect x="195" y="52" width="10" height="268" rx="5" fill="#C9A227"/>
+    <rect x="195" y="52" width="10" height="268" rx="5" fill="#8B7FD4"/>
     <!-- candlestick body -->
-    <rect x="169" y="160" width="62" height="130" rx="10" fill="#C9A227"/>
+    <rect x="169" y="160" width="62" height="130" rx="10" fill="#8B7FD4"/>
   </g>
 </svg>

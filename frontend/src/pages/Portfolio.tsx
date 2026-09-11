@@ -594,7 +594,7 @@ export function PortfolioPage() {
 
   if (portfolioMode === "mutual_funds") {
     return (
-      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(201,162,39,0.08),transparent_34rem)] p-3 md:p-5">
+      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(139,127,212,0.08),transparent_34rem)] p-3 md:p-5">
         <main className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
           {renderPortfolioHero("mutual-funds-default")}
           <TerminalPanel title="Add Mutual Fund Holding" subtitle="Portfolio: Mutual Funds">
@@ -733,7 +733,7 @@ export function PortfolioPage() {
 
   if (portfolioView === "manager") {
     return (
-      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(201,162,39,0.08),transparent_34rem)] p-3 md:p-5">
+      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(139,127,212,0.08),transparent_34rem)] p-3 md:p-5">
         <main className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
           {renderPortfolioHero("portfolio-manager-default")}
           <TerminalPanel title="Portfolio Manager" subtitle="Manage holdings, allocations, and portfolio workflows" bodyClassName="p-0">
@@ -745,7 +745,7 @@ export function PortfolioPage() {
   }
 
   return (
-    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(201,162,39,0.08),transparent_34rem)] p-3 md:p-5">
+    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(139,127,212,0.08),transparent_34rem)] p-3 md:p-5">
       <main className="mx-auto flex w-full max-w-[1680px] flex-col gap-4">
       {renderPortfolioHero("portfolio-overview-default")}
       {portfolioSection === "attribution" ? (

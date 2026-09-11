@@ -12,9 +12,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-  :root{ --accent:#C9A227; }
+  :root{ --accent:#8B7FD4; }
   *{ box-sizing:border-box; }
-  ::selection{ background:rgba(201,162,39,.22); }
+  ::selection{ background:rgba(139,127,212,.22); }
   html{ scroll-behavior:smooth; }
   body{ margin:0; background:#07090d; }
   @keyframes otBlink{ 0%,49%{opacity:1} 50%,100%{opacity:0} }
@@ -33,28 +33,28 @@
 
   <!-- NAV -->
   <nav style="position:sticky; top:0; z-index:50; display:flex; align-items:center; justify-content:space-between; padding:18px 32px; background:rgba(7,9,13,.72); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); border-bottom:1px solid rgba(255,255,255,.06);">
-    <a href="#top" style="display:flex; align-items:center; text-decoration:none;"><img src="assets/logo.png" alt="TradeOS" style="height:22px; width:auto; display:block; filter:brightness(0) invert(1);" /></a>
+    <a href="#top" style="display:flex; align-items:center; text-decoration:none;"><img src="assets/logo.png" alt="ARQOS" style="height:22px; width:auto; display:block; filter:brightness(0) invert(1);" /></a>
     <div style="display:flex; align-items:center; gap:26px; font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3;">
       <a href="Features.dc.html" style="color:inherit; text-decoration:none;">Features</a>
       <a href="Docs.dc.html" style="color:inherit; text-decoration:none;">Docs</a>
       <a href="Roadmap.dc.html" style="color:inherit; text-decoration:none;">Roadmap</a>
       <button onClick="{{ toggleMotion }}" style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#8b94a3; background:transparent; border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:5px 12px; cursor:pointer;">Motion · {{ motionLabel }}</button>
       <a href="https://github.com/nova369-BOT/tradeos" style="display:inline-flex; align-items:center; gap:7px; padding:7px 15px; border-radius:999px; border:1px solid rgba(255,255,255,.16); color:#e8ecf2; text-decoration:none; font-weight:500;">GitHub ↗</a>
-      <a href="/login" style="display:inline-flex; align-items:center; gap:7px; padding:7px 15px; border-radius:999px; background:var(--accent,#C9A227); color:#07090d; text-decoration:none; font-weight:600;">Launch Terminal →</a>
+      <a href="/login" style="display:inline-flex; align-items:center; gap:7px; padding:7px 15px; border-radius:999px; background:var(--accent,#8B7FD4); color:#07090d; text-decoration:none; font-weight:600;">Launch Terminal →</a>
     </div>
   </nav>
 
   <!-- HERO -->
   <header id="top" style="position:relative; min-height:92vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; padding:80px 32px 60px; overflow:hidden;">
-    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:1100px; max-width:140%; height:560px; background:radial-gradient(ellipse at center, rgba(201,162,39,.08), transparent 62%); pointer-events:none;"></div>
-    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:#6a7488; margin-bottom:30px; position:relative;">SEE EVERYTHING. EXECUTE ANYTHING.</div>
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:1100px; max-width:140%; height:560px; background:radial-gradient(ellipse at center, rgba(139,127,212,.08), transparent 62%); pointer-events:none;"></div>
+    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:#6a7488; margin-bottom:30px; position:relative;">BEYOND THE CHART.</div>
     <h1 style="position:relative; margin:0; font-weight:700; font-size:clamp(52px,11vw,160px); line-height:0.86; letter-spacing:-.04em; color:#f3f6fa;">
-      <span style="position:absolute; inset:0; color:rgba(201,162,39,.14); animation:otHead 9s ease-in-out infinite; pointer-events:none;">Strategy<br/>through time</span>
+      <span style="position:absolute; inset:0; color:rgba(139,127,212,.14); animation:otHead 9s ease-in-out infinite; pointer-events:none;">Strategy<br/>through time</span>
       Strategy<br/>through time
     </h1>
     <p style="position:relative; margin:38px 0 0; font-size:18px; line-height:1.6; color:#8b94a3; max-width:520px;">Write the logic, replay it against years of market history, then watch it run live — backtests, signals, risk and analytics on one self-hosted desk.</p>
     <div style="position:relative; display:flex; gap:13px; margin-top:38px; flex-wrap:wrap; justify-content:center;">
-      <a href="/login" style-hover="transform:translateY(-2px);" style="display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:999px; background:var(--accent,#C9A227); color:#0a0d12; font-weight:600; font-size:14px; text-decoration:none; transition:transform .25s;">Launch the terminal →</a>
+      <a href="/login" style-hover="transform:translateY(-2px);" style="display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:999px; background:var(--accent,#8B7FD4); color:#0a0d12; font-weight:600; font-size:14px; text-decoration:none; transition:transform .25s;">Launch the terminal →</a>
       <a href="https://github.com/nova369-BOT/tradeos" style-hover="border-color:rgba(255,255,255,.4);" style="display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:999px; border:1px solid rgba(255,255,255,.16); color:#e8ecf2; font-weight:500; font-size:14px; text-decoration:none; transition:border-color .25s;">★ Star on GitHub</a>
     </div>
 
@@ -63,11 +63,11 @@
       <div style="display:flex; align-items:center; justify-content:space-between; font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#6a7488; margin-bottom:14px;">
         <span>Past</span>
         <span style="color:#8b94a3;">&laquo; Rewind &nbsp;·&nbsp; Replay &raquo;</span>
-        <span style="display:inline-flex; align-items:center; gap:7px; color:var(--accent,#C9A227);"><span style="width:7px; height:7px; border-radius:50%; background:var(--accent,#C9A227); box-shadow:0 0 8px var(--accent,#C9A227); animation:otPulse 1.8s ease-in-out infinite;"></span>Now · Live</span>
+        <span style="display:inline-flex; align-items:center; gap:7px; color:var(--accent,#8B7FD4);"><span style="width:7px; height:7px; border-radius:50%; background:var(--accent,#8B7FD4); box-shadow:0 0 8px var(--accent,#8B7FD4); animation:otPulse 1.8s ease-in-out infinite;"></span>Now · Live</span>
       </div>
-      <div style="position:relative; height:2px; background:linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.18), rgba(201,162,39,.6)); border-radius:2px;">
+      <div style="position:relative; height:2px; background:linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.18), rgba(139,127,212,.6)); border-radius:2px;">
         <div data-motion style="position:absolute; top:50%; left:0; transform:translate(-50%,-50%); animation:otPlay 7s cubic-bezier(.5,0,.5,1) infinite;">
-          <div style="width:13px; height:13px; border-radius:50%; background:#f3f6fa; box-shadow:0 0 0 4px rgba(243,246,250,.12), 0 0 14px rgba(201,162,39,.5);"></div>
+          <div style="width:13px; height:13px; border-radius:50%; background:#f3f6fa; box-shadow:0 0 0 4px rgba(243,246,250,.12), 0 0 14px rgba(139,127,212,.5);"></div>
         </div>
       </div>
       <div style="display:flex; justify-content:space-between; margin-top:12px; font-family:'Fira Code',monospace; font-size:10px; letter-spacing:.1em; color:#4f5868;">
@@ -79,13 +79,13 @@
   <!-- HOOK -->
   <section data-reveal style="position:relative; max-width:980px; margin:0 auto; padding:120px 32px; text-align:center;">
     <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#6a7488; margin-bottom:26px;">Before live, every strategy faces one question</div>
-    <h2 style="margin:0; font-weight:600; font-size:clamp(34px,5.4vw,72px); line-height:1.02; letter-spacing:-.03em; color:#f3f6fa;">What would your strategy<br/>have <span style="color:var(--accent,#C9A227);">actually done?</span></h2>
+    <h2 style="margin:0; font-weight:600; font-size:clamp(34px,5.4vw,72px); line-height:1.02; letter-spacing:-.03em; color:#f3f6fa;">What would your strategy<br/>have <span style="color:var(--accent,#8B7FD4);">actually done?</span></h2>
     <p style="margin:30px auto 0; max-width:520px; font-size:18px; line-height:1.6; color:#8b94a3;">Not a hunch. A vectorized answer — with slippage, fills and fees — across every bar of history you can replay.</p>
   </section>
 
   <!-- BUILD THE LOGIC -->
   <section data-reveal style="position:relative; max-width:1180px; margin:0 auto; padding:40px 32px 100px;">
-    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#C9A227); margin-bottom:18px;">Logic before proof</div>
+    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#8B7FD4); margin-bottom:18px;">Logic before proof</div>
     <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:30px; flex-wrap:wrap; margin-bottom:42px;">
       <h2 style="margin:0; font-weight:600; font-size:clamp(30px,4vw,52px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">Build the logic.</h2>
       <p style="margin:0; max-width:360px; font-size:16px; line-height:1.55; color:#8b94a3;">Set context, conditions, capital, risk and exits — then let history answer.</p>
@@ -139,7 +139,7 @@
 
   <!-- CONTROL -->
   <section data-reveal style="position:relative; max-width:1180px; margin:0 auto; padding:40px 32px 100px;">
-    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#C9A227); margin-bottom:18px;">Risk above action</div>
+    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#8B7FD4); margin-bottom:18px;">Risk above action</div>
     <div style="display:grid; grid-template-columns:0.85fr 1.15fr; gap:56px; align-items:center;">
       <div>
         <h2 style="margin:0 0 18px; font-weight:600; font-size:clamp(30px,4vw,52px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">Control above action.</h2>
@@ -159,7 +159,7 @@
 
   <!-- ANALYTICS -->
   <section data-reveal style="position:relative; max-width:1180px; margin:0 auto; padding:40px 32px 100px;">
-    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#C9A227); margin-bottom:18px;">Performance rollup</div>
+    <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#8B7FD4); margin-bottom:18px;">Performance rollup</div>
     <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:30px;">
       <h2 style="margin:0; font-weight:600; font-size:clamp(28px,3.8vw,50px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">Analytics across every level.</h2>
       <div style="display:inline-flex; padding:4px; border:1px solid rgba(255,255,255,.1); border-radius:999px; background:#0c1016; gap:4px;">
@@ -181,35 +181,35 @@
   <!-- PRODUCT PROOF -->
   <section data-reveal style="position:relative; max-width:1180px; margin:0 auto; padding:40px 32px 100px;">
     <div style="text-align:center; max-width:680px; margin:0 auto 40px;">
-      <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#C9A227); margin-bottom:18px;">Product proof</div>
+      <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent,#8B7FD4); margin-bottom:18px;">Product proof</div>
       <h2 style="margin:0; font-weight:600; font-size:clamp(28px,3.8vw,50px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">The workspace behind the motion.</h2>
       <p style="margin:22px 0 0; font-size:17px; line-height:1.6; color:#8b94a3;">Strategy rules, history replay, live activity, analytics and risk control — tied into one working surface, open source and self-hosted.</p>
     </div>
     <div style="border:1px solid rgba(255,255,255,.1); border-radius:16px; overflow:hidden; background:#0d1117; box-shadow:0 50px 110px -50px rgba(0,0,0,.9);">
       <div style="display:flex; align-items:center; gap:8px; padding:11px 16px; background:rgba(255,255,255,.03); border-bottom:1px solid rgba(255,255,255,.06);"><span style="width:9px; height:9px; border-radius:50%; background:#ff5f56;"></span><span style="width:9px; height:9px; border-radius:50%; background:#ffbd2e;"></span><span style="width:9px; height:9px; border-radius:50%; background:#27c93f;"></span><span style="margin-left:10px; font-family:'Fira Code',monospace; font-size:11px; color:#6a7488;">tos ▸ home · mission control</span></div>
-      <img src="assets/screenshots/home.png" alt="TradeOS workspace overview" loading="lazy" style="display:block; width:100%;" />
+      <img src="assets/screenshots/home.png" alt="ARQOS workspace overview" loading="lazy" style="display:block; width:100%;" />
     </div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:26px;">
-      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#C9A227);">1</span> Build strategy</span>
+      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#8B7FD4);">1</span> Build strategy</span>
       <span style="color:#3a414e;">·</span>
-      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#C9A227);">2</span> Run history</span>
+      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#8B7FD4);">2</span> Run history</span>
       <span style="color:#3a414e;">·</span>
-      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#C9A227);">3</span> Watch live</span>
+      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#8B7FD4);">3</span> Watch live</span>
       <span style="color:#3a414e;">·</span>
-      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#C9A227);">4</span> Read analytics</span>
+      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#8B7FD4);">4</span> Read analytics</span>
       <span style="color:#3a414e;">·</span>
-      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#C9A227);">5</span> Control risk</span>
+      <span style="font-family:'Fira Code',monospace; font-size:12px; color:#8b94a3;"><span style="color:var(--accent,#8B7FD4);">5</span> Control risk</span>
     </div>
   </section>
 
   <!-- CTA -->
   <section data-reveal style="position:relative; max-width:1180px; margin:0 auto; padding:20px 32px 120px;">
-    <div style="position:relative; border:1px solid rgba(201,162,39,.2); border-radius:22px; overflow:hidden; background:radial-gradient(120% 150% at 50% 0%, rgba(201,162,39,.16), transparent 58%), #0b0e14; padding:84px 40px; text-align:center;">
+    <div style="position:relative; border:1px solid rgba(139,127,212,.2); border-radius:22px; overflow:hidden; background:radial-gradient(120% 150% at 50% 0%, rgba(139,127,212,.16), transparent 58%), #0b0e14; padding:84px 40px; text-align:center;">
       <div style="font-family:'Fira Code',monospace; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:#6a7488; margin-bottom:22px;">Ready to start</div>
-      <h2 style="margin:0; font-weight:700; font-size:clamp(34px,5vw,68px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">Start with a strategy<br/>you can <span style="color:var(--accent,#C9A227);">inspect.</span></h2>
+      <h2 style="margin:0; font-weight:700; font-size:clamp(34px,5vw,68px); line-height:1.0; letter-spacing:-.03em; color:#f3f6fa;">Start with a strategy<br/>you can <span style="color:var(--accent,#8B7FD4);">inspect.</span></h2>
       <p style="margin:22px auto 0; max-width:480px; font-size:17px; line-height:1.6; color:#8b94a3;">Replay market history on virtual capital and keep every live decision traceable — before real money is involved.</p>
       <div style="display:flex; gap:13px; justify-content:center; margin-top:34px; flex-wrap:wrap;">
-        <a href="https://github.com/nova369-BOT/tradeos" style-hover="transform:translateY(-2px);" style="display:inline-flex; align-items:center; gap:9px; padding:15px 30px; border-radius:999px; background:var(--accent,#C9A227); color:#0a0d12; font-weight:600; font-size:14px; text-decoration:none; transition:transform .25s;">Get TradeOS →</a>
+        <a href="https://github.com/nova369-BOT/tradeos" style-hover="transform:translateY(-2px);" style="display:inline-flex; align-items:center; gap:9px; padding:15px 30px; border-radius:999px; background:var(--accent,#8B7FD4); color:#0a0d12; font-weight:600; font-size:14px; text-decoration:none; transition:transform .25s;">Get ARQOS →</a>
         <a href="Docs.dc.html" style-hover="border-color:rgba(255,255,255,.4);" style="display:inline-flex; align-items:center; gap:9px; padding:15px 30px; border-radius:999px; border:1px solid rgba(255,255,255,.16); color:#e8ecf2; font-weight:500; font-size:14px; text-decoration:none; transition:border-color .25s;">Read the docs</a>
       </div>
     </div>
@@ -218,7 +218,7 @@
   <!-- FOOTER -->
   <footer style="border-top:1px solid rgba(255,255,255,.07);">
     <div style="max-width:1180px; margin:0 auto; padding:30px 32px; display:flex; align-items:center; justify-content:space-between; gap:24px; flex-wrap:wrap; font-family:'Fira Code',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#5b6472;">
-      <span>TradeOS</span>
+      <span>ARQOS</span>
       <div style="display:flex; gap:22px;">
         <a href="Features.dc.html" style="color:inherit; text-decoration:none;">Features</a>
         <a href="Docs.dc.html" style="color:inherit; text-decoration:none;">Docs</a>
@@ -232,7 +232,7 @@
   </div>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#C9A227&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#C9A227&quot;,&quot;#3fbaff&quot;,&quot;#2ec27e&quot;,&quot;#a78bfa&quot;],&quot;section&quot;:&quot;Theme&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:900},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#8B7FD4&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#8B7FD4&quot;,&quot;#3fbaff&quot;,&quot;#2ec27e&quot;,&quot;#a78bfa&quot;],&quot;section&quot;:&quot;Theme&quot;}}">
 class Component extends DCLogic {
   state = { mode: 'history', tab: 'strat', comfort: false };
 
@@ -323,7 +323,7 @@ class Component extends DCLogic {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 
     const live = this.state.mode === 'live';
-    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#C9A227';
+    const accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#8B7FD4';
     const seed = live ? 7 : 3;
     let rnd = seed;
     const rand = () => { rnd = (rnd * 9301 + 49297) % 233280; return rnd / 233280; };
@@ -357,7 +357,7 @@ class Component extends DCLogic {
       for (let i = 1; i <= last; i++) ctx.lineTo(x(i), y(pts[i]));
       ctx.lineTo(x(last), H - padY); ctx.lineTo(x(0), H - padY); ctx.closePath();
       const grad = ctx.createLinearGradient(0, padY, 0, H);
-      grad.addColorStop(0, 'rgba(201,162,39,0.18)'); grad.addColorStop(1, 'rgba(201,162,39,0)');
+      grad.addColorStop(0, 'rgba(139,127,212,0.18)'); grad.addColorStop(1, 'rgba(139,127,212,0)');
       ctx.fillStyle = grad; ctx.fill();
       // line
       ctx.beginPath(); ctx.moveTo(x(0), y(pts[0]));
@@ -367,7 +367,7 @@ class Component extends DCLogic {
       ctx.beginPath(); ctx.arc(x(last), y(pts[last]), 3.5, 0, Math.PI * 2);
       ctx.fillStyle = '#f3f6fa'; ctx.fill();
       ctx.beginPath(); ctx.arc(x(last), y(pts[last]), 7, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(201,162,39,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.strokeStyle = 'rgba(139,127,212,0.4)'; ctx.lineWidth = 1.5; ctx.stroke();
     };
     if (this.eqRaf) cancelAnimationFrame(this.eqRaf);
     if (!animate || this.reduce || this.state.comfort){ render(1); return; }
@@ -434,7 +434,7 @@ class Component extends DCLogic {
       histBg: histOn ? '#e8ecf2' : 'transparent', histFg: histOn ? '#07090d' : '#8b94a3',
       liveBg: !histOn ? 'var(--accent)' : 'transparent', liveFg: !histOn ? '#0a0d12' : '#8b94a3',
       modeLabel: histOn ? 'Replay · 2024' : 'Live · streaming',
-      modeColor: histOn ? '#7a8497' : '#C9A227',
+      modeColor: histOn ? '#7a8497' : '#8B7FD4',
       chartRange: histOn ? 'Jan – Dec 2024 · 1D' : 'Today · 15m',
       chartStats: this.histStats(),
       tabStrat: () => this.setState({ tab: 'strat' }),
@@ -454,7 +454,7 @@ class Component extends DCLogic {
       ],
       controls: [
         { color: '#2ec27e', title: 'All strategies live', sub: 'Desk running normally' },
-        { color: '#C9A227', title: 'Fast drawdown detected', sub: 'Pause new long entries' },
+        { color: '#8B7FD4', title: 'Fast drawdown detected', sub: 'Pause new long entries' },
         { color: '#ffbd2e', title: 'Volatility spike', sub: 'Widen stops, pause shorts' },
         { color: '#ff5d5d', title: 'Manual risk halt', sub: 'Stop new entries desk-wide' },
         { color: '#7a8497', title: 'Cooldown ended', sub: 'Entries resume on schedule' }

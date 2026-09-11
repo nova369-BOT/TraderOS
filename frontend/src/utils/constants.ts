@@ -1,4 +1,4 @@
-export const APP_NAME = "TradeOS";
+export const APP_NAME = "ARQOS";
 export const APP_VERSION = "0.6.0";
 
 export const MOMENTUM_ROTATION_BASKET = [

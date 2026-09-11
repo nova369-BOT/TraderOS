@@ -55,51 +55,53 @@
   --ot-space-3: 12px;
   --ot-space-4: 16px;
 
-  /* TradeOS brand palette (default dark theme) */
-  --ot-color-canvas: #0E1116;
-  --ot-color-canvas-elevated: #10141B;
-  --ot-color-surface-1: #14181D;
-  --ot-color-surface-2: #1B212B;
-  --ot-color-surface-3: #232D3A;
-  --ot-color-overlay: rgba(14, 17, 22, 0.82);
+  /* ARQOS Dark (default) — Quantum Core baseline:
+     deep charcoal, graphite surfaces, soft white, restrained purple,
+     restrained green/red, muted amber. Quiet software with enormous depth. */
+  --ot-color-canvas: #0F1014;
+  --ot-color-canvas-elevated: #121419;
+  --ot-color-surface-1: #16181E;
+  --ot-color-surface-2: #1B1E26;
+  --ot-color-surface-3: #23262F;
+  --ot-color-overlay: rgba(15, 16, 20, 0.82);
 
-  --ot-color-border-subtle: #212A36;
-  --ot-color-border-default: #2D3745;
-  --ot-color-border-strong: #3A4658;
+  --ot-color-border-subtle: #1E2129;
+  --ot-color-border-default: #262A34;
+  --ot-color-border-strong: #343947;
 
-  --ot-color-text-primary: #F2EFE6;
-  --ot-color-text-secondary: #C6C2B4;
-  --ot-color-text-muted: #8B887C;
-  --ot-color-text-inverse: #0E1116;
-  --ot-color-text-brand: #F2EFE6;
+  --ot-color-text-primary: #E6E8ED;
+  --ot-color-text-secondary: #B9BCC6;
+  --ot-color-text-muted: #7E828E;
+  --ot-color-text-inverse: #0F1014;
+  --ot-color-text-brand: #E6E8ED;
 
-  --ot-color-accent-primary: #C9A227;
-  --ot-color-accent-primary-hover: #DDB63C;
-  --ot-color-accent-primary-dim: #9C7D1E;
-  --ot-color-accent-glow: rgba(201, 162, 39, 0.14);
-  --ot-color-accent-secondary: #18ffff;
-  --ot-color-accent-info: #448aff;
+  --ot-color-accent-primary: #8B7FD4;
+  --ot-color-accent-primary-hover: #A093E2;
+  --ot-color-accent-primary-dim: #6C63A8;
+  --ot-color-accent-glow: rgba(139, 127, 212, 0.14);
+  --ot-color-accent-secondary: #5FA8B5;
+  --ot-color-accent-info: #6E8FD8;
 
-  --ot-color-market-up: #00e676;
-  --ot-color-market-down: #ff3d3d;
-  --ot-color-market-neutral: #bdbdbd;
-  --ot-color-market-up-soft: rgba(0, 230, 118, 0.15);
-  --ot-color-market-down-soft: rgba(255, 61, 61, 0.15);
+  --ot-color-market-up: #3FA46A;
+  --ot-color-market-down: #C25E63;
+  --ot-color-market-neutral: #9A9DA6;
+  --ot-color-market-up-soft: rgba(63, 164, 106, 0.15);
+  --ot-color-market-down-soft: rgba(194, 94, 99, 0.15);
 
-  --ot-color-risk-low: #00e676;
-  --ot-color-risk-medium: #ffb74d;
-  --ot-color-risk-high: #ff3d3d;
-  --ot-color-risk-critical: #ff3d3d;
+  --ot-color-risk-low: #3FA46A;
+  --ot-color-risk-medium: #C29A5B;
+  --ot-color-risk-high: #C25E63;
+  --ot-color-risk-critical: #C25E63;
 
-  --ot-color-system-ok: #00e676;
-  --ot-color-system-stale: #ffb74d;
-  --ot-color-system-warning: #ffb74d;
-  --ot-color-system-critical: #ff3d3d;
-  --ot-color-system-offline: #9e9e9e;
+  --ot-color-system-ok: #3FA46A;
+  --ot-color-system-stale: #C29A5B;
+  --ot-color-system-warning: #C29A5B;
+  --ot-color-system-critical: #C25E63;
+  --ot-color-system-offline: #8B8E98;
 
-  --ot-color-action-safe: #00e676;
-  --ot-color-action-warning: #ffb74d;
-  --ot-color-action-danger: #ff3d3d;
+  --ot-color-action-safe: #3FA46A;
+  --ot-color-action-warning: #C29A5B;
+  --ot-color-action-danger: #C25E63;
 
   /* Alert channel / severity semantics */
   --ot-color-alert-info: var(--ot-color-feedback-info);
@@ -115,10 +117,10 @@
   --ot-color-feedback-info: var(--ot-color-accent-info);
   --ot-color-feedback-warning: var(--ot-color-system-warning);
   --ot-color-feedback-error: var(--ot-color-system-critical);
-  --ot-color-feedback-success-soft: rgba(0, 230, 118, 0.12);
-  --ot-color-feedback-info-soft: rgba(68, 138, 255, 0.14);
-  --ot-color-feedback-warning-soft: rgba(255, 183, 77, 0.14);
-  --ot-color-feedback-error-soft: rgba(255, 61, 61, 0.14);
+  --ot-color-feedback-success-soft: rgba(63, 164, 106, 0.12);
+  --ot-color-feedback-info-soft: rgba(110, 143, 216, 0.14);
+  --ot-color-feedback-warning-soft: rgba(194, 154, 91, 0.14);
+  --ot-color-feedback-error-soft: rgba(194, 94, 99, 0.14);
 
   /* Ops/monitoring semantics */
   --ot-color-ops-running: var(--ot-color-system-ok);
@@ -138,7 +140,7 @@
   --ot-color-workstation-panel-active-border: var(--ot-color-accent-primary);
   --ot-color-workstation-panel-active-glow: rgba(201, 162, 39, 0.18);
   --ot-color-workstation-panel-drag-target-border: var(--ot-color-accent-info);
-  --ot-color-workstation-panel-drag-target-fill: rgba(68, 138, 255, 0.10);
+  --ot-color-workstation-panel-drag-target-fill: rgba(110, 143, 216, 0.10);
   --ot-color-workstation-panel-error-border: var(--ot-color-feedback-error);
   --ot-color-workstation-panel-sync-indicator: var(--ot-color-accent-secondary);
   --ot-color-workstation-panel-sync-muted: color-mix(in srgb, var(--ot-color-accent-secondary) 35%, var(--ot-color-text-muted));
@@ -781,7 +783,7 @@
 
 .ot-input-flash .ot-input {
   border-color: var(--ot-red);
-  box-shadow: 0 0 0 1px rgba(255, 61, 61, 0.2);
+  box-shadow: 0 0 0 1px rgba(194, 94, 99, 0.2);
 }
 
 .ot-or-divider {
@@ -2269,7 +2271,7 @@ button.ot-home-widget-strip-chip:hover {
 }
 
 /* ---------------------------------------------------------------------------
-   TradeOS Market Intelligence OS — token extension
+   ARQOS Market Intelligence OS — token extension
    Semantic roles for intelligence, regime, confidence and motion.
    Additive: does not modify existing tokens.
 --------------------------------------------------------------------------- */
@@ -2277,8 +2279,8 @@ button.ot-home-widget-strip-chip:hover {
   /* Intelligence semantics */
   --ot-color-intel-observed: var(--ot-color-accent-info);      /* blue: raw data */
   --ot-color-intel-derived: var(--ot-color-system-warning);    /* yellow: heuristic */
-  --ot-color-intel-ai: #b58cff;                                /* purple: model output */
-  --ot-color-intel-ai-soft: rgba(181, 140, 255, 0.14);
+  --ot-color-intel-ai: #A493E0;                                /* purple: model output */
+  --ot-color-intel-ai-soft: rgba(164, 147, 224, 0.14);
   --ot-color-intel-unavailable: var(--ot-color-text-muted);    /* gray: no data */
   --ot-color-intel-live: var(--ot-color-accent-secondary);     /* cyan: real-time/system */
 

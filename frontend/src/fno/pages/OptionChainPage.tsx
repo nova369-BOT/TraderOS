@@ -58,7 +58,7 @@ export function OptionChainPage() {
             className={`rounded border px-2 py-1 ${rangeFilter === r ? "border-terminal-accent text-terminal-accent" : "border-terminal-border text-terminal-muted"}`}
             onClick={() => setRangeFilter(r)}
           >
-            {r === 0 ? "All" : `±${r}`}
+            {r === 0 ? "All" : `ï¿½${r}`}
           </button>
         ))}
         <div className="ml-auto text-[11px] text-terminal-muted">? ATM | Green ?OI up | Red ?OI down</div>

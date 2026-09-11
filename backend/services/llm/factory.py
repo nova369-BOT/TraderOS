@@ -24,7 +24,7 @@ def get_llm_provider(
             timeout=timeout,
             extra_headers={
                 "HTTP-Referer": "https://tradeos.local",
-                "X-Title": "TradeOS Agent",
+                "X-Title": "ARQOS Agent",
             },
             # Free models are flaky (429/404); try the configured free chain.
             fallback_models=[] if settings.agent_disable_model_fallbacks else [

@@ -1,5 +1,5 @@
 app:
-  name: "TradeOS API"
+  name: "ARQOS API"
   version: "0.6.0"
   environment: "local"
   default_exchange_suffix: ".NS"

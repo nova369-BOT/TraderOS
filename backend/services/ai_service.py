@@ -17,7 +17,7 @@ from backend.services.lm_studio_client import (
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """
-You are an expert financial AI assistant for TradeOS.
+You are an expert financial AI assistant for ARQOS.
 Parse the user's natural-language query and classify its intent.
 
 Available intents:

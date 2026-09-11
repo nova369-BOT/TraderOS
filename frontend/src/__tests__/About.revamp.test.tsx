@@ -52,8 +52,8 @@ describe("AboutPage dossier revamp", () => {
   it("renders repo intelligence, stack and module registry panels, and command surfaces", () => {
     renderPage();
 
-    expect(screen.getByRole("heading", { name: "TradeOS UI" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "TradeOS logo" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "ARQOS UI" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "ARQOS logo" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Tech Stack" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Module Registry" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Command Surfaces" })).toBeInTheDocument();

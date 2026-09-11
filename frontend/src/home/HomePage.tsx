@@ -57,9 +57,9 @@ export function HomePage() {
     <div className="flex h-screen flex-col bg-terminal-bg text-terminal-text">
       <div className="border-b border-terminal-border bg-terminal-panel px-4 py-3">
         <div className="flex items-start justify-between gap-4">
-          <img src={logo} alt="TradeOS" className="h-12 w-auto object-contain" />
+          <img src={logo} alt="ARQOS" className="h-12 w-auto object-contain" />
           <div className="text-right">
-            <div className="text-lg font-semibold uppercase tracking-widest text-terminal-accent">TradeOS UI</div>
+            <div className="text-lg font-semibold uppercase tracking-widest text-terminal-accent">ARQOS UI</div>
             <div className="text-xs uppercase tracking-wide text-terminal-muted">Trading Analytics Workspace</div>
           </div>
         </div>

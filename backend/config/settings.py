@@ -14,7 +14,7 @@ load_local_env()
 
 
 class AppSettings(BaseModel):
-    app_name: str = "TradeOS API"
+    app_name: str = "ARQOS API"
     app_version: str = "0.6.0"
     cors_origins: list[str] = Field(
         default_factory=lambda: [
@@ -190,7 +190,7 @@ def get_settings() -> AppSettings:
         app_name=(
             _env("TRADEOS_APP_NAME")
             or _env("OPENSCREENS_APP_NAME", "TRADE_SCREENS_APP_NAME")
-            or app_cfg.get("name", "TradeOS API")
+            or app_cfg.get("name", "ARQOS API")
         ),
         app_version=(
             _env("TRADEOS_APP_VERSION")

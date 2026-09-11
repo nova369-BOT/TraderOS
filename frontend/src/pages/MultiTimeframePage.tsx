@@ -128,7 +128,7 @@ const PANEL_TITLES: Record<PanelRole, string> = {
   execution: "Execution",
 };
 const PANEL_CROSSHAIR_COLORS: Record<PanelRole, string> = {
-  "long-term": "rgba(201, 162, 39, 0.75)",
+  "long-term": "rgba(139, 127, 212, 0.75)",
   "medium-term": "rgba(78, 161, 255, 0.75)",
   "short-term": "rgba(0, 193, 118, 0.75)",
   execution: "rgba(255, 183, 77, 0.85)",
@@ -455,7 +455,7 @@ function MtaChartPanel({
   return (
     <section
       data-testid={`mta-panel-${panelId}`}
-      className="flex min-h-[300px] flex-col rounded-sm border border-terminal-border bg-terminal-panel shadow-[0_0_0_1px_rgba(201,162,39,0.03)]"
+      className="flex min-h-[300px] flex-col rounded-sm border border-terminal-border bg-terminal-panel shadow-[0_0_0_1px_rgba(139,127,212,0.03)]"
     >
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-terminal-border px-3 py-2">
         <div className="min-w-0">

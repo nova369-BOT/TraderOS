@@ -674,7 +674,7 @@ export function CockpitDashboard() {
   return (
     <div className="h-full min-h-0 overflow-auto p-2">
       <div className="grid gap-2">
-        <section className="rounded-sm border border-terminal-border bg-[radial-gradient(circle_at_top_left,rgba(201,162,39,0.18),transparent_38%),linear-gradient(135deg,rgba(16,22,32,0.98),rgba(10,14,20,0.96))] px-3 py-3">
+        <section className="rounded-sm border border-terminal-border bg-[radial-gradient(circle_at_top_left,rgba(139,127,212,0.18),transparent_38%),linear-gradient(135deg,rgba(16,22,32,0.98),rgba(10,14,20,0.96))] px-3 py-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
