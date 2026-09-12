@@ -43,6 +43,7 @@ _instruments_loader = None
 _news_ingestor = None
 _pcr_snapshot_service = None
 _scanner_alert_scheduler = None
+_marketdata_service = None
 _prefetch_enabled = (
     os.getenv("TRADEOS_PREFETCH_ENABLED")
     or os.getenv("OPENSCREENS_PREFETCH_ENABLED")
@@ -53,7 +54,7 @@ _prefetch_enabled = (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _prefetch_worker, _instruments_loader, _news_ingestor, _pcr_snapshot_service, _scanner_alert_scheduler
+    global _prefetch_worker, _instruments_loader, _news_ingestor, _pcr_snapshot_service, _scanner_alert_scheduler, _marketdata_service
     validate_runtime_secrets()
     init_db()
 
@@ -84,7 +85,15 @@ async def lifespan(app: FastAPI):
     if _scanner_alert_scheduler:
         await _scanner_alert_scheduler.start(hub, interval_seconds=900)
 
+    # Unified market-data foundation (Phase 1): normalized model + event bus.
+    from backend.marketdata import get_marketdata_service
+
+    _marketdata_service = get_marketdata_service()
+    await _marketdata_service.start()
+
     yield
+
+    await _marketdata_service.stop()
 
     if _prefetch_worker:
         await _prefetch_worker.stop()

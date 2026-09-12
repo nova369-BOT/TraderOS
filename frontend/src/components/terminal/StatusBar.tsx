@@ -36,9 +36,16 @@ export function StatusBar({ tickerOverride }: Props) {
   }, []);
 
   const isMock = useMemo(() => {
+    // Honest-provenance badge: MOCK whenever data is fallback-labeled OR the
+    // status payload itself errored OR the status query failed (no payload at
+    // all must never render as LIVE).
     const payload = marketStatus as { fallbackEnabled?: boolean; error?: string } | undefined;
-    return Boolean(payload?.fallbackEnabled) || Boolean(payload?.error);
-  }, [marketStatus]);
+    return (
+      Boolean(marketError) ||
+      Boolean(payload?.fallbackEnabled) ||
+      Boolean(payload?.error)
+    );
+  }, [marketError, marketStatus]);
 
   const dataState = useMemo(() => {
     if (marketError || stockError) {

@@ -11,6 +11,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+import logging
+
+_logger = logging.getLogger(__name__)
+
 from backend.api.deps import cache_instance, get_chart_provider, get_unified_fetcher
 from backend.api.deps import get_db
 from backend.auth.deps import get_current_user
@@ -235,14 +239,29 @@ async def get_footprint(
         return payload
 
     provider = await get_chart_provider()
-    raw_bars = await provider.get_ohlcv(
-        symbol.strip().upper(),
-        interval=timeframe,
-        period=f"{max(1, bars)}d",
-        start=None,
-        end=None,
-        market_hint=market,
-    )
+    try:
+        raw_bars = await provider.get_ohlcv(
+            symbol.strip().upper(),
+            interval=timeframe,
+            period=f"{max(1, bars)}d",
+            start=None,
+            end=None,
+            market_hint=market,
+        )
+    except Exception as exc:
+        # Honest-unavailable: footprint cannot be computed without real bars.
+        # Fabricating a footprint from nothing (or leaking a 500) is worse
+        # than an explicit unavailable response.
+        _logger.warning("footprint provider unavailable for %s: %s", symbol, exc)
+        raise HTTPException(
+            status_code=503,
+            detail=f"Market data provider unavailable for {symbol.upper()}; footprint cannot be computed.",
+        ) from exc
+    if not raw_bars:
+        raise HTTPException(
+            status_code=503,
+            detail=f"No market data available for {symbol.upper()}; footprint cannot be computed.",
+        )
     selected_bars = raw_bars[-bars:] if len(raw_bars) > bars else raw_bars
     aggregator = FootprintAggregator()
     ticks = _bars_to_footprint_ticks(selected_bars)
@@ -504,14 +523,25 @@ async def get_chart(
         if start_dt and end_dt and start_dt > end_dt:
             raise HTTPException(status_code=400, detail="start must be less than or equal to end")
 
-        bars = await provider.get_ohlcv(
-            ticker,
-            interval=interval,
-            period=period or range or "6mo",
-            start=start_dt,
-            end=end_dt,
-            market_hint=market,
-        )
+        try:
+            bars = await provider.get_ohlcv(
+                ticker,
+                interval=interval,
+                period=period or range or "6mo",
+                start=start_dt,
+                end=end_dt,
+                market_hint=market,
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            # Provider outage must degrade explicitly (honest-unavailable law),
+            # never leak a 500 with a stack trace or silently serve stale data.
+            _logger.warning("chart provider unavailable for %s: %s", ticker, exc)
+            raise HTTPException(
+                status_code=503,
+                detail=f"Chart data provider unavailable for {ticker.upper()}. Try again later.",
+            ) from exc
         return {
             "symbol": ticker.upper(),
             "interval": interval,

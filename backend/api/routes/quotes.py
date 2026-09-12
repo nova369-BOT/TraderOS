@@ -125,7 +125,11 @@ async def get_quotes(
 
     # If there are no local symbols, we are done.
     if not local_syms:
-        return {"market": market_code, "quotes": all_quotes}
+        return {
+            "market": market_code,
+            "status": "ok" if all_quotes else "unavailable",
+            "quotes": all_quotes,
+        }
 
     # --- Local symbols via adapter registry ---
     registry = get_adapter_registry()
@@ -152,7 +156,7 @@ async def get_quotes(
         )
     if adapter_quotes:
         all_quotes.extend(adapter_quotes)
-        return {"market": market_code, "quotes": all_quotes}
+        return {"market": market_code, "status": "ok", "quotes": all_quotes}
 
     # --- US local symbols: Finnhub (primary), Yahoo (fallback) ---
     if market_code in US_MARKETS:
@@ -188,7 +192,11 @@ async def get_quotes(
         if not local_quotes:
             local_quotes = await _fetch_yahoo_quotes(fetcher, local_syms, now_iso)
         all_quotes.extend(local_quotes)
-        return {"market": market_code, "quotes": all_quotes}
+        return {
+            "market": market_code,
+            "status": "ok" if all_quotes else "unavailable",
+            "quotes": all_quotes,
+        }
 
     local_quotes = []
 
@@ -258,4 +266,11 @@ async def get_quotes(
             pass
 
     all_quotes.extend(local_quotes)
-    return {"market": market_code, "quotes": all_quotes}
+    # Honest-unavailable law (B3): an empty batch must be explicitly labeled,
+    # never returned as a healthy "quotes: []" — the status bar and price
+    # stream key off `status === "unavailable"` to show DISCONNECTED.
+    return {
+        "market": market_code,
+        "status": "ok" if all_quotes else "unavailable",
+        "quotes": all_quotes,
+    }

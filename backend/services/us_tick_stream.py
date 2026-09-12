@@ -471,6 +471,18 @@ class USTickStreamService:
         self._alpaca = _AlpacaUSProvider(self)
         self._last_trade_seen: dict[str, tuple[int, float, float, str]] = {}
         self._dq = DataQualityMonitor()
+        # Read-only taps (e.g. the unified marketdata service bridge). A
+        # failing listener must never break the stream service.
+        self._trade_listeners: list = []
+
+    def register_trade_listener(self, callback) -> None:
+        """Register a read-only tap receiving every normalized provider trade.
+
+        The callback receives the raw trade payload dict (same shape as the
+        ``trades`` channel broadcast). Exceptions are logged and swallowed.
+        """
+        if callback not in self._trade_listeners:
+            self._trade_listeners.append(callback)
 
     async def start(self) -> None:
         async with self._lock:
@@ -588,6 +600,13 @@ class USTickStreamService:
             "latency_ms": round(float(latency_ms), 2) if latency_ms is not None else None,
             "raw": raw or {},
         }
+        for listener in list(self._trade_listeners):
+            try:
+                result = listener(trade_payload)
+                if asyncio.iscoroutine(result):
+                    await result
+            except Exception:
+                logger.exception("US trade listener failed")
         await self._broadcast("trades", symbol_key, trade_payload)
 
         closed_bars, partial_bar = self._aggregator.on_trade(symbol_key, float(price), float(size or 0.0), ts)

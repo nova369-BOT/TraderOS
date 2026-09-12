@@ -45,6 +45,7 @@ from backend.screener.factor_routes import router as factor_ideas_router
 from backend.risk_engine.routes import router as risk_router
 from backend.routers.chart_workstation import router as chart_workstation_router
 from backend.routers.charts import router as charts_router
+from backend.marketdata.routes import router as marketdata_router
 from backend.saved_views.routes import router as saved_views_router
 from backend.tca.routes import router as tca_router
 
@@ -117,5 +118,9 @@ api_router.include_router(portfolio_optimizer_router)
 
 # Statlab API
 api_router.include_router(statlab_router)
+
+# Unified market-data foundation (Phase 1): normalized model + event bus.
+# Router carries its own "/api/marketdata" and "/api/ws/market" prefixes.
+api_router.include_router(marketdata_router)
 
 __all__ = ["api_router"]
