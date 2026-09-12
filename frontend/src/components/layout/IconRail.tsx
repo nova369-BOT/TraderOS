@@ -12,6 +12,7 @@ type RailItem = {
 };
 
 const RAIL_ITEMS: RailItem[] = [
+  { id: "terminal", label: "Terminal", glyph: "QT", to: "/terminal" },
   { id: "home", label: "Home", glyph: "HM", to: "/home" },
   { id: "market", label: "Market", glyph: "MK", to: "/equity/stocks" },
   { id: "workstation", label: "Workstation", glyph: "WS", to: "/equity/chart-workstation" },

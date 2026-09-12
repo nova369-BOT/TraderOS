@@ -42,6 +42,7 @@ const ShadowAccountPage = lazyWithRetry(() => import("./pages/ShadowAccount").th
 const RiskDashboardPage = lazyWithRetry(() => import("./pages/RiskDashboard").then((m) => ({ default: m.RiskDashboardPage })));
 const CorrelationDashboardPage = lazyWithRetry(() => import("./pages/CorrelationDashboardPage").then((m) => ({ default: m.CorrelationDashboardPage })));
 const OmsCompliancePage = lazyWithRetry(() => import("./pages/OmsCompliance").then((m) => ({ default: m.OmsCompliancePage })));
+const QuantumTerminalPage = lazyWithRetry(() => import("./terminal/QuantumTerminalPage").then((m) => ({ default: m.QuantumTerminalPage })));
 const OpsDashboardPage = lazyWithRetry(() => import("./pages/OpsDashboard").then((m) => ({ default: m.OpsDashboardPage })));
 const SettingsPage = lazyWithRetry(() => import("./pages/Settings").then((m) => ({ default: m.SettingsPage })));
 const PluginsPage = lazyWithRetry(() => import("./pages/Plugins/Plugins").then((m) => ({ default: m.PluginsPage })));
@@ -125,6 +126,7 @@ function App() {
           <Suspense fallback={RouteLoadingFallback}>
             <Routes>
           <Route path="/" element={<RootRedirect />} />
+          <Route path="/terminal" element={<ProtectedRoute><QuantumTerminalPage /></ProtectedRoute>} />
           <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />

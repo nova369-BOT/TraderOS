@@ -5,6 +5,7 @@ import { inferRecentSecurityAssetClass } from "../../hooks/useRecentSecurities";
 import { useStockStore } from "../../store/stockStore";
 
 export type CommandFunctionCode =
+  | "TERM"
   | "DESK"
   | "DES"
   | "GP"
@@ -102,6 +103,7 @@ export type CommandFunctionSpec = {
 };
 
 export const COMMAND_FUNCTIONS: CommandFunctionSpec[] = [
+  { code: "TERM", label: "Trading Terminal", description: "Open the Quantum Core trading terminal", securityScoped: true, aliases: ["TERMINAL", "QT"] },
   { code: "DESK", label: "Analyst Desk", description: "Open the cockpit analyst workspace", aliases: ["COCKPIT", "MONITOR"] },
   { code: "DES", label: "Description / Security Hub", description: "Open security hub overview", securityScoped: true, aliases: ["SECURITY", "HUB"] },
   { code: "GP", label: "Graph Price", description: "Open chart tab", securityScoped: true, aliases: ["CHART"] },
@@ -160,6 +162,7 @@ const TICKER_FUNCTION_HINTS: Array<{
   title: string;
   subtitle: string;
 }> = [
+  { func: "TERM", title: "Trading Terminal", subtitle: "Send the symbol to the Quantum Core terminal" },
   { func: "DES", title: "Overview", subtitle: "Open the security overview" },
   { func: "WHY", title: "Why did this move?", subtitle: "Movement intelligence: observed drivers, derived signals" },
   { func: "REL", title: "Relationship graph", subtitle: "Explore peers, sector, portfolio and market links" },
@@ -371,6 +374,10 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
       navigate(`/equity/relationships/${encodeURIComponent(parsed.ticker)}`);
       return { ok: true, target: `/equity/relationships/${parsed.ticker}` };
     }
+    if (parsed.func === "TERM") {
+      navigate("/terminal");
+      return { ok: true, target: "/terminal" };
+    }
     if (parsed.func === "DESK") {
       navigate(`/equity/cockpit?ticker=${encodeURIComponent(parsed.ticker)}`);
       return { ok: true, target: "/equity/cockpit" };
@@ -399,6 +406,12 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
   if (parsed.kind === "function") {
     const mod0 = parsed.modifiers[0];
     switch (parsed.func) {
+      case "TERM":
+        if (mod0 && looksLikeTicker(mod0)) {
+          applyTicker(mod0);
+        }
+        navigate("/terminal");
+        return { ok: true, target: "/terminal" };
       case "DESK":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);

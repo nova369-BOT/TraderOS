@@ -202,6 +202,33 @@ def get_orders(
     }
 
 
+@router.delete("/paper/orders/{order_id}")
+def cancel_virtual_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Cancel a working (pending) paper order.
+
+    Ownership is enforced through the parent virtual portfolio; only orders
+    still in PENDING may be cancelled — terminal states are immutable.
+    """
+    row = (
+        db.query(VirtualOrder)
+        .join(VirtualPortfolio, VirtualOrder.portfolio_id == VirtualPortfolio.id)
+        .filter(VirtualOrder.id == order_id, VirtualPortfolio.user_id == current_user.id)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if row.status != VirtualOrderStatus.PENDING.value:
+        raise HTTPException(status_code=409, detail=f"Order is already {row.status}")
+    row.status = VirtualOrderStatus.CANCELLED.value
+    db.commit()
+    db.refresh(row)
+    return {"id": row.id, "status": row.status, "symbol": row.symbol}
+
+
 @router.get("/paper/portfolios/{portfolio_id}/trades")
 def get_trades(
     portfolio_id: str,
