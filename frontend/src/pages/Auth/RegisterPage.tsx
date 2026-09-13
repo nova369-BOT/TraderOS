@@ -35,7 +35,7 @@ export function RegisterPage() {
     try {
       await register(email.trim(), password, role);
       await login(email.trim(), password);
-      navigate("/equity/stocks", { replace: true });
+      navigate("/markets/stocks", { replace: true });
     } catch {
       setError("REGISTRATION FAILED");
     }

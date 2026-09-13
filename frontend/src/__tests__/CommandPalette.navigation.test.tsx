@@ -27,6 +27,6 @@ describe("CommandPalette deterministic keyboard flow", () => {
     fireEvent.change(input, { target: { value: "WL" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(navigateSpy).toHaveBeenCalledWith("/equity/watchlist");
+    expect(navigateSpy).toHaveBeenCalledWith("/portfolio/watchlists");
   });
 });

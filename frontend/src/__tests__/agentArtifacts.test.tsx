@@ -35,11 +35,11 @@ import { useStockStore } from "../store/stockStore";
 
 describe("agent screen context", () => {
   it("defaults the symbol to the open stock on equity routes", () => {
-    window.history.pushState({}, "", "/equity/stocks");
+    window.history.pushState({}, "", "/markets/stocks");
     useStockStore.getState().setTicker("TCS");
     const ctx = buildScreenContext();
     expect(ctx.symbol).toBe("TCS");
-    expect(ctx.route).toBe("/equity/stocks");
+    expect(ctx.route).toBe("/markets/stocks");
   });
 
   it("does not attach an equity symbol on unrelated routes", () => {

@@ -33,16 +33,16 @@ export function KeyboardNavigationProvider({ children }: { children: React.React
         window.dispatchEvent(new CustomEvent("focus-command-bar"));
       } else if (e.ctrlKey && e.key.toLowerCase() === "w") {
         e.preventDefault();
-        navigate("/equity/watchlist");
+        navigate("/portfolio/watchlists");
       } else if (e.ctrlKey && e.key.toLowerCase() === "n") {
         e.preventDefault();
-        navigate("/equity/news");
+        navigate("/markets/news");
       } else if (e.ctrlKey && e.key.toLowerCase() === "p") {
         e.preventDefault();
-        navigate("/equity/portfolio");
+        navigate("/portfolio");
       } else if (e.ctrlKey && e.key.toLowerCase() === "b") {
         e.preventDefault();
-        navigate("/backtesting");
+        navigate("/labs");
       } else if (e.ctrlKey && e.key === "Tab") {
         e.preventDefault();
         if (panels.length > 0) {

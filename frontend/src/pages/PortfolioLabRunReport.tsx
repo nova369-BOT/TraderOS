@@ -81,8 +81,8 @@ export function PortfolioLabRunReportPage() {
           <div>Status: <span className="text-terminal-accent">{reportQuery.data?.status || "loading"}</span></div>
           <div className="flex gap-2">
             {reportQuery.data?.status === "succeeded" && <button type="button" className="rounded border border-terminal-border px-2 py-1" onClick={openTearSheet}>Tear-sheet</button>}
-            {reportQuery.data?.portfolio_id && <Link className="rounded border border-terminal-border px-2 py-1" to={`/equity/portfolio/lab/portfolios/${reportQuery.data.portfolio_id}`}>Portfolio</Link>}
-            <Link className="rounded border border-terminal-border px-2 py-1" to="/equity/portfolio/lab">All Portfolios</Link>
+            {reportQuery.data?.portfolio_id && <Link className="rounded border border-terminal-border px-2 py-1" to={`/portfolio/lab/portfolios/${reportQuery.data.portfolio_id}`}>Portfolio</Link>}
+            <Link className="rounded border border-terminal-border px-2 py-1" to="/portfolio/lab">All Portfolios</Link>
           </div>
         </div>
       </TerminalPanel>

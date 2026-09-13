@@ -3,10 +3,10 @@ import { Home, List, LineChart, Search, Briefcase } from "lucide-react";
 
 const tabs = [
   { label: "Home", path: "/home", icon: Home, ariaLabel: "Go to Home" },
-  { label: "Watch", path: "/equity/watchlist", icon: List, ariaLabel: "Go to Watchlist" },
-  { label: "Chart", path: "/equity/chart-workstation", icon: LineChart, ariaLabel: "Go to Chart Workstation" },
-  { label: "Scan", path: "/equity/screener", icon: Search, ariaLabel: "Go to Screener" },
-  { label: "Port", path: "/equity/portfolio", icon: Briefcase, ariaLabel: "Go to Portfolio" },
+  { label: "Watch", path: "/portfolio/watchlists", icon: List, ariaLabel: "Go to Watchlist" },
+  { label: "Chart", path: "/terminal/chart-workstation", icon: LineChart, ariaLabel: "Go to Chart Workstation" },
+  { label: "Scan", path: "/markets/screener", icon: Search, ariaLabel: "Go to Screener" },
+  { label: "Port", path: "/portfolio", icon: Briefcase, ariaLabel: "Go to Portfolio" },
 ];
 
 export function MobileBottomNav() {

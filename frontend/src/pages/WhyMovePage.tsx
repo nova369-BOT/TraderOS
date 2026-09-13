@@ -4,7 +4,7 @@ import { WhyDidThisMove } from "../components/intelligence/WhyDidThisMove";
 
 /**
  * Movement Intelligence surface — route wrapper.
- * `/equity/why` (uses global context) or `/equity/why/:ticker`.
+ * `/markets/why` (uses global context) or `/markets/why/:ticker`.
  */
 export default function WhyMovePage() {
   const { ticker } = useParams<{ ticker?: string }>();

@@ -564,7 +564,7 @@ export function PortfolioPage() {
           <TerminalButton size="sm" variant={portfolioView === "legacy" ? "accent" : "default"} onClick={() => switchPortfolioView("legacy")}>
             Legacy View
           </TerminalButton>
-          <Link className="inline-flex min-h-8 items-center justify-center rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wide text-terminal-muted transition-colors hover:text-terminal-text" to="/equity/portfolio/lab">
+          <Link className="inline-flex min-h-8 items-center justify-center rounded-sm border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-wide text-terminal-muted transition-colors hover:text-terminal-text" to="/portfolio/lab">
             Open Portfolio Lab
           </Link>
         </div>

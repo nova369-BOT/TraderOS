@@ -645,7 +645,7 @@ export function StockDetailPage() {
         )}
       </div>
       <Link
-        to="/equity/stocks/about"
+        to="/about"
         className="mt-6 inline-flex w-fit rounded-sm border border-terminal-border bg-terminal-panel px-2 py-1 text-[11px] uppercase tracking-wide text-terminal-muted hover:text-terminal-accent"
       >
         About

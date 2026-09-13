@@ -107,7 +107,7 @@ function RankedActivityPanel({
               title: "Symbol",
               width: 110,
               render: (row) => (
-                <Link className="text-terminal-accent hover:underline" to={`/equity/security/${row.symbol}`}>
+                <Link className="text-terminal-accent hover:underline" to={`/markets/security/${row.symbol}`}>
                   {row.symbol}
                 </Link>
               ),
@@ -245,7 +245,7 @@ export function InsiderActivityPage() {
                     title: "Symbol",
                     width: 110,
                     render: (row) => (
-                      <button type="button" className="text-terminal-accent hover:underline" onClick={() => navigate(`/equity/security/${row.symbol}`)}>
+                      <button type="button" className="text-terminal-accent hover:underline" onClick={() => navigate(`/markets/security/${row.symbol}`)}>
                         {row.symbol}
                       </button>
                     ),
@@ -300,7 +300,7 @@ export function InsiderActivityPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <button type="button" className="text-left text-terminal-accent hover:underline" onClick={() => navigate(`/equity/security/${cluster.symbol}`)}>
+                        <button type="button" className="text-left text-terminal-accent hover:underline" onClick={() => navigate(`/markets/security/${cluster.symbol}`)}>
                           <div className="text-lg">{cluster.symbol}</div>
                         </button>
                         <div className="text-xs text-terminal-muted">{cluster.name}</div>

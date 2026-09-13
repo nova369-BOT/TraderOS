@@ -6,6 +6,10 @@ import { AgentLauncher } from "./agent/components/AgentLauncher";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RootRedirect } from "./components/RootRedirect";
+import { LegacyRedirect } from "./components/LegacyRedirect";
+import { TerminalLayout } from "./components/layout/workspaces/TerminalLayout";
+import { PortfolioLayout } from "./components/layout/workspaces/PortfolioLayout";
+import { OpsLayout } from "./components/layout/workspaces/OpsLayout";
 import { TerminalBackground } from "./components/TerminalBackground";
 import { ThemeRuntime } from "./components/layout/ThemeRuntime";
 import { DensityRuntime } from "./design/DensityRuntime";
@@ -128,92 +132,92 @@ function App() {
           <Suspense fallback={RouteLoadingFallback}>
             <Routes>
           <Route path="/" element={<RootRedirect />} />
-          <Route path="/terminal" element={<ProtectedRoute><QuantumTerminalPage /></ProtectedRoute>} />
-          <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-access" element={<ForgotAccessPage />} />
 
-          <Route path="/equity" element={<ProtectedRoute><EquityLayout /></ProtectedRoute>}>
-            <Route index element={<Navigate to="/equity/stocks" replace />} />
+          {/*
+            R3 INFORMATION ARCHITECTURE — five workspaces + Settings.
+            Every pre-R3 URL keeps working via LegacyRedirect (bottom).
+          */}
+
+          {/* TERMINAL — order execution cluster */}
+          <Route path="/terminal" element={<ProtectedRoute><TerminalLayout /></ProtectedRoute>}>
+            <Route index element={<QuantumTerminalPage />} />
+            <Route path="paper" element={<PaperTradingPage />} />
+            <Route path="position-sizer" element={<PositionSizerPage />} />
+            <Route path="chart-workstation" element={<ChartWorkstationPage />} />
+            <Route path="mta" element={<MultiTimeframePage />} />
+            <Route path="dom" element={<DOMPage />} />
+            <Route path="tape" element={<TimeAndSalesPage />} />
+            <Route path="saved-views" element={<SavedViewsPage />} />
+          </Route>
+
+          {/* MARKETS & RESEARCH */}
+          <Route path="/markets" element={<ProtectedRoute><EquityLayout /></ProtectedRoute>}>
+            <Route index element={<DashboardPage />} />
             <Route path="stocks" element={<StockDetailPage />} />
             <Route path="security" element={<SecurityHubPage />} />
             <Route path="security/:ticker" element={<SecurityHubPage />} />
+            <Route path="screener" element={<ScreenerPage />} />
+            <Route path="hotlists" element={<HotlistsPage />} />
+            <Route path="heatmap" element={<MarketHeatmapPage />} />
+            <Route path="compare" element={<SplitComparisonPage />} />
             <Route path="commodities" element={<CommoditiesPage />} />
             <Route path="forex" element={<ForexPage />} />
-            <Route path="hotlists" element={<HotlistsPage />} />
-            <Route path="insider" element={<InsiderActivityPage />} />
-            <Route path="stocks/about" element={<AboutPage />} />
-            <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="crypto" element={<CryptoWorkspacePage />} />
+            <Route path="etf-analytics" element={<ETFAnalyticsPage />} />
+            <Route path="mutual-funds" element={<MutualFundsPage />} />
+            <Route path="economics" element={<EconomicTerminal />} />
+            <Route path="sector-rotation" element={<SectorRotationPage />} />
+            <Route path="bonds" element={<BondsPage />} />
+            <Route path="yield-curve" element={<YieldCurveDashboard />} />
+            <Route path="bond-analytics" element={<BondAnalyticsCalculator />} />
+            <Route path="research" element={<ResearchPage />} />
+            <Route path="research-autopilot" element={<ResearchAutopilotPage />} />
             <Route path="why" element={<WhyMovePage />} />
             <Route path="why/:ticker" element={<WhyMovePage />} />
             <Route path="relationships" element={<RelationshipsPage />} />
             <Route path="relationships/:ticker" element={<RelationshipsPage />} />
-            <Route path="heatmap" element={<MarketHeatmapPage />} />
+            <Route path="insider" element={<InsiderActivityPage />} />
+            <Route path="news" element={<NewsPage />} />
+            <Route path="intelligence-timeline" element={<IntelligenceTimelinePage />} />
             <Route path="dividends" element={<DividendDashboardPage />} />
             <Route path="rs" element={<RelativeStrengthPage />} />
-            <Route path="data-quality" element={<DataQualityDashboard />} />
-            <Route path="screener" element={<ScreenerPage />} />
-            <Route path="factors" element={<FactorDashboardPage />} />
-            <Route path="alpha-zoo" element={<AlphaZooPage />} />
-            <Route path="research-autopilot" element={<ResearchAutopilotPage />} />
-            <Route path="strategy-export" element={<StrategyExportPage />} />
-            <Route path="intelligence-timeline" element={<IntelligenceTimelinePage />} />
-            <Route path="portfolio" element={<PortfolioPage />} />
-            <Route path="portfolio/lab" element={<PortfolioLabPage />} />
-            <Route path="portfolio/lab/portfolios/:id" element={<PortfolioLabDetailPage />} />
-            <Route path="portfolio/lab/runs/:runId" element={<PortfolioLabRunReportPage />} />
-            <Route path="portfolio/lab/blends" element={<PortfolioLabBlendsPage />} />
-            <Route path="mutual-funds" element={<MutualFundsPage />} />
-            <Route path="bonds" element={<BondsPage />} />
-            <Route path="watchlist" element={<WatchlistPage />} />
-            <Route path="news" element={<NewsPage />} />
-            <Route path="alerts" element={<AlertsPage />} />
-            <Route path="paper" element={<PaperTradingPage />} />
-            <Route path="position-sizer" element={<PositionSizerPage />} />
+            <Route path="cockpit" element={<CockpitDashboard />} />
+
+            {/* Derivatives (F&O) — own sub-app context, same workspace */}
+            <Route path="derivatives" element={<FnoLayout />}>
+              <Route index element={<OptionChainPage />} />
+              <Route path="greeks" element={<GreeksPage />} />
+              <Route path="futures" element={<FuturesPage />} />
+              <Route path="oi" element={<OIAnalysisPage />} />
+              <Route path="strategy" element={<StrategyPage />} />
+              <Route path="pcr" element={<PCRPage />} />
+              <Route path="flow" element={<OptionsFlowPage />} />
+              <Route path="heatmap" element={<HeatmapPage />} />
+              <Route path="expiry" element={<ExpiryPage />} />
+              <Route path="about" element={<FnoAboutPage />} />
+            </Route>
+          </Route>
+
+          {/* PORTFOLIO & RISK */}
+          <Route path="/portfolio" element={<ProtectedRoute><PortfolioLayout /></ProtectedRoute>}>
+            <Route index element={<PortfolioPage />} />
+            <Route path="watchlists" element={<WatchlistPage />} />
             <Route path="journal" element={<TradeJournalPage />} />
             <Route path="shadow-account" element={<ShadowAccountPage />} />
+            <Route path="lab" element={<PortfolioLabPage />} />
+            <Route path="lab/portfolios/:id" element={<PortfolioLabDetailPage />} />
+            <Route path="lab/runs/:runId" element={<PortfolioLabRunReportPage />} />
+            <Route path="lab/blends" element={<PortfolioLabBlendsPage />} />
             <Route path="risk" element={<RiskDashboardPage />} />
             <Route path="correlation" element={<CorrelationDashboardPage />} />
-            <Route path="stat-lab" element={<StatisticalLab />} />
-            <Route path="pair-trading" element={<PairTradingLabPage />} />
             <Route path="oms" element={<OmsCompliancePage />} />
-            <Route path="ops" element={<OpsDashboardPage />} />
-            <Route path="plugins" element={<PluginsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="chart-workstation" element={<ChartWorkstationPage />} />
-            <Route path="research" element={<ResearchPage />} />
-            <Route path="mta" element={<MultiTimeframePage />} />
-            <Route path="dom" element={<DOMPage />} />
-            <Route path="tape" element={<TimeAndSalesPage />} />
-            <Route path="launchpad" element={<LaunchpadPage />} />
-            <Route path="launchpad/popout" element={<LaunchpadPopoutPage />} />
-            <Route path="compare" element={<SplitComparisonPage />} />
-            <Route path="yield-curve" element={<YieldCurveDashboard />} />
-            <Route path="bond-analytics" element={<BondAnalyticsCalculator />} />
-            <Route path="option-greeks" element={<OptionGreeksCalculator />} />
-            <Route path="economics" element={<EconomicTerminal />} />
-            <Route path="sector-rotation" element={<SectorRotationPage />} />
-            <Route path="crypto" element={<CryptoWorkspacePage />} />
-            <Route path="etf-analytics" element={<ETFAnalyticsPage />} />
-            <Route path="cockpit" element={<CockpitDashboard />} />
-            <Route path="saved-views" element={<SavedViewsPage />} />
           </Route>
 
-          <Route path="/fno" element={<ProtectedRoute><FnoLayout /></ProtectedRoute>}>
-            <Route index element={<OptionChainPage />} />
-            <Route path="greeks" element={<GreeksPage />} />
-            <Route path="futures" element={<FuturesPage />} />
-            <Route path="oi" element={<OIAnalysisPage />} />
-            <Route path="strategy" element={<StrategyPage />} />
-            <Route path="pcr" element={<PCRPage />} />
-            <Route path="flow" element={<OptionsFlowPage />} />
-            <Route path="heatmap" element={<HeatmapPage />} />
-            <Route path="expiry" element={<ExpiryPage />} />
-            <Route path="about" element={<FnoAboutPage />} />
-          </Route>
-
-          <Route path="/backtesting" element={<ProtectedRoute><BacktestingLayout /></ProtectedRoute>}>
+          {/* LABS — backtesting, models, quant research */}
+          <Route path="/labs" element={<ProtectedRoute><BacktestingLayout /></ProtectedRoute>}>
             <Route index element={<BacktestingPage />} />
             <Route path="model-lab" element={<ModelLabPage />} />
             <Route path="model-lab/experiments/:id" element={<ModelLabExperimentDetailPage />} />
@@ -222,44 +226,73 @@ function App() {
             <Route path="model-governance" element={<ModelGovernancePage />} />
             <Route path="algorithm-framework" element={<AlgorithmFrameworkLab />} />
             <Route path="portfolio-optimizer" element={<PortfolioOptimizer />} />
+            <Route path="stat-lab" element={<StatisticalLab />} />
+            <Route path="pair-trading" element={<PairTradingLabPage />} />
+            <Route path="option-greeks" element={<OptionGreeksCalculator />} />
+            <Route path="factors" element={<FactorDashboardPage />} />
+            <Route path="alpha-zoo" element={<AlphaZooPage />} />
+            <Route path="strategy-export" element={<StrategyExportPage />} />
           </Route>
 
+          {/* DATA & OPS */}
+          <Route path="/ops" element={<ProtectedRoute><OpsLayout /></ProtectedRoute>}>
+            <Route index element={<OpsDashboardPage />} />
+            <Route path="data-quality" element={<DataQualityDashboard />} />
+            <Route path="alerts" element={<AlertsPage />} />
+            <Route path="plugins" element={<PluginsPage />} />
+          </Route>
+          <Route element={<ProtectedRoute><OpsLayout /></ProtectedRoute>}>
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/about" element={<AboutPage />} />
+          </Route>
+
+          {/* HOME + standalone surfaces */}
+          <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+          <Route element={<ProtectedRoute><EquityLayout /></ProtectedRoute>}>
+            <Route path="/launchpad" element={<LaunchpadPage />} />
+          </Route>
+          <Route path="/launchpad/popout" element={<ProtectedRoute><LaunchpadPopoutPage /></ProtectedRoute>} />
           <Route path="/account" element={<ProtectedRoute><AccountLayout /></ProtectedRoute>}>
             <Route index element={<AccountPage />} />
           </Route>
 
-          <Route path="/cockpit" element={<Navigate to="/equity/cockpit" replace />} />
-          <Route path="/model-lab" element={<ProtectedRoute><ModelLabPage /></ProtectedRoute>} />
-          <Route path="/model-lab/experiments/:id" element={<ProtectedRoute><ModelLabExperimentDetailPage /></ProtectedRoute>} />
-          <Route path="/model-lab/runs/:runId" element={<ProtectedRoute><ModelLabRunReportPage /></ProtectedRoute>} />
-          <Route path="/model-lab/compare" element={<ProtectedRoute><ModelLabComparePage /></ProtectedRoute>} />
-          <Route path="/portfolio-lab" element={<ProtectedRoute><PortfolioLabPage /></ProtectedRoute>} />
-          <Route path="/portfolio-lab/portfolios/:id" element={<ProtectedRoute><PortfolioLabDetailPage /></ProtectedRoute>} />
-          <Route path="/portfolio-lab/runs/:runId" element={<ProtectedRoute><PortfolioLabRunReportPage /></ProtectedRoute>} />
-          <Route path="/portfolio-lab/blends" element={<ProtectedRoute><PortfolioLabBlendsPage /></ProtectedRoute>} />
+          {/*
+            LEGACY URLS — every pre-R3 path redirects to its canonical home
+            (params and query strings preserved). Registered forever so old
+            links and bookmarks never break.
+          */}
+          <Route path="/equity" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/equity/*" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/fno" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/fno/*" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/backtesting" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/backtesting/*" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/model-lab" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/model-lab/*" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/portfolio-lab" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/portfolio-lab/*" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/cockpit" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/stocks" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/stocks/about" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/security" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/commodities" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/forex" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/hotlists" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/screener" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/compare" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/mutual-funds" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/heatmap" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/watchlist" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/news" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/alerts" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/paper" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/risk" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/correlation" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/oms" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/plugins" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
+          <Route path="/saved-views" element={<ProtectedRoute><LegacyRedirect /></ProtectedRoute>} />
 
-          <Route path="/stocks" element={<Navigate to="/equity/stocks" replace />} />
-          <Route path="/security" element={<Navigate to="/equity/security" replace />} />
-          <Route path="/commodities" element={<Navigate to="/equity/commodities" replace />} />
-          <Route path="/forex" element={<Navigate to="/equity/forex" replace />} />
-          <Route path="/hotlists" element={<Navigate to="/equity/hotlists" replace />} />
-          <Route path="/stocks/about" element={<Navigate to="/equity/stocks/about" replace />} />
-          <Route path="/dashboard" element={<Navigate to="/equity/dashboard" replace />} />
-          <Route path="/screener" element={<Navigate to="/equity/screener" replace />} />
-          <Route path="/compare" element={<Navigate to="/equity/compare" replace />} />
-          <Route path="/portfolio" element={<Navigate to="/equity/portfolio" replace />} />
-          <Route path="/mutual-funds" element={<Navigate to="/equity/portfolio?mode=mutual_funds" replace />} />
-          <Route path="/watchlist" element={<Navigate to="/equity/watchlist" replace />} />
-          <Route path="/news" element={<Navigate to="/equity/news" replace />} />
-          <Route path="/alerts" element={<Navigate to="/equity/alerts" replace />} />
-          <Route path="/paper" element={<Navigate to="/equity/paper" replace />} />
-          <Route path="/risk" element={<Navigate to="/equity/risk" replace />} />
-          <Route path="/correlation" element={<Navigate to="/equity/correlation" replace />} />
-          <Route path="/oms" element={<Navigate to="/equity/oms" replace />} />
-          <Route path="/ops" element={<Navigate to="/equity/ops" replace />} />
-          <Route path="/settings" element={<Navigate to="/equity/settings" replace />} />
-          <Route path="/plugins" element={<Navigate to="/equity/plugins" replace />} />
-          <Route path="/saved-views" element={<Navigate to="/equity/saved-views" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>

@@ -63,7 +63,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate(`/equity/why/${encodeURIComponent(activeTicker)}`);
+        navigate(`/markets/why/${encodeURIComponent(activeTicker)}`);
       },
     },
     {
@@ -75,7 +75,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate("/equity/chart-workstation");
+        navigate("/terminal/chart-workstation");
       },
     },
     {
@@ -86,7 +86,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate(`/equity/relationships/${encodeURIComponent(activeTicker)}`);
+        navigate(`/markets/relationships/${encodeURIComponent(activeTicker)}`);
       },
     },
     {
@@ -97,7 +97,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate(`/equity/security/${encodeURIComponent(activeTicker)}`);
+        navigate(`/markets/security/${encodeURIComponent(activeTicker)}`);
       },
     },
     {
@@ -118,7 +118,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate(`/equity/alerts?ticker=${encodeURIComponent(activeTicker)}`);
+        navigate(`/ops/alerts?ticker=${encodeURIComponent(activeTicker)}`);
       },
     },
     {
@@ -129,7 +129,7 @@ function mergeActions(
         const activeTicker = nextSymbol.trim().toUpperCase();
         if (!activeTicker) return;
         useStockStore.getState().setTicker(activeTicker);
-        navigate(`/equity/compare?symbols=${encodeURIComponent(activeTicker)}`);
+        navigate(`/markets/compare?symbols=${encodeURIComponent(activeTicker)}`);
       },
     },
     {

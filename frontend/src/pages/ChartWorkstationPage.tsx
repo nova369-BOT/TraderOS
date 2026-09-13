@@ -2003,7 +2003,7 @@ export function ChartWorkstationPage() {
     if (!activeSlotId) return reportMissingActivePane("Alert center");
     if (!activeTicker) return reportMissingActiveSymbol("Alert center");
     setTicker(activeTicker);
-    navigate(`/equity/alerts?ticker=${encodeURIComponent(activeTicker)}`);
+    navigate(`/ops/alerts?ticker=${encodeURIComponent(activeTicker)}`);
     return { ok: true };
   }, [activeSlotId, activeTicker, navigate, reportMissingActivePane, reportMissingActiveSymbol, setTicker]);
 
@@ -2011,16 +2011,16 @@ export function ChartWorkstationPage() {
     if (!activeTicker) return reportMissingActiveSymbol("Navigation");
     setTicker(activeTicker);
     if (route === "security") {
-      navigate(`/equity/security/${activeTicker}`);
+      navigate(`/markets/security/${activeTicker}`);
     } else if (route === "news") {
-      navigate(`/equity/news?ticker=${encodeURIComponent(activeTicker)}`);
+      navigate(`/markets/news?ticker=${encodeURIComponent(activeTicker)}`);
     } else if (route === "screener") {
-      navigate(`/equity/screener?symbol=${encodeURIComponent(activeTicker)}`);
+      navigate(`/markets/screener?symbol=${encodeURIComponent(activeTicker)}`);
     } else if (route === "compare") {
       const compareSymbols = [activeTicker, ...activeCompareSymbols].join(",");
-      navigate(`/equity/compare?symbols=${encodeURIComponent(compareSymbols)}`);
+      navigate(`/markets/compare?symbols=${encodeURIComponent(compareSymbols)}`);
     } else {
-      navigate(`/equity/portfolio?ticker=${encodeURIComponent(activeTicker)}`);
+      navigate(`/portfolio?ticker=${encodeURIComponent(activeTicker)}`);
     }
     return { ok: true };
   }, [activeCompareSymbols, activeTicker, navigate, reportMissingActiveSymbol, setTicker]);

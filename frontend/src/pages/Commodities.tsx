@@ -522,7 +522,7 @@ export function CommoditiesPage() {
                 actions={
                   selectedCommodity ? (
                     <Link
-                      to={`/equity/security/${encodeURIComponent(selectedCommodity.symbol)}?tab=overview`}
+                      to={`/markets/security/${encodeURIComponent(selectedCommodity.symbol)}?tab=overview`}
                       className="rounded border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-terminal-muted hover:text-terminal-text"
                     >
                       Open Security

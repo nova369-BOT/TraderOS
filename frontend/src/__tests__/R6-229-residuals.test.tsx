@@ -77,7 +77,7 @@ describe("R6-229 Residuals Verification", () => {
       window.addEventListener(CHART_WORKSTATION_ACTION_EVENT, listener);
 
       render(
-        <MemoryRouter initialEntries={["/equity/chart-workstation"]}>
+        <MemoryRouter initialEntries={["/terminal/chart-workstation"]}>
           <CommandPalette />
         </MemoryRouter>
       );

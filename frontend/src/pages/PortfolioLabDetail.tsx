@@ -58,7 +58,7 @@ export function PortfolioLabDetailPage() {
                 <button className="rounded border border-terminal-accent bg-terminal-accent/10 px-3 py-1 text-terminal-accent" onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
                   {runMutation.isPending ? "Running..." : "Run Portfolio"}
                 </button>
-                <Link className="rounded border border-terminal-border px-3 py-1" to="/equity/portfolio/lab/blends">Blends</Link>
+                <Link className="rounded border border-terminal-border px-3 py-1" to="/portfolio/lab/blends">Blends</Link>
               </div>
             </div>
             <div className="space-y-1 rounded border border-terminal-border/40 p-2">
@@ -73,7 +73,7 @@ export function PortfolioLabDetailPage() {
                     {isCompletedStatus(run.status) && (
                       <button type="button" className="rounded border border-terminal-border px-2 py-1" onClick={() => openTearSheet(run.run_id)}>Tear-sheet</button>
                     )}
-                    <Link className="rounded border border-terminal-border px-2 py-1" to={`/equity/portfolio/lab/runs/${run.run_id}`}>Report</Link>
+                    <Link className="rounded border border-terminal-border px-2 py-1" to={`/portfolio/lab/runs/${run.run_id}`}>Report</Link>
                   </div>
                 </div>
               ))}
@@ -87,7 +87,7 @@ export function PortfolioLabDetailPage() {
         <TerminalPanel title="Latest Run" subtitle={latestRun.run_id}>
           <div className="text-xs">Status: {latestRun.status}</div>
           <div className="mt-2">
-            <Link className="rounded border border-terminal-accent px-2 py-1 text-xs text-terminal-accent" to={`/equity/portfolio/lab/runs/${latestRun.run_id}`}>
+            <Link className="rounded border border-terminal-accent px-2 py-1 text-xs text-terminal-accent" to={`/portfolio/lab/runs/${latestRun.run_id}`}>
               Open Latest Report
             </Link>
           </div>

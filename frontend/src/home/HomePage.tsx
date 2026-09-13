@@ -26,13 +26,13 @@ export function HomePage() {
     const onKey = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
       if (key === "e") {
-        navigate("/equity/stocks");
+        navigate("/markets/stocks");
       }
       if (key === "f") {
-        navigate("/fno");
+        navigate("/markets/derivatives");
       }
       if (key === "b") {
-        navigate("/backtesting");
+        navigate("/labs");
       }
     };
     window.addEventListener("keydown", onKey);
@@ -76,7 +76,7 @@ export function HomePage() {
         <div className="absolute inset-0 z-10 overflow-auto p-6">
           <div className="mx-auto grid max-w-6xl grid-cols-1 gap-6 lg:grid-cols-3">
             <button
-              onClick={() => navigate("/equity/stocks")}
+              onClick={() => navigate("/markets/stocks")}
               className="group rounded border border-terminal-border bg-terminal-panel/80 p-5 text-left backdrop-blur-[1px] hover:border-terminal-accent"
             >
               <div className="text-sm font-semibold uppercase tracking-wide text-terminal-accent">Equity & Analysis</div>
@@ -94,7 +94,7 @@ export function HomePage() {
             </button>
 
             <button
-              onClick={() => navigate("/fno")}
+              onClick={() => navigate("/markets/derivatives")}
               className="group rounded border border-terminal-border bg-terminal-panel/80 p-5 text-left backdrop-blur-[1px] hover:border-terminal-accent"
             >
               <div className="text-sm font-semibold uppercase tracking-wide text-terminal-accent">Futures & Options</div>
@@ -112,7 +112,7 @@ export function HomePage() {
             </button>
 
             <button
-              onClick={() => navigate("/backtesting")}
+              onClick={() => navigate("/labs")}
               className="group rounded border border-terminal-border bg-terminal-panel/80 p-5 text-left backdrop-blur-[1px] hover:border-terminal-accent"
             >
               <div className="text-sm font-semibold uppercase tracking-wide text-terminal-accent">Backtesting Lab</div>

@@ -89,7 +89,7 @@ describe("CommandBar recent history and preview", () => {
       ],
     } as Partial<ReturnType<typeof useSettingsStore.getState>> as any);
 
-    const onExecute = vi.fn(async (command: string) => ({ ok: true, target: `/equity/stocks?ticker=${command}` }));
+    const onExecute = vi.fn(async (command: string) => ({ ok: true, target: `/markets/stocks?ticker=${command}` }));
 
     render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
@@ -147,7 +147,7 @@ describe("CommandBar recent history and preview", () => {
 
     render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <CommandBar onExecute={() => ({ ok: true, target: "/equity/stocks?ticker=AAPL" })} />
+        <CommandBar onExecute={() => ({ ok: true, target: "/markets/stocks?ticker=AAPL" })} />
       </MemoryRouter>,
     );
 
@@ -181,7 +181,7 @@ describe("CommandBar recent history and preview", () => {
   it("cancels debounced preview requests when the GO bar loses focus", async () => {
     render(
       <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <CommandBar onExecute={() => ({ ok: true, target: "/equity/stocks?ticker=AAPL" })} />
+        <CommandBar onExecute={() => ({ ok: true, target: "/markets/stocks?ticker=AAPL" })} />
       </MemoryRouter>,
     );
 

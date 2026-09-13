@@ -225,7 +225,7 @@ describe("AccountPage revamp", () => {
     renderPage();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Workstation" }));
-    expect(navigateSpy).toHaveBeenCalledWith("/equity/chart-workstation");
+    expect(navigateSpy).toHaveBeenCalledWith("/terminal/chart-workstation");
 
     fireEvent.click(screen.getByRole("button", { name: "Export profile bundle" }));
 

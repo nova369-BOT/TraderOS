@@ -21,19 +21,19 @@ function NavigationProbe({ autoTrack = false }: { autoTrack?: boolean }) {
 
 const HISTORY_FIXTURE: NavEvent[] = [
   {
-    path: "/equity/watchlist",
+    path: "/portfolio/watchlists",
     label: "History Watchlist",
     breadcrumbs: ["Home", "Equity", "Watchlist"],
     timestamp: 1,
   },
   {
-    path: "/equity/portfolio?view=tca",
+    path: "/portfolio?view=tca",
     label: "History Portfolio",
     breadcrumbs: ["Home", "Equity", "Portfolio", "Tca"],
     timestamp: 2,
   },
   {
-    path: "/equity/hotlists",
+    path: "/markets/hotlists",
     label: "History Hotlists",
     breadcrumbs: ["Home", "Equity", "Hotlists"],
     timestamp: 3,
@@ -48,21 +48,21 @@ describe("navigation history", () => {
 
   it("builds breadcrumbs for security hub subtabs", () => {
     render(
-      <MemoryRouter initialEntries={["/equity/security/AAPL?tab=financials&subtab=margins"]}>
+      <MemoryRouter initialEntries={["/markets/security/AAPL?tab=financials&subtab=margins"]}>
         <Routes>
           <Route path="*" element={<NavigationProbe />} />
         </Routes>
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId("nav-breadcrumbs").textContent).toBe("Home > Equity > AAPL > Financials > Margins");
+    expect(screen.getByTestId("nav-breadcrumbs").textContent).toBe("Home > Markets > AAPL > Financials > Margins");
   });
 
   it("navigates backward with Alt+Left", async () => {
     useNavigationStore.setState({ history: HISTORY_FIXTURE.slice(0, 2), currentIndex: 1 });
 
     render(
-      <MemoryRouter initialEntries={["/equity/portfolio?view=tca"]}>
+      <MemoryRouter initialEntries={["/portfolio?view=tca"]}>
         <Routes>
           <Route path="*" element={<NavigationProbe autoTrack />} />
         </Routes>
@@ -72,7 +72,7 @@ describe("navigation history", () => {
     fireEvent.keyDown(window, { key: "ArrowLeft", altKey: true });
 
     await waitFor(() => {
-      expect(screen.getByTestId("nav-location").textContent).toBe("/equity/watchlist");
+      expect(screen.getByTestId("nav-location").textContent).toBe("/portfolio/watchlists");
     });
   });
 
@@ -80,7 +80,7 @@ describe("navigation history", () => {
     useNavigationStore.setState({ history: HISTORY_FIXTURE, currentIndex: 2 });
 
     render(
-      <MemoryRouter initialEntries={["/equity/hotlists"]}>
+      <MemoryRouter initialEntries={["/markets/hotlists"]}>
         <CommandPalette />
       </MemoryRouter>,
     );

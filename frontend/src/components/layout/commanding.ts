@@ -268,7 +268,7 @@ function navigateToSecurityHub(navigate: NavigateFunction, ticker: string, tab: 
       params.set("subtab", subtab);
     }
   }
-  let url = `/equity/security/${encodeURIComponent(ticker)}?${params.toString()}`;
+  let url = `/markets/security/${encodeURIComponent(ticker)}?${params.toString()}`;
   if (tab === "financials") {
     const subtab = normalizeFinancialSubFunction(modifiers[0]);
     if (subtab) {
@@ -279,7 +279,7 @@ function navigateToSecurityHub(navigate: NavigateFunction, ticker: string, tab: 
 }
 
 function navigateToMarketStock(navigate: NavigateFunction, ticker: string) {
-  navigate(`/equity/stocks?ticker=${encodeURIComponent(ticker)}`);
+  navigate(`/markets/stocks?ticker=${encodeURIComponent(ticker)}`);
 }
 
 function navigateToAssetClassView(
@@ -292,7 +292,7 @@ function navigateToAssetClassView(
     if (ticker) {
       params.set("symbol", ticker);
     }
-    navigate(`/equity/commodities${params.toString() ? `?${params.toString()}` : ""}`);
+    navigate(`/markets/commodities${params.toString() ? `?${params.toString()}` : ""}`);
     return;
   }
   if (assetClass === "forex") {
@@ -300,7 +300,7 @@ function navigateToAssetClassView(
     if (ticker) {
       params.set("pair", ticker);
     }
-    navigate(`/equity/forex${params.toString() ? `?${params.toString()}` : ""}`);
+    navigate(`/markets/forex${params.toString() ? `?${params.toString()}` : ""}`);
     return;
   }
   const params = new URLSearchParams();
@@ -308,7 +308,7 @@ function navigateToAssetClassView(
   if (ticker) {
     params.set("ticker", ticker);
   }
-  navigate(`/equity/stocks?${params.toString()}`);
+  navigate(`/markets/stocks?${params.toString()}`);
 }
 
 function navigateToChartWorkstation(navigate: NavigateFunction, ticker?: string) {
@@ -317,7 +317,7 @@ function navigateToChartWorkstation(navigate: NavigateFunction, ticker?: string)
     params.set("ticker", ticker);
     params.set("symbol", ticker);
   }
-  navigate(`/equity/chart-workstation${params.toString() ? `?${params.toString()}` : ""}`);
+  navigate(`/terminal/chart-workstation${params.toString() ? `?${params.toString()}` : ""}`);
 }
 
 function applyTicker(ticker: string) {
@@ -354,53 +354,53 @@ function securityFuncToTab(func: CommandFunctionCode): string {
 export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFunction): CommandExecutionResult {
   if (parsed.kind === "natural-language") {
     if (!parsed.query.trim()) return { ok: false, message: "Empty command" };
-    navigate(`/equity/news?q=${encodeURIComponent(parsed.query.trim())}&ai=1`);
-    return { ok: true, target: "/equity/news" };
+    navigate(`/markets/news?q=${encodeURIComponent(parsed.query.trim())}&ai=1`);
+    return { ok: true, target: "/markets/news" };
   }
 
   if (parsed.kind === "ticker") {
     applyTicker(parsed.ticker);
     navigateToMarketStock(navigate, parsed.ticker);
-    return { ok: true, target: `/equity/stocks?ticker=${parsed.ticker}` };
+    return { ok: true, target: `/markets/stocks?ticker=${parsed.ticker}` };
   }
 
   if (parsed.kind === "ticker-function") {
     applyTicker(parsed.ticker);
     if (parsed.func === "WHY") {
-      navigate(`/equity/why/${encodeURIComponent(parsed.ticker)}`);
-      return { ok: true, target: `/equity/why/${parsed.ticker}` };
+      navigate(`/markets/why/${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: `/markets/why/${parsed.ticker}` };
     }
     if (parsed.func === "REL") {
-      navigate(`/equity/relationships/${encodeURIComponent(parsed.ticker)}`);
-      return { ok: true, target: `/equity/relationships/${parsed.ticker}` };
+      navigate(`/markets/relationships/${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: `/markets/relationships/${parsed.ticker}` };
     }
     if (parsed.func === "TERM") {
       navigate("/terminal");
       return { ok: true, target: "/terminal" };
     }
     if (parsed.func === "DESK") {
-      navigate(`/equity/cockpit?ticker=${encodeURIComponent(parsed.ticker)}`);
-      return { ok: true, target: "/equity/cockpit" };
+      navigate(`/markets/cockpit?ticker=${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: "/markets/cockpit" };
     }
     if (parsed.func === "CH") {
       navigateToChartWorkstation(navigate, parsed.ticker);
-      return { ok: true, target: "/equity/chart-workstation" };
+      return { ok: true, target: "/terminal/chart-workstation" };
     }
     if (parsed.func === "OPT") {
-      navigate(`/fno?symbol=${encodeURIComponent(parsed.ticker)}`);
-      return { ok: true, target: "/fno" };
+      navigate(`/markets/derivatives?symbol=${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: "/markets/derivatives" };
     }
     if (parsed.func === "ALERT") {
-      navigate(`/equity/alerts?ticker=${encodeURIComponent(parsed.ticker)}`);
-      return { ok: true, target: "/equity/alerts" };
+      navigate(`/ops/alerts?ticker=${encodeURIComponent(parsed.ticker)}`);
+      return { ok: true, target: "/ops/alerts" };
     }
     if (parsed.func === "COMP") {
       const right = parsed.modifiers[0] && looksLikeTicker(parsed.modifiers[0]) ? parsed.modifiers[0] : "MSFT";
-      navigate(`/equity/compare?left=${encodeURIComponent(parsed.ticker)}&right=${encodeURIComponent(right)}`);
-      return { ok: true, target: "/equity/compare" };
+      navigate(`/markets/compare?left=${encodeURIComponent(parsed.ticker)}&right=${encodeURIComponent(right)}`);
+      return { ok: true, target: "/markets/compare" };
     }
     navigateToSecurityHub(navigate, parsed.ticker, securityFuncToTab(parsed.func), parsed.modifiers);
-    return { ok: true, target: `/equity/security/${parsed.ticker}` };
+    return { ok: true, target: `/markets/security/${parsed.ticker}` };
   }
 
   if (parsed.kind === "function") {
@@ -415,128 +415,128 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
       case "DESK":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
-          navigate(`/equity/cockpit?ticker=${encodeURIComponent(mod0)}`);
-          return { ok: true, target: "/equity/cockpit" };
+          navigate(`/markets/cockpit?ticker=${encodeURIComponent(mod0)}`);
+          return { ok: true, target: "/markets/cockpit" };
         }
-        navigate("/equity/cockpit");
-        return { ok: true, target: "/equity/cockpit" };
+        navigate("/markets/cockpit");
+        return { ok: true, target: "/markets/cockpit" };
       case "WHY":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
-          navigate(`/equity/why/${encodeURIComponent(mod0)}`);
-          return { ok: true, target: `/equity/why/${mod0}` };
+          navigate(`/markets/why/${encodeURIComponent(mod0)}`);
+          return { ok: true, target: `/markets/why/${mod0}` };
         }
-        navigate("/equity/why");
-        return { ok: true, target: "/equity/why" };
+        navigate("/markets/why");
+        return { ok: true, target: "/markets/why" };
       case "REL":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
-          navigate(`/equity/relationships/${encodeURIComponent(mod0)}`);
-          return { ok: true, target: `/equity/relationships/${mod0}` };
+          navigate(`/markets/relationships/${encodeURIComponent(mod0)}`);
+          return { ok: true, target: `/markets/relationships/${mod0}` };
         }
-        navigate("/equity/relationships");
-        return { ok: true, target: "/equity/relationships" };
+        navigate("/markets/relationships");
+        return { ok: true, target: "/markets/relationships" };
       case "EQS":
-        navigate("/equity/screener");
-        return { ok: true, target: "/equity/screener" };
+        navigate("/markets/screener");
+        return { ok: true, target: "/markets/screener" };
       case "CMDTY":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
         }
         navigateToAssetClassView(navigate, "commodity", mod0 && looksLikeTicker(mod0) ? mod0 : undefined);
-        return { ok: true, target: "/equity/commodities" };
+        return { ok: true, target: "/markets/commodities" };
       case "FX":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
         }
         navigateToAssetClassView(navigate, "forex", mod0 && looksLikeTicker(mod0) ? mod0 : undefined);
-        return { ok: true, target: "/equity/forex" };
+        return { ok: true, target: "/markets/forex" };
       case "ETFA":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
-          navigate(`/equity/etf-analytics?ticker=${encodeURIComponent(mod0)}`);
-          return { ok: true, target: "/equity/etf-analytics" };
+          navigate(`/markets/etf-analytics?ticker=${encodeURIComponent(mod0)}`);
+          return { ok: true, target: "/markets/etf-analytics" };
         }
-        navigate("/equity/etf-analytics");
-        return { ok: true, target: "/equity/etf-analytics" };
+        navigate("/markets/etf-analytics");
+        return { ok: true, target: "/markets/etf-analytics" };
       case "BOND":
-        navigate("/equity/bonds");
-        return { ok: true, target: "/equity/bonds" };
+        navigate("/markets/bonds");
+        return { ok: true, target: "/markets/bonds" };
       case "HOT":
-        navigate("/equity/hotlists");
-        return { ok: true, target: "/equity/hotlists" };
+        navigate("/markets/hotlists");
+        return { ok: true, target: "/markets/hotlists" };
       case "TCA":
-        navigate(mod0 && looksLikeTicker(mod0) ? `/equity/portfolio?ticker=${encodeURIComponent(mod0)}&view=tca` : "/equity/portfolio?view=tca");
-        return { ok: true, target: "/equity/portfolio" };
+        navigate(mod0 && looksLikeTicker(mod0) ? `/portfolio?ticker=${encodeURIComponent(mod0)}&view=tca` : "/portfolio?view=tca");
+        return { ok: true, target: "/portfolio" };
       case "COMM":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
         }
-        navigate(mod0 && looksLikeTicker(mod0) ? `/equity/news?ticker=${encodeURIComponent(mod0)}&view=community` : "/equity/news?view=community");
-        return { ok: true, target: "/equity/news" };
+        navigate(mod0 && looksLikeTicker(mod0) ? `/markets/news?ticker=${encodeURIComponent(mod0)}&view=community` : "/markets/news?view=community");
+        return { ok: true, target: "/markets/news" };
       case "DEPTH":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
         }
-        navigate(`/equity/chart-workstation${mod0 && looksLikeTicker(mod0) ? `?panel=depth&ticker=${encodeURIComponent(mod0)}&symbol=${encodeURIComponent(mod0)}` : "?panel=depth"}`);
-        return { ok: true, target: "/equity/chart-workstation" };
+        navigate(`/terminal/chart-workstation${mod0 && looksLikeTicker(mod0) ? `?panel=depth&ticker=${encodeURIComponent(mod0)}&symbol=${encodeURIComponent(mod0)}` : "?panel=depth"}`);
+        return { ok: true, target: "/terminal/chart-workstation" };
       case "PORT":
-        navigate("/equity/portfolio");
-        return { ok: true, target: "/equity/portfolio" };
+        navigate("/portfolio");
+        return { ok: true, target: "/portfolio" };
       case "WL": {
         const name = mod0 || "";
-        const target = name ? `/equity/watchlist?name=${encodeURIComponent(name)}` : "/equity/watchlist";
+        const target = name ? `/portfolio/watchlists?name=${encodeURIComponent(name)}` : "/portfolio/watchlists";
         navigate(target);
-        return { ok: true, target: "/equity/watchlist" };
+        return { ok: true, target: "/portfolio/watchlists" };
       }
       case "NEWS":
         if (mod0 && looksLikeTicker(mod0)) {
           applyTicker(mod0);
           navigateToSecurityHub(navigate, mod0, "news");
-          return { ok: true, target: `/equity/security/${mod0}` };
+          return { ok: true, target: `/markets/security/${mod0}` };
         }
-        navigate("/equity/news");
-        return { ok: true, target: "/equity/news" };
+        navigate("/markets/news");
+        return { ok: true, target: "/markets/news" };
       case "TOP":
-        navigate("/equity/news?view=top");
-        return { ok: true, target: "/equity/news" };
+        navigate("/markets/news?view=top");
+        return { ok: true, target: "/markets/news" };
       case "BT":
-        navigate("/backtesting");
-        return { ok: true, target: "/backtesting" };
+        navigate("/labs");
+        return { ok: true, target: "/labs" };
       case "SET":
-        navigate("/equity/settings");
-        return { ok: true, target: "/equity/settings" };
+        navigate("/settings");
+        return { ok: true, target: "/settings" };
       case "OPS":
-        navigate("/equity/ops");
-        return { ok: true, target: "/equity/ops" };
+        navigate("/ops");
+        return { ok: true, target: "/ops" };
       case "LAUNCH":
-        navigate("/equity/launchpad");
-        return { ok: true, target: "/equity/launchpad" };
+        navigate("/launchpad");
+        return { ok: true, target: "/launchpad" };
       case "YCURVE":
-        navigate("/equity/yield-curve");
-        return { ok: true, target: "/equity/yield-curve" };
+        navigate("/markets/yield-curve");
+        return { ok: true, target: "/markets/yield-curve" };
       case "ECAL":
-        navigate("/equity/economics?tab=calendar");
-        return { ok: true, target: "/equity/economics" };
+        navigate("/markets/economics?tab=calendar");
+        return { ok: true, target: "/markets/economics" };
       case "ECOF":
-        navigate("/equity/economics?tab=macro");
-        return { ok: true, target: "/equity/economics" };
+        navigate("/markets/economics?tab=macro");
+        return { ok: true, target: "/markets/economics" };
       case "FRED": {
         const series = mod0 || "CPIAUCSL";
-        navigate(`/equity/security/FRED:${series.toUpperCase()}?tab=chart`);
-        return { ok: true, target: "/equity/security" };
+        navigate(`/markets/security/FRED:${series.toUpperCase()}?tab=chart`);
+        return { ok: true, target: "/markets/security" };
       }
       case "RRG":
-        navigate("/equity/sector-rotation");
-        return { ok: true, target: "/equity/sector-rotation" };
+        navigate("/markets/sector-rotation");
+        return { ok: true, target: "/markets/sector-rotation" };
       case "CRYP":
-        navigate("/equity/crypto");
-        return { ok: true, target: "/equity/crypto" };
+        navigate("/markets/crypto");
+        return { ok: true, target: "/markets/crypto" };
       case "COMP": {
         const left = mod0 && looksLikeTicker(mod0) ? mod0 : useStockStore.getState().ticker || "AAPL";
         const right = parsed.modifiers[1] && looksLikeTicker(parsed.modifiers[1]) ? parsed.modifiers[1] : "MSFT";
-        navigate(`/equity/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`);
-        return { ok: true, target: "/equity/compare" };
+        navigate(`/markets/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`);
+        return { ok: true, target: "/markets/compare" };
       }
       case "DES":
       case "GP":
@@ -551,19 +551,19 @@ export function executeParsedCommand(parsed: ParsedCommand, navigate: NavigateFu
           applyTicker(mod0);
           if (parsed.func === "CH") {
             navigateToChartWorkstation(navigate, mod0);
-            return { ok: true, target: "/equity/chart-workstation" };
+            return { ok: true, target: "/terminal/chart-workstation" };
           }
           if (parsed.func === "OPT") {
-            navigate(`/fno?symbol=${encodeURIComponent(mod0)}`);
-            return { ok: true, target: "/fno" };
+            navigate(`/markets/derivatives?symbol=${encodeURIComponent(mod0)}`);
+            return { ok: true, target: "/markets/derivatives" };
           }
           if (parsed.func === "ALERT") {
-            navigate(`/equity/alerts?ticker=${encodeURIComponent(mod0)}`);
-            return { ok: true, target: "/equity/alerts" };
+            navigate(`/ops/alerts?ticker=${encodeURIComponent(mod0)}`);
+            return { ok: true, target: "/ops/alerts" };
           }
           const otherModifiers = parsed.modifiers.slice(1);
           navigateToSecurityHub(navigate, mod0, securityFuncToTab(parsed.func), otherModifiers);
-          return { ok: true, target: `/equity/security/${mod0}` };
+          return { ok: true, target: `/markets/security/${mod0}` };
         }
         return { ok: false, message: `${parsed.func} requires a ticker` };
       default:

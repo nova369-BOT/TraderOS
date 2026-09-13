@@ -151,7 +151,7 @@ export function HeatmapPage() {
               <span className="text-xs">Connect a live Kite API key to stream F&amp;O open interest data.</span>
             </div>
           ) : (
-            <HeatGrid cells={data} onCellClick={(name) => navigate(`/fno?symbol=${encodeURIComponent(name)}`)} />
+            <HeatGrid cells={data} onCellClick={(name) => navigate(`/markets/derivatives?symbol=${encodeURIComponent(name)}`)} />
           )}
         </div>
       </div>

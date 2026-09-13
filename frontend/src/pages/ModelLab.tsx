@@ -135,10 +135,10 @@ export function ModelLabPage() {
     <div className="space-y-3 p-3">
       <TerminalPanel title="Research Suites" subtitle="Backtesting + Model Lab">
         <div className="flex flex-wrap gap-2 text-xs">
-          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/backtesting/model-lab") ? "border-terminal-border text-terminal-muted hover:text-terminal-text" : "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"}`} to="/backtesting">
+          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/labs/model-lab") ? "border-terminal-border text-terminal-muted hover:text-terminal-text" : "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"}`} to="/labs">
             Backtesting Console
           </Link>
-          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/backtesting/model-lab") ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:text-terminal-text"}`} to="/backtesting/model-lab">
+          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/labs/model-lab") ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:text-terminal-text"}`} to="/labs/model-lab">
             Open Model Lab
           </Link>
         </div>
@@ -195,7 +195,7 @@ export function ModelLabPage() {
                     <div className="text-terminal-muted">{item.model_key} | {item.start_date} {"->"} {item.end_date}</div>
                   </div>
                   <div className="flex gap-2">
-                    <Link className="rounded border border-terminal-accent px-2 py-1 text-terminal-accent" to={`/backtesting/model-lab/experiments/${item.id}`}>Open</Link>
+                    <Link className="rounded border border-terminal-accent px-2 py-1 text-terminal-accent" to={`/labs/model-lab/experiments/${item.id}`}>Open</Link>
                   </div>
                 </div>
                 <div className="mt-1 flex flex-wrap gap-1">
@@ -292,7 +292,7 @@ export function ModelLabPage() {
             <tbody>
               {sortedLeaderboard.map((row, index) => (
                 <tr key={`${row.run_id || row.experiment_id || row.name}-${index}`} className="border-b border-terminal-border/30">
-                  <td className="px-2 py-1">{row.run_id ? <Link className="text-terminal-accent" to={`/backtesting/model-lab/runs/${row.run_id}`}>{row.run_id}</Link> : "-"}</td>
+                  <td className="px-2 py-1">{row.run_id ? <Link className="text-terminal-accent" to={`/labs/model-lab/runs/${row.run_id}`}>{row.run_id}</Link> : "-"}</td>
                   <td className="px-2 py-1">{row.name || row.model_key || "-"}</td>
                   <td className="px-2 py-1">{row.market || leaderboardMarket}</td>
                   <td className="px-2 py-1 text-right">{Number(row.sharpe || 0).toFixed(2)}</td>

@@ -166,7 +166,7 @@ export function TickerTape() {
       item.symbol;
     setTicker(loadSymbol);
     void loadTicker();
-    navigate(`/equity/security/${encodeURIComponent(loadSymbol)}?tab=chart`);
+    navigate(`/markets/security/${encodeURIComponent(loadSymbol)}?tab=chart`);
   };
 
   return (

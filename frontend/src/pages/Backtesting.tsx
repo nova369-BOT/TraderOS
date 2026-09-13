@@ -1576,10 +1576,10 @@ export function BacktestingPage() {
         }
       >
         <div className="flex flex-wrap gap-2 text-xs">
-          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/backtesting/model-lab") ? "border-terminal-border text-terminal-muted hover:text-terminal-text" : "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"}`} to="/backtesting">
+          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/labs/model-lab") ? "border-terminal-border text-terminal-muted hover:text-terminal-text" : "border-terminal-accent bg-terminal-accent/10 text-terminal-accent"}`} to="/labs">
             Backtesting Console
           </Link>
-          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/backtesting/model-lab") ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:text-terminal-text"}`} to="/backtesting/model-lab">
+          <Link className={`rounded border px-2 py-1 ${location.pathname.startsWith("/labs/model-lab") ? "border-terminal-accent bg-terminal-accent/10 text-terminal-accent" : "border-terminal-border text-terminal-muted hover:text-terminal-text"}`} to="/labs/model-lab">
             Open Model Lab
           </Link>
         </div>

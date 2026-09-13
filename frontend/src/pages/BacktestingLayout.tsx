@@ -11,13 +11,13 @@ function BacktestingRightRail() {
   const ticker = useStockStore((s) => s.ticker);
 
   const routeLabel = (() => {
-    if (location.pathname.includes("/backtesting/model-lab/compare")) return "Model Lab Compare";
-    if (location.pathname.includes("/backtesting/model-lab/experiments/")) return "Model Lab Experiment";
-    if (location.pathname.includes("/backtesting/model-lab/runs/")) return "Model Lab Run Report";
-    if (location.pathname.includes("/backtesting/model-lab")) return "Model Lab";
-    if (location.pathname.includes("/backtesting/model-governance")) return "Model Governance";
-    if (location.pathname.includes("/backtesting/algorithm-framework")) return "Algorithm Framework Lab";
-    if (location.pathname.includes("/backtesting/portfolio-optimizer")) return "Portfolio Optimizer";
+    if (location.pathname.includes("/labs/model-lab/compare")) return "Model Lab Compare";
+    if (location.pathname.includes("/labs/model-lab/experiments/")) return "Model Lab Experiment";
+    if (location.pathname.includes("/labs/model-lab/runs/")) return "Model Lab Run Report";
+    if (location.pathname.includes("/labs/model-lab")) return "Model Lab";
+    if (location.pathname.includes("/labs/model-governance")) return "Model Governance";
+    if (location.pathname.includes("/labs/algorithm-framework")) return "Algorithm Framework Lab";
+    if (location.pathname.includes("/labs/portfolio-optimizer")) return "Portfolio Optimizer";
     return "Backtesting Console";
   })();
 
@@ -48,19 +48,19 @@ function BacktestingRightRail() {
 
         <TerminalPanel title="Quick Jump" subtitle="Backtesting stack" bodyClassName="space-y-1">
           <div className="grid grid-cols-1 gap-1">
-            <Link to="/backtesting" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
+            <Link to="/labs" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
               Backtesting Console
             </Link>
-            <Link to="/backtesting/model-lab" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
+            <Link to="/labs/model-lab" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
               Model Lab
             </Link>
-            <Link to="/backtesting/model-governance" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
+            <Link to="/labs/model-governance" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
               Model Governance
             </Link>
-            <Link to="/backtesting/algorithm-framework" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
+            <Link to="/labs/algorithm-framework" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
               Algorithm Framework
             </Link>
-            <Link to="/backtesting/portfolio-optimizer" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
+            <Link to="/labs/portfolio-optimizer" className="rounded-sm border border-terminal-border px-2 py-1 ot-type-label text-terminal-muted hover:text-terminal-text">
               Portfolio Optimizer
             </Link>
           </div>

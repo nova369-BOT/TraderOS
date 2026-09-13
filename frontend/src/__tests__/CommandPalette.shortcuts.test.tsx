@@ -65,7 +65,7 @@ describe("CommandPalette keyboard shortcuts", () => {
 
     render(
       <MemoryRouter
-        initialEntries={["/equity/chart-workstation"]}
+        initialEntries={["/terminal/chart-workstation"]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <CommandPalette />
@@ -100,7 +100,7 @@ describe("CommandPalette keyboard shortcuts", () => {
 
     render(
       <MemoryRouter
-        initialEntries={["/equity/chart-workstation"]}
+        initialEntries={["/terminal/chart-workstation"]}
         future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
       >
         <CommandPalette />

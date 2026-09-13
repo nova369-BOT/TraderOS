@@ -87,7 +87,7 @@ function getLaunchpadPanelPopoutUrl(panelRoot: HTMLElement, currentLinkGroup: Li
 
   if (!panelType) return null;
 
-  const url = new URL("/equity/launchpad/popout", window.location.origin);
+  const url = new URL("/launchpad/popout", window.location.origin);
   url.searchParams.set("id", panelId);
   url.searchParams.set("type", panelType);
   url.searchParams.set("title", panelTitle);

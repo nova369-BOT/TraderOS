@@ -406,7 +406,7 @@ export function SecurityHubPage() {
               <CatalystConvictionPanel
                 symbol={activeTicker}
                 market={selectedMarket}
-                onOpenScreener={() => navigate(`/equity/screener?symbol=${encodeURIComponent(activeTicker)}`)}
+                onOpenScreener={() => navigate(`/markets/screener?symbol=${encodeURIComponent(activeTicker)}`)}
               />
             </div>
           </div>
@@ -546,8 +546,8 @@ export function SecurityHubPage() {
                   message="Create an alert or use the screener to put this symbol into an active research workflow."
                   icon="NEWS"
                   actions={[
-                    { label: "Alerts", href: "/equity/alerts" },
-                    { label: "Screener", href: "/equity/screener" },
+                    { label: "Alerts", href: "/ops/alerts" },
+                    { label: "Screener", href: "/markets/screener" },
                   ]}
                 />
               )}

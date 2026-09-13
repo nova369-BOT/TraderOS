@@ -202,7 +202,7 @@ describe("HomePage mission-control revamp", () => {
     expect(screen.getByText("Bullish 87%")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /Workstation\. WORKSPACE desk access/i }));
-    expect(navigateSpy).toHaveBeenCalledWith("/equity/chart-workstation");
+    expect(navigateSpy).toHaveBeenCalledWith("/terminal/chart-workstation");
   }, 10000);
 
   it("preserves the transition loading overlay before revealing the dashboard", async () => {

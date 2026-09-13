@@ -62,14 +62,14 @@ describe("Screener results routing", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Chart" }));
     expect(setTickerMock).toHaveBeenCalledWith("AAPL");
-    expect(navigateMock).toHaveBeenCalledWith("/equity/chart-workstation");
+    expect(navigateMock).toHaveBeenCalledWith("/terminal/chart-workstation");
 
     fireEvent.click(screen.getByRole("button", { name: "Research" }));
     expect(setTickerMock).toHaveBeenCalledWith("AAPL");
-    expect(navigateMock).toHaveBeenCalledWith("/equity/security/AAPL?tab=overview");
+    expect(navigateMock).toHaveBeenCalledWith("/markets/security/AAPL?tab=overview");
 
     fireEvent.click(screen.getByRole("button", { name: "News" }));
     expect(setTickerMock).toHaveBeenCalledWith("AAPL");
-    expect(navigateMock).toHaveBeenCalledWith("/equity/security/AAPL?tab=news");
+    expect(navigateMock).toHaveBeenCalledWith("/markets/security/AAPL?tab=news");
   });
 });

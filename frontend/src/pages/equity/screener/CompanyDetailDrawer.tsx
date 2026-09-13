@@ -72,31 +72,31 @@ export function CompanyDetailDrawer() {
   const openSecurity = (tab: "overview" | "news") => {
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/security/${encodeURIComponent(ticker)}?tab=${tab}`);
+    navigate(`/markets/security/${encodeURIComponent(ticker)}?tab=${tab}`);
   };
 
   const openChart = () => {
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/chart-workstation?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row: selectedRow } });
+    navigate(`/terminal/chart-workstation?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row: selectedRow } });
   };
 
   const openBacktest = () => {
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/backtesting?symbol=${encodeURIComponent(ticker)}&market=${encodeURIComponent(getMarket(selectedRow))}&source=screener`, { state: { ticker, market: getMarket(selectedRow), screen: "screener", row: selectedRow } });
+    navigate(`/labs?symbol=${encodeURIComponent(ticker)}&market=${encodeURIComponent(getMarket(selectedRow))}&source=screener`, { state: { ticker, market: getMarket(selectedRow), screen: "screener", row: selectedRow } });
   };
 
   const openCompare = () => {
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/chart-workstation?symbol=${encodeURIComponent(ticker)}&compare=true&source=screener`, { state: { ticker, compare: true, screen: "screener", row: selectedRow } });
+    navigate(`/terminal/chart-workstation?symbol=${encodeURIComponent(ticker)}&compare=true&source=screener`, { state: { ticker, compare: true, screen: "screener", row: selectedRow } });
   };
 
   const openAlert = () => {
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/alerts?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row: selectedRow } });
+    navigate(`/ops/alerts?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row: selectedRow } });
   };
 
   const addToWatchlist = async () => {

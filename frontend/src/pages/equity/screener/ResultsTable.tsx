@@ -261,35 +261,35 @@ export function ResultsTable({ framed = true }: ResultsTableProps) {
     const ticker = getTicker(row);
     if (!ticker) return;
     setTicker(ticker);
-    navigate("/equity/chart-workstation");
+    navigate("/terminal/chart-workstation");
   };
 
   const openSecurity = (row: Record<string, unknown>, tab: "overview" | "news") => {
     const ticker = getTicker(row);
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/security/${encodeURIComponent(ticker)}?tab=${tab}`);
+    navigate(`/markets/security/${encodeURIComponent(ticker)}?tab=${tab}`);
   };
 
   const openBacktest = (row: Record<string, unknown>) => {
     const ticker = getTicker(row);
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/backtesting?symbol=${encodeURIComponent(ticker)}&market=${encodeURIComponent(getMarket(row))}&source=screener`, { state: { ticker, market: getMarket(row), screen: "screener", row } });
+    navigate(`/labs?symbol=${encodeURIComponent(ticker)}&market=${encodeURIComponent(getMarket(row))}&source=screener`, { state: { ticker, market: getMarket(row), screen: "screener", row } });
   };
 
   const openCompare = (row: Record<string, unknown>) => {
     const ticker = getTicker(row);
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/chart-workstation?symbol=${encodeURIComponent(ticker)}&compare=true&source=screener`, { state: { ticker, screen: "screener", compare: true, row } });
+    navigate(`/terminal/chart-workstation?symbol=${encodeURIComponent(ticker)}&compare=true&source=screener`, { state: { ticker, screen: "screener", compare: true, row } });
   };
 
   const openAlert = (row: Record<string, unknown>) => {
     const ticker = getTicker(row);
     if (!ticker) return;
     setTicker(ticker);
-    navigate(`/equity/alerts?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row } });
+    navigate(`/ops/alerts?symbol=${encodeURIComponent(ticker)}&source=screener`, { state: { ticker, screen: "screener", row } });
   };
 
   const watch = async (row: Record<string, unknown>) => {

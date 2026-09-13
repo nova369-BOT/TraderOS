@@ -67,85 +67,85 @@ const NAV_CARD_SECTIONS: Array<{ title: string; cards: NavCard[] }> = [
   {
     title: "MARKETS",
     cards: [
-      { label: "Equity", to: "/equity/stocks", badge: "M1" },
-      { label: "F&O", to: "/fno", badge: "FO" },
-      { label: "Crypto", to: "/equity/crypto", badge: "CR" },
-      { label: "Economics", to: "/equity/economics", badge: "EC" },
-      { label: "Yield Curve", to: "/equity/yield-curve", badge: "YC" },
-      { label: "Rotation", to: "/equity/sector-rotation", badge: "ROT" },
-      { label: "Heatmap", to: "/equity/heatmap", badge: "HM" },
+      { label: "Equity", to: "/markets/stocks", badge: "M1" },
+      { label: "F&O", to: "/markets/derivatives", badge: "FO" },
+      { label: "Crypto", to: "/markets/crypto", badge: "CR" },
+      { label: "Economics", to: "/markets/economics", badge: "EC" },
+      { label: "Yield Curve", to: "/markets/yield-curve", badge: "YC" },
+      { label: "Rotation", to: "/markets/sector-rotation", badge: "ROT" },
+      { label: "Heatmap", to: "/markets/heatmap", badge: "HM" },
     ],
   },
   {
     title: "DERIVATIVES",
     cards: [
-      { label: "Option Chain", to: "/fno", badge: "OC" },
-      { label: "Greeks", to: "/fno/greeks", badge: "GR" },
-      { label: "Futures", to: "/fno/futures", badge: "FUT" },
-      { label: "OI Analysis", to: "/fno/oi", badge: "OI" },
-      { label: "Strategy", to: "/fno/strategy", badge: "STR" },
-      { label: "PCR", to: "/fno/pcr", badge: "PCR" },
-      { label: "Options Flow", to: "/fno/flow", badge: "FLW" },
-      { label: "F&O Heatmap", to: "/fno/heatmap", badge: "FHM" },
-      { label: "Expiry", to: "/fno/expiry", badge: "EXP" },
+      { label: "Option Chain", to: "/markets/derivatives", badge: "OC" },
+      { label: "Greeks", to: "/markets/derivatives/greeks", badge: "GR" },
+      { label: "Futures", to: "/markets/derivatives/futures", badge: "FUT" },
+      { label: "OI Analysis", to: "/markets/derivatives/oi", badge: "OI" },
+      { label: "Strategy", to: "/markets/derivatives/strategy", badge: "STR" },
+      { label: "PCR", to: "/markets/derivatives/pcr", badge: "PCR" },
+      { label: "Options Flow", to: "/markets/derivatives/flow", badge: "FLW" },
+      { label: "F&O Heatmap", to: "/markets/derivatives/heatmap", badge: "FHM" },
+      { label: "Expiry", to: "/markets/derivatives/expiry", badge: "EXP" },
     ],
   },
   {
     title: "RESEARCH",
     cards: [
-      { label: "Security Hub", to: "/equity/security", badge: "SH" },
-      { label: "Screener", to: "/equity/screener", badge: "F2" },
-      { label: "Saved Views", to: "/equity/saved-views", badge: "SV" },
-      { label: "Factors", to: "/equity/factors", badge: "FAC" },
-      { label: "Alpha Zoo", to: "/equity/alpha-zoo", badge: "AZ" },
-      { label: "Strategy Export", to: "/equity/strategy-export", badge: "SE" },
-      { label: "Intelligence", to: "/equity/intelligence-timeline", badge: "INT" },
-      { label: "Hotlists", to: "/equity/hotlists", badge: "HOT" },
-      { label: "Insider", to: "/equity/insider", badge: "INS" },
-      { label: "Compare", to: "/equity/compare", badge: "CMP" },
+      { label: "Security Hub", to: "/markets/security", badge: "SH" },
+      { label: "Screener", to: "/markets/screener", badge: "F2" },
+      { label: "Saved Views", to: "/terminal/saved-views", badge: "SV" },
+      { label: "Factors", to: "/labs/factors", badge: "FAC" },
+      { label: "Alpha Zoo", to: "/labs/alpha-zoo", badge: "AZ" },
+      { label: "Strategy Export", to: "/labs/strategy-export", badge: "SE" },
+      { label: "Intelligence", to: "/markets/intelligence-timeline", badge: "INT" },
+      { label: "Hotlists", to: "/markets/hotlists", badge: "HOT" },
+      { label: "Insider", to: "/markets/insider", badge: "INS" },
+      { label: "Compare", to: "/markets/compare", badge: "CMP" },
     ],
   },
   {
     title: "LABS",
     cards: [
-      { label: "Backtesting", to: "/backtesting", badge: "F9" },
-      { label: "Model Lab", to: "/backtesting/model-lab", badge: "ML" },
-      { label: "Portfolio Lab", to: "/equity/portfolio/lab", badge: "PL" },
-      { label: "Model Compare", to: "/backtesting/model-lab/compare", badge: "MC" },
-      { label: "Blends", to: "/equity/portfolio/lab/blends", badge: "BL" },
-      { label: "Stat Lab", to: "/equity/stat-lab", badge: "SL" },
+      { label: "Backtesting", to: "/labs", badge: "F9" },
+      { label: "Model Lab", to: "/labs/model-lab", badge: "ML" },
+      { label: "Portfolio Lab", to: "/portfolio/lab", badge: "PL" },
+      { label: "Model Compare", to: "/labs/model-lab/compare", badge: "MC" },
+      { label: "Blends", to: "/portfolio/lab/blends", badge: "BL" },
+      { label: "Stat Lab", to: "/labs/stat-lab", badge: "SL" },
     ],
   },
   {
     title: "PORTFOLIO",
     cards: [
-      { label: "Holdings", to: "/equity/portfolio", badge: "F3" },
-      { label: "Risk Desk", to: "/equity/risk", badge: "RSK" },
-      { label: "Correlation", to: "/equity/correlation", badge: "COR" },
-      { label: "Paper", to: "/equity/paper", badge: "PP" },
-      { label: "Dividends", to: "/equity/dividends", badge: "DIV" },
-      { label: "Mutual Funds", to: "/equity/mutual-funds", badge: "MF" },
-      { label: "ETF Analytics", to: "/equity/etf-analytics", badge: "ETF" },
+      { label: "Holdings", to: "/portfolio", badge: "F3" },
+      { label: "Risk Desk", to: "/portfolio/risk", badge: "RSK" },
+      { label: "Correlation", to: "/portfolio/correlation", badge: "COR" },
+      { label: "Paper", to: "/terminal/paper", badge: "PP" },
+      { label: "Dividends", to: "/markets/dividends", badge: "DIV" },
+      { label: "Mutual Funds", to: "/markets/mutual-funds", badge: "MF" },
+      { label: "ETF Analytics", to: "/markets/etf-analytics", badge: "ETF" },
     ],
   },
   {
     title: "INTEL",
     cards: [
-      { label: "News", to: "/equity/news", badge: "NW" },
-      { label: "Alerts", to: "/equity/alerts", badge: "AL" },
-      { label: "Watchlist", to: "/equity/watchlist", badge: "F4" },
-      { label: "Relative Str", to: "/equity/rs", badge: "RS" },
-      { label: "Data Quality", to: "/equity/data-quality", badge: "DQ" },
+      { label: "News", to: "/markets/news", badge: "NW" },
+      { label: "Alerts", to: "/ops/alerts", badge: "AL" },
+      { label: "Watchlist", to: "/portfolio/watchlists", badge: "F4" },
+      { label: "Relative Str", to: "/markets/rs", badge: "RS" },
+      { label: "Data Quality", to: "/ops/data-quality", badge: "DQ" },
     ],
   },
   {
     title: "WORKSPACE",
     cards: [
-      { label: "Launchpad", to: "/equity/launchpad", badge: "LP" },
-      { label: "Workstation", to: "/equity/chart-workstation", badge: "WS" },
-      { label: "Cockpit", to: "/equity/cockpit", badge: "CP" },
-      { label: "Plugins", to: "/equity/plugins", badge: "PLG" },
-      { label: "Settings", to: "/equity/settings", badge: "F6" },
+      { label: "Launchpad", to: "/launchpad", badge: "LP" },
+      { label: "Workstation", to: "/terminal/chart-workstation", badge: "WS" },
+      { label: "Cockpit", to: "/markets/cockpit", badge: "CP" },
+      { label: "Plugins", to: "/ops/plugins", badge: "PLG" },
+      { label: "Settings", to: "/settings", badge: "F6" },
       { label: "Account", to: "/account", badge: "ACC" },
     ],
   },
@@ -659,7 +659,7 @@ export function HomePage() {
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/portfolio")}
+                      onClick={() => navigate("/portfolio")}
                     >
                       Portfolio HQ
                     </button>
@@ -673,14 +673,14 @@ export function HomePage() {
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/launchpad")}
+                      onClick={() => navigate("/launchpad")}
                     >
                       Launchpad
                     </button>
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-border px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/news")}
+                      onClick={() => navigate("/markets/news")}
                     >
                       Intel Wire
                     </button>
@@ -751,14 +751,14 @@ export function HomePage() {
                         <button
                           type="button"
                           className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                          onClick={() => navigate("/equity/portfolio")}
+                          onClick={() => navigate("/portfolio")}
                         >
                           Open Portfolio
                         </button>
                         <button
                           type="button"
                           className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                          onClick={() => navigate("/backtesting")}
+                          onClick={() => navigate("/labs")}
                         >
                           Run Backtests
                         </button>
@@ -895,7 +895,7 @@ export function HomePage() {
                     <button
                       type="button"
                       className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                      onClick={() => navigate("/equity/news")}
+                      onClick={() => navigate("/markets/news")}
                     >
                       Open News
                     </button>
@@ -941,8 +941,8 @@ export function HomePage() {
                       message="Create a watchlist or open the news desk so the home wire has symbols and headlines to prioritize."
                       icon="NEWS"
                       actions={[
-                        { label: "Create Watchlist", onClick: () => navigate("/equity/watchlist") },
-                        { label: "Open News", onClick: () => navigate("/equity/news") },
+                        { label: "Create Watchlist", onClick: () => navigate("/portfolio/watchlists") },
+                        { label: "Open News", onClick: () => navigate("/markets/news") },
                       ]}
                     />
                   )}
@@ -959,15 +959,15 @@ export function HomePage() {
                 {showHomeSection("results") ? <ResultsSummaryCards
                   results={dashboardResults}
                   loading={resultsLoading}
-                  onRunBacktest={() => navigate("/backtesting")}
+                  onRunBacktest={() => navigate("/labs")}
                 /> : null}
                 {showHomeSection("heatmap") ? <ExposureHeatmap
                   title="Portfolio Exposure Heatmap"
                   market={selectedMarket}
                   items={portfolioItems}
                   defaultMode="sector"
-                  onCreateWatchlist={() => navigate("/equity/watchlist")}
-                  onOpenRisk={() => navigate("/equity/risk")}
+                  onCreateWatchlist={() => navigate("/portfolio/watchlists")}
+                  onOpenRisk={() => navigate("/portfolio/risk")}
                 /> : null}
               </div>
               {showHomeSection("timeline") ? <IntelligenceTimeline
@@ -975,8 +975,8 @@ export function HomePage() {
                 symbols={portfolioItems.map((item) => item.ticker)}
                 limit={10}
                 title="Home Intelligence Timeline"
-                onAddAlert={() => navigate("/equity/alerts")}
-                onOpenScreener={() => navigate("/equity/screener")}
+                onAddAlert={() => navigate("/ops/alerts")}
+                onOpenScreener={() => navigate("/markets/screener")}
               /> : null}
             </section>
             ) : null}
@@ -994,14 +994,14 @@ export function HomePage() {
                   <button
                     type="button"
                     className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                    onClick={() => navigate("/equity/chart-workstation")}
+                    onClick={() => navigate("/terminal/chart-workstation")}
                   >
                     Open Workstation
                   </button>
                   <button
                     type="button"
                     className="rounded-sm border border-terminal-border px-2 py-1 text-[11px] uppercase tracking-[0.12em] text-terminal-muted hover:border-terminal-accent hover:text-terminal-accent"
-                    onClick={() => navigate("/equity/screener")}
+                    onClick={() => navigate("/markets/screener")}
                   >
                     Open Screener
                   </button>

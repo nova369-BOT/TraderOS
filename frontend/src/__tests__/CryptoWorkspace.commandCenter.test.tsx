@@ -155,6 +155,6 @@ describe("Crypto command center", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open Chart" }));
 
     expect(setTickerMock).toHaveBeenCalledWith("ETH");
-    expect(navigateMock).toHaveBeenCalledWith("/equity/chart-workstation");
+    expect(navigateMock).toHaveBeenCalledWith("/terminal/chart-workstation");
   });
 });

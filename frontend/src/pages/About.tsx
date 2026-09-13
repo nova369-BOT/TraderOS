@@ -114,21 +114,21 @@ const MODULE_GROUPS = [
 ] as const;
 
 const QUICK_LINKS = [
-  { label: "Market Home", to: "/equity/stocks", badge: "F1" },
-  { label: "Security Hub", to: "/equity/security", badge: "SH" },
-  { label: "Cockpit", to: "/equity/cockpit", badge: "CP" },
-  { label: "Launchpad", to: "/equity/launchpad", badge: "LP" },
-  { label: "Workstation", to: "/equity/chart-workstation", badge: "6" },
-  { label: "Crypto", to: "/equity/crypto", badge: "CR" },
-  { label: "Economics", to: "/equity/economics", badge: "E" },
-  { label: "F&O Home", to: "/fno", badge: "F8" },
-  { label: "Backtesting", to: "/backtesting", badge: "F9" },
-  { label: "Model Lab", to: "/backtesting/model-lab", badge: "ML" },
-  { label: "Portfolio Lab", to: "/equity/portfolio/lab", badge: "PL" },
-  { label: "Risk Dashboard", to: "/equity/risk", badge: "RSK" },
-  { label: "Paper Trading", to: "/equity/paper", badge: "P" },
-  { label: "Breakout Scanner", to: "/equity/screener", badge: "SCAN" },
-  { label: "Ops", to: "/equity/ops", badge: "OPS" },
+  { label: "Market Home", to: "/markets/stocks", badge: "F1" },
+  { label: "Security Hub", to: "/markets/security", badge: "SH" },
+  { label: "Cockpit", to: "/markets/cockpit", badge: "CP" },
+  { label: "Launchpad", to: "/launchpad", badge: "LP" },
+  { label: "Workstation", to: "/terminal/chart-workstation", badge: "6" },
+  { label: "Crypto", to: "/markets/crypto", badge: "CR" },
+  { label: "Economics", to: "/markets/economics", badge: "E" },
+  { label: "F&O Home", to: "/markets/derivatives", badge: "F8" },
+  { label: "Backtesting", to: "/labs", badge: "F9" },
+  { label: "Model Lab", to: "/labs/model-lab", badge: "ML" },
+  { label: "Portfolio Lab", to: "/portfolio/lab", badge: "PL" },
+  { label: "Risk Dashboard", to: "/portfolio/risk", badge: "RSK" },
+  { label: "Paper Trading", to: "/terminal/paper", badge: "P" },
+  { label: "Breakout Scanner", to: "/markets/screener", badge: "SCAN" },
+  { label: "Ops", to: "/ops", badge: "OPS" },
 ] as const;
 
 const COMMAND_SURFACES = [
@@ -305,7 +305,7 @@ export function AboutPage({ terminalType = "market" }: AboutProps) {
     terminalType === "fno"
       ? "Derivatives workflows, strategy tooling, and cross-desk charting in one terminal dossier."
       : "Analyze. Trade. Optimize. Open-source Indian and US market analytics with shared terminal routing.";
-  const returnRoute = terminalType === "fno" ? "/fno" : "/equity/stocks";
+  const returnRoute = terminalType === "fno" ? "/markets/derivatives" : "/markets/stocks";
 
   return (
     <div className="space-y-3 p-3 font-mono">
@@ -378,7 +378,7 @@ export function AboutPage({ terminalType = "market" }: AboutProps) {
                 <div className="mt-3 grid gap-2">
                   <QuickNavLink label="Return To Desk" to={returnRoute} badge={terminalType === "fno" ? "F&O" : "EQ"} />
                   <QuickNavLink label="Open Home" to="/" badge="HOME" />
-                  <QuickNavLink label="Launch Security Hub" to="/equity/security" badge="SH" />
+                  <QuickNavLink label="Launch Security Hub" to="/markets/security" badge="SH" />
                 </div>
               </div>
 

@@ -31,6 +31,6 @@ describe("IconRail keyboard behavior", () => {
     expect(document.activeElement).toBe(market);
 
     fireEvent.keyDown(rail, { key: "Enter" });
-    expect(navigateSpy).toHaveBeenCalledWith("/equity/stocks");
+    expect(navigateSpy).toHaveBeenCalledWith("/markets/stocks");
   });
 });

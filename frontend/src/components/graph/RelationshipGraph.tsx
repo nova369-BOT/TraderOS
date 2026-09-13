@@ -208,14 +208,14 @@ export function RelationshipGraph({ ticker: tickerProp }: { ticker?: string | nu
 
     // structure ring (inner): sector / exchange / indices / peers / options / news
     const structural: Array<{ id: string; label: string; kind: string; edgeLabel: string; route: string }> = [];
-    if (data.sector) structural.push({ id: "sector", label: `◆ ${data.sector}`, kind: "sector", edgeLabel: "sector", route: "/equity/sector-rotation" });
-    if (data.exchange) structural.push({ id: "exchange", label: data.exchange, kind: "market", edgeLabel: "listed on", route: "/equity/dashboard" });
+    if (data.sector) structural.push({ id: "sector", label: `◆ ${data.sector}`, kind: "sector", edgeLabel: "sector", route: "/markets/sector-rotation" });
+    if (data.exchange) structural.push({ id: "exchange", label: data.exchange, kind: "market", edgeLabel: "listed on", route: "/markets" });
     for (const ix of data.indices.slice(0, 3)) {
-      structural.push({ id: `idx-${ix}`, label: ix, kind: "market", edgeLabel: "member of", route: "/equity/dashboard" });
+      structural.push({ id: `idx-${ix}`, label: ix, kind: "market", edgeLabel: "member of", route: "/markets" });
     }
-    if (data.peerUniverse) structural.push({ id: "peers", label: `PEERS · ${data.peerUniverse}`, kind: "peer", edgeLabel: "peer group", route: `/equity/security/${encodeURIComponent(ticker)}?tab=peers` });
-    if (data.hasOptions) structural.push({ id: "options", label: "F&O", kind: "options", edgeLabel: "derivatives", route: `/fno?symbol=${encodeURIComponent(ticker)}` });
-    if (data.newsCount > 0) structural.push({ id: "news", label: `NEWS ×${data.newsCount}`, kind: "news", edgeLabel: "coverage", route: `/equity/news?ticker=${encodeURIComponent(ticker)}` });
+    if (data.peerUniverse) structural.push({ id: "peers", label: `PEERS · ${data.peerUniverse}`, kind: "peer", edgeLabel: "peer group", route: `/markets/security/${encodeURIComponent(ticker)}?tab=peers` });
+    if (data.hasOptions) structural.push({ id: "options", label: "F&O", kind: "options", edgeLabel: "derivatives", route: `/markets/derivatives?symbol=${encodeURIComponent(ticker)}` });
+    if (data.newsCount > 0) structural.push({ id: "news", label: `NEWS ×${data.newsCount}`, kind: "news", edgeLabel: "coverage", route: `/markets/news?ticker=${encodeURIComponent(ticker)}` });
 
     structural.forEach((s, i) => {
       const pos = ringPosition(i, structural.length, 300);
@@ -226,13 +226,13 @@ export function RelationshipGraph({ ticker: tickerProp }: { ticker?: string | nu
     // relationship ring (outer): co-mentioned tickers / portfolio / co-held
     const relational: Array<{ id: string; label: string; kind: string; edgeLabel: string; route?: string }> = [];
     for (const m of data.coMentioned) {
-      relational.push({ id: `cm-${m.ticker}`, label: m.ticker, kind: "ticker", edgeLabel: `co-mentioned ×${m.count}`, route: `/equity/relationships/${encodeURIComponent(m.ticker)}` });
+      relational.push({ id: `cm-${m.ticker}`, label: m.ticker, kind: "ticker", edgeLabel: `co-mentioned ×${m.count}`, route: `/markets/relationships/${encodeURIComponent(m.ticker)}` });
     }
     for (const h of data.heldIn) {
-      relational.push({ id: `pf-${h.id}`, label: `◈ ${h.name}`, kind: "portfolio", edgeLabel: "held in", route: "/equity/portfolio" });
+      relational.push({ id: `pf-${h.id}`, label: `◈ ${h.name}`, kind: "portfolio", edgeLabel: "held in", route: "/portfolio" });
     }
     for (const c of data.coHeld) {
-      relational.push({ id: `ch-${c.ticker}`, label: c.ticker, kind: "ticker", edgeLabel: `co-held ×${c.count}`, route: `/equity/relationships/${encodeURIComponent(c.ticker)}` });
+      relational.push({ id: `ch-${c.ticker}`, label: c.ticker, kind: "ticker", edgeLabel: `co-held ×${c.count}`, route: `/markets/relationships/${encodeURIComponent(c.ticker)}` });
     }
 
     relational.forEach((s, i) => {

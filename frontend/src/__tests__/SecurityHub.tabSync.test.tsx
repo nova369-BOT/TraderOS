@@ -48,7 +48,7 @@ function renderHub(route: string) {
       >
         <Routes>
           <Route
-            path="/equity/security/:ticker"
+            path="/markets/security/:ticker"
             element={
               <>
                 <SecurityHubPage />
@@ -73,7 +73,7 @@ describe("SecurityHub tab URL sync", () => {
   });
 
   it("hydrates active tab from URL and writes tab to search params on click", async () => {
-    renderHub("/equity/security/AAPL?tab=news");
+    renderHub("/markets/security/AAPL?tab=news");
 
     const newsTab = await screen.findByRole("tab", { name: /news/i });
     expect(newsTab.getAttribute("aria-selected")).toBe("true");

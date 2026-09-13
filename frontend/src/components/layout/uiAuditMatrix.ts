@@ -20,7 +20,7 @@ export type DuplicationCandidate = {
 
 export const uiAuditMatrix: RouteAuditRow[] = [
   {
-    route: "/equity/stocks",
+    route: "/markets/stocks",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar"],
@@ -34,7 +34,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/security/:ticker",
+    route: "/markets/security/:ticker",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "ticker sentiment/status badges"],
@@ -48,7 +48,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/compare",
+    route: "/markets/compare",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar"],
@@ -62,7 +62,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/chart-workstation",
+    route: "/terminal/chart-workstation",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "TerminalToastViewport (page-local)"],
@@ -76,7 +76,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/launchpad",
+    route: "/launchpad",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "panel-local status rows"],
@@ -90,7 +90,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/screener",
+    route: "/markets/screener",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "local screener status strips"],
@@ -104,7 +104,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P0",
   },
   {
-    route: "/equity/dashboard",
+    route: "/markets",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "dashboard metric strips"],
@@ -118,7 +118,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P1",
   },
   {
-    route: "/equity/portfolio",
+    route: "/portfolio",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar"],
@@ -132,7 +132,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P1",
   },
   {
-    route: "/equity/news",
+    route: "/markets/news",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar"],
@@ -146,7 +146,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P1",
   },
   {
-    route: "/equity/risk | /equity/oms | /equity/ops",
+    route: "/markets/risk | /equity/oms | /equity/ops",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "ops/risk local status banners"],
@@ -160,7 +160,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P1",
   },
   {
-    route: "/fno/*",
+    route: "/markets/derivatives/*",
     shellWrapper: "FnoLayout",
     topChrome: ["module-specific top nav"],
     statusChrome: ["module-specific status patterns"],
@@ -174,7 +174,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P1",
   },
   {
-    route: "/backtesting/model-lab/*",
+    route: "/labs/model-lab/*",
     shellWrapper: "BacktestingLayout",
     topChrome: ["module-specific top bar"],
     statusChrome: ["module-specific status chips", "run state badges"],
@@ -188,7 +188,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P2",
   },
   {
-    route: "/equity/crypto",
+    route: "/markets/crypto",
     shellWrapper: "TerminalShell + EquityLayout",
     topChrome: ["CommandBar", "TickerTape", "TopBar"],
     statusChrome: ["MarketStatusBar", "workspace tab badges"],
@@ -202,7 +202,7 @@ export const uiAuditMatrix: RouteAuditRow[] = [
     hotspotPriority: "P2",
   },
   {
-    route: "/backtesting/*",
+    route: "/labs/*",
     shellWrapper: "BacktestingLayout",
     topChrome: ["module-specific top bar"],
     statusChrome: ["module-specific status chips"],

@@ -131,7 +131,7 @@ export function InsiderStockDetail({ ticker }: { ticker: string }) {
                 title: "Security",
                 width: 140,
                 render: (row) => (
-                  <Link className="text-terminal-accent hover:underline" to={`/equity/security/${row.symbol}`}>
+                  <Link className="text-terminal-accent hover:underline" to={`/markets/security/${row.symbol}`}>
                     {row.symbol}
                   </Link>
                 ),

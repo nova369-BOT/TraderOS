@@ -276,7 +276,7 @@ export function MarketHeatmapPage() {
                       key={item.symbol}
                       type="button"
                       className="w-full rounded border border-terminal-border bg-terminal-bg/40 p-3 text-left hover:border-terminal-accent/50"
-                      onClick={() => navigate(`/equity/security/${encodeURIComponent(item.symbol)}`)}
+                      onClick={() => navigate(`/markets/security/${encodeURIComponent(item.symbol)}`)}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -332,7 +332,7 @@ export function MarketHeatmapPage() {
                         key={`${item.symbol}-${item.value}`}
                         transform={`translate(${node.x0}, ${node.y0})`}
                         className="cursor-pointer"
-                        onClick={() => navigate(`/equity/security/${encodeURIComponent(item.symbol)}`)}
+                        onClick={() => navigate(`/markets/security/${encodeURIComponent(item.symbol)}`)}
                         onMouseEnter={(event) => {
                           setTooltip({
                             x: event.clientX,
@@ -399,7 +399,7 @@ export function MarketHeatmapPage() {
                 <button
                   key={item.symbol}
                   type="button"
-                  onClick={() => navigate(`/equity/security/${encodeURIComponent(item.symbol)}`)}
+                  onClick={() => navigate(`/markets/security/${encodeURIComponent(item.symbol)}`)}
                   className="flex w-full items-center justify-between rounded border border-terminal-border bg-terminal-bg/40 px-3 py-2 text-left text-xs hover:border-terminal-accent/50"
                 >
                   <div>

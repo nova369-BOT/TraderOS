@@ -26,16 +26,16 @@ import { useStockStore } from "../store/stockStore";
 import { getWorkspacePresetConfig } from "../workspace/presets";
 import type { AlertRule, AuditEvent, KillSwitch, OmsOrder, PaperOrder, PaperPerformance, PaperPortfolio, PaperPosition, WatchlistItem } from "../types";
 
-function EquityRightRail() {
+export function EquityRightRail() {
   const location = useLocation();
   const { preset, rightRailOpen } = useTerminalShellWorkspace();
   const ticker = useStockStore((s) => s.ticker);
   const unreadCount = useAlertsStore((s) => s.unreadCount);
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
-  const isPaperRoute = location.pathname.includes("/equity/paper");
-  const isRiskRoute = location.pathname.includes("/equity/risk");
-  const isOpsRoute = location.pathname.includes("/equity/ops");
-  const isOmsRoute = location.pathname.includes("/equity/oms");
+  const isPaperRoute = location.pathname.includes("/terminal/paper");
+  const isRiskRoute = location.pathname.includes("/portfolio/risk");
+  const isOpsRoute = location.pathname.includes("/ops");
+  const isOmsRoute = location.pathname.includes("/portfolio/oms");
 
   const watchlistQuery = useQuery({
     queryKey: ["right-rail", "watchlist"],
@@ -165,16 +165,16 @@ function EquityRightRail() {
   const omsAudit = (omsAuditQuery.data ?? []) as AuditEvent[];
 
   const routeLabel = useMemo(() => {
-    if (location.pathname.includes("/equity/stocks")) return "Market / Stock Detail";
-    if (location.pathname.includes("/equity/screener")) return "Equity Screener";
-    if (location.pathname.includes("/equity/portfolio")) return "Portfolio";
-    if (location.pathname.includes("/equity/paper")) return "Paper Trading";
-    if (location.pathname.includes("/equity/risk")) return "Risk Dashboard";
-    if (location.pathname.includes("/equity/ops")) return "Ops Dashboard";
-    if (location.pathname.includes("/equity/oms")) return "OMS / Compliance";
-    if (location.pathname.includes("/equity/news")) return "News";
-    if (location.pathname.includes("/equity/watchlist")) return "Watchlist";
-    return "Equity Workspace";
+    if (location.pathname.includes("/markets/stocks")) return "Market / Stock Detail";
+    if (location.pathname.includes("/markets/screener")) return "Equity Screener";
+    if (location.pathname.includes("/portfolio")) return "Portfolio";
+    if (location.pathname.includes("/terminal/paper")) return "Paper Trading";
+    if (location.pathname.includes("/portfolio/risk")) return "Risk Dashboard";
+    if (location.pathname.includes("/ops")) return "Ops Dashboard";
+    if (location.pathname.includes("/portfolio/oms")) return "OMS / Compliance";
+    if (location.pathname.includes("/markets/news")) return "News";
+    if (location.pathname.includes("/portfolio/watchlists")) return "Watchlist";
+    return "Workspace";
   }, [location.pathname]);
 
   const presetConfig = getWorkspacePresetConfig(preset);
@@ -462,13 +462,13 @@ function EquityRightRail() {
         ) : null}
 
         <TerminalPanel title={presetHintTitle} subtitle="Keyboard-first workflow" bodyClassName="space-y-1 text-[11px] text-terminal-muted">
-          {location.pathname.includes("/equity/screener") ? (
+          {location.pathname.includes("/markets/screener") ? (
             <>
               <div>Use table sorting on key columns (MCap / PE / ROE / ROCE).</div>
               <div>Arrow keys navigate selected rows; Enter opens focused item context.</div>
               <div>Compact density is enabled for high-row throughput.</div>
             </>
-          ) : location.pathname.includes("/equity/news") ? (
+          ) : location.pathname.includes("/markets/news") ? (
             <>
               <div>`/` focuses search in News panel.</div>
               <div>`R` refreshes feed; Arrow keys move selection; Enter opens story.</div>

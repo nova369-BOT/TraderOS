@@ -165,8 +165,8 @@ export function ModelLabRunReportPage() {
             <div>Status: <span className="text-terminal-accent">{reportQuery.data.status}</span></div>
             <div className="flex gap-2">
               {reportQuery.data.status === "succeeded" && <button type="button" className="rounded border border-terminal-border px-2 py-1" onClick={openTearSheet}>Tear-sheet</button>}
-              {reportQuery.data.experiment_id && <Link className="rounded border border-terminal-border px-2 py-1" to={`/backtesting/model-lab/experiments/${reportQuery.data.experiment_id}`}>Experiment</Link>}
-              <Link className="rounded border border-terminal-border px-2 py-1" to={`/backtesting/model-lab/compare?runs=${runId}`}>Compare</Link>
+              {reportQuery.data.experiment_id && <Link className="rounded border border-terminal-border px-2 py-1" to={`/labs/model-lab/experiments/${reportQuery.data.experiment_id}`}>Experiment</Link>}
+              <Link className="rounded border border-terminal-border px-2 py-1" to={`/labs/model-lab/compare?runs=${runId}`}>Compare</Link>
             </div>
           </div>
         )}

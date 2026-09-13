@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
 
-import { TerminalShell } from "../components/layout/TerminalShell";
 import { SplitPane } from "../components/layout/SplitPane";
 import { TerminalContextBar } from "./components/TerminalContextBar";
 import { WatchlistPanel } from "./components/WatchlistPanel";
@@ -14,7 +13,7 @@ import { LAYOUT_KEYS } from "./store/terminalStore";
 /**
  * QUANTUM CORE TERMINAL FOUNDATION (directive §2, §12).
  *
- * Global application bar  → provided by TerminalShell (TopBar, palette, status bar)
+ * Global application bar  → provided by the Terminal workspace layout (AppShell)
  * Terminal context        → TerminalContextBar
  * Three-column workspace → SplitPane-based resizable columns
  *
@@ -127,15 +126,9 @@ export function QuantumTerminalPage() {
   );
 
   return (
-    <TerminalShell
-      contentClassName="bg-terminal-bg"
-      hideTickerLoader
-      statusBarTickerOverride="TERMINAL"
-    >
-      <div className="flex h-full min-h-0 flex-col bg-terminal-bg">
-        <TerminalContextBar />
-        <main className="min-h-0 flex-1 p-1.5">{workspace}</main>
-      </div>
-    </TerminalShell>
+    <div className="flex h-full min-h-0 flex-col bg-terminal-bg">
+      <TerminalContextBar />
+      <main className="min-h-0 flex-1 p-1.5">{workspace}</main>
+    </div>
   );
 }

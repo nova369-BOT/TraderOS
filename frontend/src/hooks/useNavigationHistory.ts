@@ -13,9 +13,11 @@ type UseNavigationHistoryOptions = {
 };
 
 const ROOT_CRUMBS: Record<string, NavigationBreadcrumb> = {
-  equity: { label: "Equity", path: "/equity/stocks" },
-  fno: { label: "F&O", path: "/fno" },
-  backtesting: { label: "Backtesting", path: "/backtesting" },
+  markets: { label: "Markets", path: "/markets" },
+  portfolio: { label: "Portfolio", path: "/portfolio" },
+  labs: { label: "Labs", path: "/labs" },
+  ops: { label: "Ops", path: "/ops" },
+  terminal: { label: "Terminal", path: "/terminal" },
   account: { label: "Account", path: "/account" },
 };
 
@@ -27,12 +29,10 @@ const SEGMENT_LABELS: Record<string, string> = {
   watchlist: "Watchlist",
   news: "News",
   alerts: "Alerts",
-  "chart-workstation": "Chart Workstation",
   launchpad: "Launchpad",
   compare: "Compare",
   economics: "Economics",
   crypto: "Crypto Workspace",
-  "yield-curve": "Yield Curve",
   settings: "Settings",
   ops: "Ops",
   risk: "Risk",
@@ -41,6 +41,29 @@ const SEGMENT_LABELS: Record<string, string> = {
   bonds: "Bonds",
   tca: "TCA",
   community: "Community",
+  derivatives: "Derivatives",
+  watchlists: "Watchlists",
+  cockpit: "Cockpit",
+  "stat-lab": "Stat Lab",
+  "pair-trading": "Pair Trading",
+  "shadow-account": "Shadow Account",
+  "data-quality": "Data Quality",
+  "model-lab": "Model Lab",
+  "model-governance": "Model Governance",
+  "algorithm-framework": "Algorithm Framework",
+  "portfolio-optimizer": "Portfolio Optimizer",
+  "alpha-zoo": "Alpha Zoo",
+  "research-autopilot": "Research Autopilot",
+  "intelligence-timeline": "Intelligence Timeline",
+  "sector-rotation": "Sector Rotation",
+  "bond-analytics": "Bond Analytics",
+  "yield-curve": "Yield Curve",
+  "etf-analytics": "ETF Analytics",
+  "mutual-funds": "Mutual Funds",
+  "position-sizer": "Position Sizer",
+  "chart-workstation": "Chart Workstation",
+  "saved-views": "Saved Views",
+  "strategy-export": "Strategy Export",
 };
 
 function titleCase(value: string): string {
@@ -59,20 +82,20 @@ function buildSecurityCrumbs(pathname: string, search: string): NavigationBreadc
   const subtab = params.get("subtab");
   const crumbs: NavigationBreadcrumb[] = [
     { label: "Home", path: "/" },
-    ROOT_CRUMBS.equity,
-    { label: symbol, path: `/equity/security/${symbol}` },
+    ROOT_CRUMBS.markets,
+    { label: symbol, path: `/markets/security/${symbol}` },
   ];
 
   if (tab && tab.toLowerCase() !== "overview") {
     crumbs.push({
       label: titleCase(tab),
-      path: `/equity/security/${symbol}?tab=${encodeURIComponent(tab)}`,
+      path: `/markets/security/${symbol}?tab=${encodeURIComponent(tab)}`,
     });
   }
   if (subtab) {
     crumbs.push({
       label: titleCase(subtab),
-      path: `/equity/security/${symbol}?tab=${encodeURIComponent(tab || "financials")}&subtab=${encodeURIComponent(subtab)}`,
+      path: `/markets/security/${symbol}?tab=${encodeURIComponent(tab || "financials")}&subtab=${encodeURIComponent(subtab)}`,
     });
   }
 
@@ -136,7 +159,7 @@ function buildGenericCrumbs(pathname: string, search: string): NavigationBreadcr
 
 function buildNavigationSnapshot(pathname: string, search: string): { breadcrumbs: NavigationBreadcrumb[]; event: NavEvent } {
   const breadcrumbs =
-    pathname.startsWith("/equity/security")
+    pathname.startsWith("/markets/security")
       ? buildSecurityCrumbs(pathname, search)
       : buildGenericCrumbs(pathname, search);
   const label = breadcrumbs.slice(1).map((crumb) => crumb.label).join(" - ") || "Home";

@@ -61,7 +61,7 @@ describe("AboutPage dossier revamp", () => {
     expect(screen.getByText("79")).toBeInTheDocument();
     expect(screen.getByText(/Routes Indexed/i)).toBeInTheDocument();
     expect(screen.getByText(/Language Breakdown/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Breakout Scanner/i })).toHaveAttribute("href", "/equity/screener");
+    expect(screen.getByRole("link", { name: /Breakout Scanner/i })).toHaveAttribute("href", "/markets/screener");
     expect(screen.getByRole("link", { name: "Open GitHub" })).toHaveAttribute(
       "href",
       "https://github.com/nova369-BOT/tradeos",

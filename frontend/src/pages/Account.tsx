@@ -44,7 +44,7 @@ const SHORTCUTS: readonly AccountShortcutCard[] = [
     label: "Workstation",
     detail: "Linked charts, replay, multi-timeframe studies.",
     keycap: "6",
-    to: "/equity/chart-workstation",
+    to: "/terminal/chart-workstation",
     tone: "accent",
   },
   {
@@ -52,7 +52,7 @@ const SHORTCUTS: readonly AccountShortcutCard[] = [
     label: "Portfolio",
     detail: "Risk, holdings, and allocation diagnostics.",
     keycap: "F3",
-    to: "/equity/portfolio",
+    to: "/portfolio",
     tone: "success",
   },
   {
@@ -60,7 +60,7 @@ const SHORTCUTS: readonly AccountShortcutCard[] = [
     label: "Alerts",
     detail: "Channel state, routing, and trigger inventory.",
     keycap: "A",
-    to: "/equity/alerts",
+    to: "/ops/alerts",
     tone: "info",
   },
   {
@@ -68,7 +68,7 @@ const SHORTCUTS: readonly AccountShortcutCard[] = [
     label: "Desk Settings",
     detail: "Theme, runtime mode, and environment controls.",
     keycap: "F6",
-    to: "/equity/settings",
+    to: "/settings",
     tone: "warn",
   },
 ] as const;

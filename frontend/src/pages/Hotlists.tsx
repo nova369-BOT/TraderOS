@@ -222,11 +222,11 @@ export function HotlistsPage() {
         rowKey={(row) => `${market}:${listType}:${row.symbol}`}
         height={640}
         rowHeight={24}
-        onRowClick={(row) => navigate(`/equity/stocks?ticker=${encodeURIComponent(row.symbol)}`)}
-        onRowOpenInChart={(row) => navigate(`/equity/chart-workstation?ticker=${encodeURIComponent(row.symbol)}&symbol=${encodeURIComponent(row.symbol)}`)}
-        onAddToWatchlist={(row) => navigate(`/equity/watchlist?symbol=${encodeURIComponent(row.symbol)}`)}
-        onAddToPortfolio={(row) => navigate(`/equity/portfolio?symbol=${encodeURIComponent(row.symbol)}`)}
-        onViewDetails={(row) => navigate(`/equity/security/${encodeURIComponent(row.symbol)}?tab=overview`)}
+        onRowClick={(row) => navigate(`/markets/stocks?ticker=${encodeURIComponent(row.symbol)}`)}
+        onRowOpenInChart={(row) => navigate(`/terminal/chart-workstation?ticker=${encodeURIComponent(row.symbol)}&symbol=${encodeURIComponent(row.symbol)}`)}
+        onAddToWatchlist={(row) => navigate(`/portfolio/watchlists?symbol=${encodeURIComponent(row.symbol)}`)}
+        onAddToPortfolio={(row) => navigate(`/portfolio?symbol=${encodeURIComponent(row.symbol)}`)}
+        onViewDetails={(row) => navigate(`/markets/security/${encodeURIComponent(row.symbol)}?tab=overview`)}
       />
     </div>
   );

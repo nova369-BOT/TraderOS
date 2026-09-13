@@ -34,9 +34,9 @@ describe("AppShellSidebar (R2)", () => {
   });
 
   it("navigates via NavLink and marks the active route", () => {
-    renderSidebar("/equity/screener");
+    renderSidebar("/markets/screener");
     const active = screen.getByRole("link", { name: /screener/i });
-    expect(active.getAttribute("href")).toBe("/equity/screener");
+    expect(active.getAttribute("href")).toBe("/markets/screener");
     expect(active.className).toContain("border-terminal-accent");
   });
 
@@ -66,7 +66,7 @@ describe("AppShellSidebar (R2)", () => {
 
   it("auto-expands the category owning the active route", async () => {
     useUiStore.setState({ collapsedNavCategories: { markets: true } });
-    renderSidebar("/fno/greeks");
+    renderSidebar("/markets/derivatives/greeks");
     const markets = await screen.findByRole("button", { name: /markets & research/i });
     await waitFor(() => expect(markets.getAttribute("aria-expanded")).toBe("true"));
   });
@@ -89,9 +89,9 @@ describe("AppShellSidebar (R2)", () => {
     const first = screen.getByRole("link", { name: /mission control/i });
     first.focus();
     fireEvent.keyDown(first, { key: "ArrowDown" });
-    const dashboard = screen.getByRole("link", { name: "Dashboard" });
-    expect(document.activeElement).toBe(dashboard);
-    fireEvent.keyDown(dashboard, { key: "ArrowUp" });
+    const launchpad = screen.getByRole("link", { name: /launchpad/i });
+    expect(document.activeElement).toBe(launchpad);
+    fireEvent.keyDown(launchpad, { key: "ArrowUp" });
     expect(document.activeElement).toBe(first);
   });
 

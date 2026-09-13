@@ -60,7 +60,7 @@ export function CommandPalette() {
   const [selected, setSelected] = useState(0);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [searchMatches, setSearchMatches] = useState<SearchSymbolItem[]>([]);
-  const onChartWorkstation = location.pathname.includes("/equity/chart-workstation");
+  const onChartWorkstation = location.pathname.includes("/terminal/chart-workstation");
 
   const isFunctionToken = (token: string) =>
     COMMAND_FUNCTIONS.some((fn) => {
@@ -211,7 +211,7 @@ export function CommandPalette() {
           badge: "ASSET" as const,
           run: () => {
             setTicker(item.symbol);
-            navigate(`/equity/stocks?ticker=${encodeURIComponent(item.symbol)}`);
+            navigate(`/markets/stocks?ticker=${encodeURIComponent(item.symbol)}`);
             return { ok: true, target: item.symbol };
           },
           score: 1650 - idx,

@@ -329,7 +329,7 @@ export function ForexPage() {
               subtitle="Spot trend and intraday range"
               actions={
                 <Link
-                  to={`/equity/chart-workstation?ticker=${encodeURIComponent(selectedPair)}&symbol=${encodeURIComponent(selectedPair)}`}
+                  to={`/terminal/chart-workstation?ticker=${encodeURIComponent(selectedPair)}&symbol=${encodeURIComponent(selectedPair)}`}
                   className="rounded border border-terminal-border px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-terminal-muted hover:text-terminal-text"
                 >
                   Open Chart

@@ -72,7 +72,7 @@ export function ModelLabExperimentDetailPage() {
                 <button className="rounded border border-terminal-accent bg-terminal-accent/10 px-3 py-1 text-terminal-accent" onClick={() => runMutation.mutate()} disabled={runMutation.isPending}>
                   {runMutation.isPending ? "Running..." : "Run"}
                 </button>
-                {newestRunId && <Link className="rounded border border-terminal-border px-3 py-1" to={`/backtesting/model-lab/runs/${newestRunId}`}>Open Latest Report</Link>}
+                {newestRunId && <Link className="rounded border border-terminal-border px-3 py-1" to={`/labs/model-lab/runs/${newestRunId}`}>Open Latest Report</Link>}
               </div>
             </div>
             <div className="space-y-2 rounded border border-terminal-border/50 p-2">
@@ -87,7 +87,7 @@ export function ModelLabExperimentDetailPage() {
                     {isCompletedStatus(run.status) && (
                       <button type="button" className="rounded border border-terminal-border px-2 py-1" onClick={() => openTearSheet(run.id)}>Tear-sheet</button>
                     )}
-                    <Link className="rounded border border-terminal-border px-2 py-1" to={`/backtesting/model-lab/runs/${run.id}`}>Report</Link>
+                    <Link className="rounded border border-terminal-border px-2 py-1" to={`/labs/model-lab/runs/${run.id}`}>Report</Link>
                   </div>
                 </div>
               ))}

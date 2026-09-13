@@ -279,7 +279,7 @@ export function CryptoWorkspacePage() {
     const normalized = normalizeChartSymbol(symbol);
     setSelectedSymbol(symbol);
     setTicker(normalized);
-    navigate("/equity/chart-workstation");
+    navigate("/terminal/chart-workstation");
   };
 
   const focusAsset = (symbol: string) => {

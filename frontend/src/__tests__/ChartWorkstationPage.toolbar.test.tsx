@@ -99,7 +99,7 @@ function makeSlot(id: string, ticker: string): ChartSlot {
   };
 }
 
-function renderPage(initialEntries = ["/equity/chart-workstation"]) {
+function renderPage(initialEntries = ["/terminal/chart-workstation"]) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <ChartWorkstationPage />
@@ -319,7 +319,7 @@ describe("ChartWorkstationPage shell workflow", () => {
       }),
     );
 
-    renderPage([`/equity/chart-workstation?share=${shared}`]);
+    renderPage([`/terminal/chart-workstation?share=${shared}`]);
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
     await waitFor(() => {
@@ -339,7 +339,7 @@ describe("ChartWorkstationPage shell workflow", () => {
       }),
     );
 
-    renderPage([`/equity/chart-workstation?share=${shared}`]);
+    renderPage([`/terminal/chart-workstation?share=${shared}`]);
 
     await waitFor(() => expect(listChartTemplatesMock).toHaveBeenCalled());
     await waitFor(() => {

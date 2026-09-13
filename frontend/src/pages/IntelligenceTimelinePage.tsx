@@ -35,7 +35,7 @@ export function IntelligenceTimelinePage() {
           >
             <TerminalInput value={draft} onChange={(event) => setDraft(event.target.value.toUpperCase())} placeholder="Ticker" />
             <TerminalButton type="submit" variant="accent">Load</TerminalButton>
-            <TerminalButton type="button" onClick={() => navigate("/equity/alerts")}>Add Alert</TerminalButton>
+            <TerminalButton type="button" onClick={() => navigate("/ops/alerts")}>Add Alert</TerminalButton>
           </form>
         </div>
       </div>
@@ -44,8 +44,8 @@ export function IntelligenceTimelinePage() {
         symbol={symbol}
         symbols={symbols}
         limit={40}
-        onAddAlert={() => navigate("/equity/alerts")}
-        onOpenScreener={() => navigate("/equity/screener")}
+        onAddAlert={() => navigate("/ops/alerts")}
+        onOpenScreener={() => navigate("/markets/screener")}
       />
     </div>
   );

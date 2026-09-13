@@ -48,34 +48,34 @@ describe("GO commanding", () => {
     const navigate = vi.fn();
     const result = executeParsedCommand(parseCommand("WL"), navigate as any);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/watchlist");
+    expect(navigate).toHaveBeenCalledWith("/portfolio/watchlists");
   });
 
   it("routes ticker-only commands to the market stock page", () => {
     const navigate = vi.fn();
     const result = executeParsedCommand(parseCommand("AAPL"), navigate as any);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/stocks?ticker=AAPL");
+    expect(navigate).toHaveBeenCalledWith("/markets/stocks?ticker=AAPL");
   });
 
   it("routes financial subfunctions to the requested Security Hub subtab", () => {
     const navigate = vi.fn();
     const result = executeParsedCommand(parseCommand("AAPL FA MARGINS"), navigate as any);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/security/AAPL?tab=financials&subtab=margins#financials-margins");
+    expect(navigate).toHaveBeenCalledWith("/markets/security/AAPL?tab=financials&subtab=margins#financials-margins");
   });
 
   it("supports the appendix command set without regressing routing", () => {
     const navigate = vi.fn();
     const cases = [
-      ["CMDTY GC1", "/equity/commodities?symbol=GC1"],
-      ["FX EURUSD", "/equity/forex?pair=EURUSD"],
-      ["ETFA SPY", "/equity/etf-analytics?ticker=SPY"],
-      ["BOND", "/equity/bonds"],
-      ["HOT", "/equity/hotlists"],
-      ["TCA AAPL", "/equity/portfolio?ticker=AAPL&view=tca"],
-      ["COMM AAPL", "/equity/news?ticker=AAPL&view=community"],
-      ["DEPTH AAPL", "/equity/chart-workstation?panel=depth&ticker=AAPL&symbol=AAPL"],
+      ["CMDTY GC1", "/markets/commodities?symbol=GC1"],
+      ["FX EURUSD", "/markets/forex?pair=EURUSD"],
+      ["ETFA SPY", "/markets/etf-analytics?ticker=SPY"],
+      ["BOND", "/markets/bonds"],
+      ["HOT", "/markets/hotlists"],
+      ["TCA AAPL", "/portfolio?ticker=AAPL&view=tca"],
+      ["COMM AAPL", "/markets/news?ticker=AAPL&view=community"],
+      ["DEPTH AAPL", "/terminal/chart-workstation?panel=depth&ticker=AAPL&symbol=AAPL"],
     ] as const;
 
     for (const [input, target] of cases) {
@@ -101,7 +101,7 @@ describe("GO commanding", () => {
     const result = executeParsedCommand(parseCommand("what's the top semiconductor earnings news"), navigate as any);
     expect(result.ok).toBe(true);
     expect(navigate).toHaveBeenCalledWith(
-      expect.stringContaining("/equity/news?q="),
+      expect.stringContaining("/markets/news?q="),
     );
   });
 

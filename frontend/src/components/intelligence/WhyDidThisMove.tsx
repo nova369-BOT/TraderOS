@@ -222,10 +222,10 @@ export function WhyDidThisMove({ ticker }: { ticker?: string | null }) {
       {/* Action row */}
       <nav style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: "var(--ot-type-size-xs)" }}>
         {[
-          { to: "/equity/chart-workstation", label: "Chart", icon: <BarChart3 className="h-3 w-3" /> },
-          { to: `/equity/security/${encodeURIComponent(active)}`, label: "Security Hub", icon: <Building2 className="h-3 w-3" /> },
-          { to: `/equity/relationships/${encodeURIComponent(active)}`, label: "Relationships", icon: <Network className="h-3 w-3" /> },
-          { to: `/equity/news?ticker=${encodeURIComponent(active)}`, label: "News", icon: <Newspaper className="h-3 w-3" /> },
+          { to: "/terminal/chart-workstation", label: "Chart", icon: <BarChart3 className="h-3 w-3" /> },
+          { to: `/markets/security/${encodeURIComponent(active)}`, label: "Security Hub", icon: <Building2 className="h-3 w-3" /> },
+          { to: `/markets/relationships/${encodeURIComponent(active)}`, label: "Relationships", icon: <Network className="h-3 w-3" /> },
+          { to: `/markets/news?ticker=${encodeURIComponent(active)}`, label: "News", icon: <Newspaper className="h-3 w-3" /> },
         ].map((a) => (
           <Link
             key={a.label}

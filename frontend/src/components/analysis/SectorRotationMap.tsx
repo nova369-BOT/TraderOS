@@ -174,7 +174,7 @@ export function SectorRotationMap({ defaultBenchmark = "SPY", width = "100%", he
                 opacity={isFaded ? 0.2 : 1}
                 onMouseEnter={() => setHoveredSymbol(sector.symbol)}
                 onMouseLeave={() => setHoveredSymbol(null)}
-                onClick={() => navigate(`/equity/stocks?ticker=${encodeURIComponent(sector.symbol)}`)}
+                onClick={() => navigate(`/markets/stocks?ticker=${encodeURIComponent(sector.symbol)}`)}
                 className="cursor-pointer transition-opacity duration-300"
               >
                 {/* Trail Line */}

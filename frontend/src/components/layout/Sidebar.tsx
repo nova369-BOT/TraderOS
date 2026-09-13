@@ -8,55 +8,55 @@ export function Sidebar() {
   const ticker = useStockStore((s) => s.ticker);
   const unreadCount = useAlertsStore((s) => s.unreadCount);
   const nav = [
-    { label: "Market", path: "/equity/stocks", key: "F1" },
-    { label: "Security Hub", path: "/equity/security", key: "SH", hint: "Research" },
-    { label: "Why Did This Move?", path: "/equity/why", key: "WHY", hint: "Intelligence" },
-    { label: "Relationships", path: "/equity/relationships", key: "REL", hint: "Graph" },
-    { label: "Economics", path: "/equity/economics", key: "E", hint: "Macro" },
-    { label: "Commodities", path: "/equity/commodities", key: "CMDTY", hint: "Macro" },
-    { label: "Forex", path: "/equity/forex", key: "FX", hint: "Macro" },
-    { label: "ETF Analytics", path: "/equity/etf-analytics", key: "ETFA", hint: "Funds" },
-    { label: "Bonds", path: "/equity/bonds", key: "BOND", hint: "Fixed Income" },
-    { label: "Yield Curve", path: "/equity/yield-curve", key: "YC", hint: "Fixed Income" },
-    { label: "Rotation", path: "/equity/sector-rotation", key: "ROT", hint: "Relative" },
-    { label: "Crypto", path: "/equity/crypto", key: "CR", hint: "Digital" },
-    { label: "Compare", path: "/equity/compare", key: "CMP", hint: "Split View" },
-    { label: "Screener", path: "/equity/screener", key: "F2" },
-    { label: "Alpha Zoo", path: "/equity/alpha-zoo", key: "AZ", hint: "Quant" },
-    { label: "Research Autopilot", path: "/equity/research-autopilot", key: "RA", hint: "Quant" },
-    { label: "Strategy Export", path: "/equity/strategy-export", key: "SE", hint: "Quant" },
-    { label: "Hotlists", path: "/equity/hotlists", key: "HOT", hint: "Movers" },
-    { label: "Insider", path: "/equity/insider", key: "IN", hint: "Research" },
-    { label: "Heatmap", path: "/equity/heatmap", key: "HM", hint: "Market" },
-    { label: "Dividends", path: "/equity/dividends", key: "DIV", hint: "Income" },
-    { label: "RS Analysis", path: "/equity/rs", key: "RS", hint: "Relative" },
-    { label: "Launchpad", path: "/equity/launchpad", key: "LP", hint: "Workspace" },
-    { label: "Workstation", path: "/equity/chart-workstation", key: "6", hint: "6 Charts" },
-    { label: "Research", path: "/equity/research", key: "RES", hint: "Papers" },
-    { label: "MTA", path: "/equity/mta", key: "MT", hint: "Multi-TF" },
-    { label: "DOM", path: "/equity/dom", key: "D", hint: "Depth" },
-    { label: "Tape", path: "/equity/tape", key: "T", hint: "Time & Sales" },
-    { label: "Portfolio", path: "/equity/portfolio", key: "F3" },
-    { label: "Portfolio Lab", path: "/equity/portfolio/lab", key: "PLB", hint: "Research" },
-    { label: "Paper", path: "/equity/paper", key: "P" },
-    { label: "Position Sizer", path: "/equity/position-sizer", key: "PS", hint: "Trading" },
-    { label: "Journal", path: "/equity/journal", key: "J", hint: "Trading" },
-    { label: "Shadow Account", path: "/equity/shadow-account", key: "SA", hint: "Trading" },
-    { label: "Watchlist", path: "/equity/watchlist", key: "F4" },
-    { label: "News", path: "/equity/news", key: "F5" },
-    { label: "Alerts", path: "/equity/alerts", key: "A" },
-    { label: "Risk", path: "/equity/risk", key: "R" },
-    { label: "Correlation", path: "/equity/correlation", key: "CR", hint: "Risk" },
-    { label: "Stat Lab", path: "/equity/stat-lab", key: "SL", hint: "Quant" },
-    { label: "Pair Trading", path: "/equity/pair-trading", key: "PT", hint: "Quant" },
-    { label: "OMS", path: "/equity/oms", key: "O" },
-    { label: "Ops", path: "/equity/ops", key: "K" },
-    { label: "Plugins", path: "/equity/plugins", key: "PL" },
-    { label: "Settings", path: "/equity/settings", key: "F6" },
-    { label: "About", path: "/equity/stocks/about", key: "F7" },
-    { label: "Model Lab", path: "/backtesting/model-lab", key: "ML", hint: "Backtest" },
-    { label: "Cockpit", path: "/equity/cockpit", key: "CP", hint: "Overview" },
-    { label: "Backtesting", path: "/backtesting", key: "F9" },
+    { label: "Market", path: "/markets/stocks", key: "F1" },
+    { label: "Security Hub", path: "/markets/security", key: "SH", hint: "Research" },
+    { label: "Why Did This Move?", path: "/markets/why", key: "WHY", hint: "Intelligence" },
+    { label: "Relationships", path: "/markets/relationships", key: "REL", hint: "Graph" },
+    { label: "Economics", path: "/markets/economics", key: "E", hint: "Macro" },
+    { label: "Commodities", path: "/markets/commodities", key: "CMDTY", hint: "Macro" },
+    { label: "Forex", path: "/markets/forex", key: "FX", hint: "Macro" },
+    { label: "ETF Analytics", path: "/markets/etf-analytics", key: "ETFA", hint: "Funds" },
+    { label: "Bonds", path: "/markets/bonds", key: "BOND", hint: "Fixed Income" },
+    { label: "Yield Curve", path: "/markets/yield-curve", key: "YC", hint: "Fixed Income" },
+    { label: "Rotation", path: "/markets/sector-rotation", key: "ROT", hint: "Relative" },
+    { label: "Crypto", path: "/markets/crypto", key: "CR", hint: "Digital" },
+    { label: "Compare", path: "/markets/compare", key: "CMP", hint: "Split View" },
+    { label: "Screener", path: "/markets/screener", key: "F2" },
+    { label: "Alpha Zoo", path: "/labs/alpha-zoo", key: "AZ", hint: "Quant" },
+    { label: "Research Autopilot", path: "/markets/research-autopilot", key: "RA", hint: "Quant" },
+    { label: "Strategy Export", path: "/labs/strategy-export", key: "SE", hint: "Quant" },
+    { label: "Hotlists", path: "/markets/hotlists", key: "HOT", hint: "Movers" },
+    { label: "Insider", path: "/markets/insider", key: "IN", hint: "Research" },
+    { label: "Heatmap", path: "/markets/heatmap", key: "HM", hint: "Market" },
+    { label: "Dividends", path: "/markets/dividends", key: "DIV", hint: "Income" },
+    { label: "RS Analysis", path: "/markets/rs", key: "RS", hint: "Relative" },
+    { label: "Launchpad", path: "/launchpad", key: "LP", hint: "Workspace" },
+    { label: "Workstation", path: "/terminal/chart-workstation", key: "6", hint: "6 Charts" },
+    { label: "Research", path: "/markets/research", key: "RES", hint: "Papers" },
+    { label: "MTA", path: "/terminal/mta", key: "MT", hint: "Multi-TF" },
+    { label: "DOM", path: "/terminal/dom", key: "D", hint: "Depth" },
+    { label: "Tape", path: "/terminal/tape", key: "T", hint: "Time & Sales" },
+    { label: "Portfolio", path: "/portfolio", key: "F3" },
+    { label: "Portfolio Lab", path: "/portfolio/lab", key: "PLB", hint: "Research" },
+    { label: "Paper", path: "/terminal/paper", key: "P" },
+    { label: "Position Sizer", path: "/terminal/position-sizer", key: "PS", hint: "Trading" },
+    { label: "Journal", path: "/portfolio/journal", key: "J", hint: "Trading" },
+    { label: "Shadow Account", path: "/portfolio/shadow-account", key: "SA", hint: "Trading" },
+    { label: "Watchlist", path: "/portfolio/watchlists", key: "F4" },
+    { label: "News", path: "/markets/news", key: "F5" },
+    { label: "Alerts", path: "/ops/alerts", key: "A" },
+    { label: "Risk", path: "/portfolio/risk", key: "R" },
+    { label: "Correlation", path: "/portfolio/correlation", key: "CR", hint: "Risk" },
+    { label: "Stat Lab", path: "/labs/stat-lab", key: "SL", hint: "Quant" },
+    { label: "Pair Trading", path: "/labs/pair-trading", key: "PT", hint: "Quant" },
+    { label: "OMS", path: "/portfolio/oms", key: "O" },
+    { label: "Ops", path: "/ops", key: "K" },
+    { label: "Plugins", path: "/ops/plugins", key: "PL" },
+    { label: "Settings", path: "/settings", key: "F6" },
+    { label: "About", path: "/about", key: "F7" },
+    { label: "Model Lab", path: "/labs/model-lab", key: "ML", hint: "Backtest" },
+    { label: "Cockpit", path: "/markets/cockpit", key: "CP", hint: "Overview" },
+    { label: "Backtesting", path: "/labs", key: "F9" },
   ];
 
   return (
@@ -72,7 +72,7 @@ export function Sidebar() {
           Home
         </NavLink>
         <NavLink
-          to={`/fno?symbol=${encodeURIComponent((ticker || "NIFTY").toUpperCase())}`}
+          to={`/markets/derivatives?symbol=${encodeURIComponent((ticker || "NIFTY").toUpperCase())}`}
           className="block rounded px-2 py-2 text-terminal-muted hover:bg-terminal-bg hover:text-terminal-text"
         >
           Switch To F&O {"->"}
@@ -96,7 +96,7 @@ export function Sidebar() {
               {(item as any).hint && <span className="text-[8px] text-terminal-accent/70 -mt-0.5 uppercase">{(item as any).hint}</span>}
             </div>
             <span className="text-[10px]">
-              {item.path === "/equity/alerts" && unreadCount > 0 ? `${unreadCount}` : item.key}
+              {item.path === "/ops/alerts" && unreadCount > 0 ? `${unreadCount}` : item.key}
             </span>
           </NavLink>
         ))}

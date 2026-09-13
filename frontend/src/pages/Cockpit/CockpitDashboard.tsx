@@ -195,7 +195,7 @@ function normalizeHeadline(item: NewsLatestApiItem): DeskHeadline {
     id: String(item.id ?? `${item.source}-${item.title}`),
     title: item.title || "Desk headline",
     source: item.source || "Newswire",
-    url: item.url || "/equity/news",
+    url: item.url || "/markets/news",
     publishedAt: typeof item.published_at === "string" ? item.published_at : null,
     summary: item.summary || null,
     sentiment: item.sentiment
@@ -213,7 +213,7 @@ function buildFallbackHeadlineRows(summary: CockpitSummary | null | undefined): 
     id: `desk-fallback-${index}`,
     title: String(item.headline || "Desk headline"),
     source: String(item.source || "Desk Wire"),
-    url: String(item.url || "/equity/news"),
+    url: String(item.url || "/markets/news"),
     publishedAt: typeof item.published_at === "string" ? item.published_at : null,
     summary: null,
     sentiment: null,
@@ -549,25 +549,25 @@ export function CockpitDashboard() {
     void loadTicker();
     switch (route) {
       case "security":
-        navigate(`/equity/security/${encodeURIComponent(focusTicker)}?tab=overview`);
+        navigate(`/markets/security/${encodeURIComponent(focusTicker)}?tab=overview`);
         return;
       case "chart":
-        navigate("/equity/chart-workstation");
+        navigate("/terminal/chart-workstation");
         return;
       case "news":
-        navigate(`/equity/security/${encodeURIComponent(focusTicker)}?tab=news`);
+        navigate(`/markets/security/${encodeURIComponent(focusTicker)}?tab=news`);
         return;
       case "screener":
-        navigate(`/equity/screener?symbol=${encodeURIComponent(focusTicker)}`);
+        navigate(`/markets/screener?symbol=${encodeURIComponent(focusTicker)}`);
         return;
       case "risk":
-        navigate("/equity/risk");
+        navigate("/portfolio/risk");
         return;
       case "macro":
-        navigate("/equity/economics");
+        navigate("/markets/economics");
         return;
       default:
-        navigate("/equity/portfolio");
+        navigate("/portfolio");
     }
   }
 
@@ -619,7 +619,7 @@ export function CockpitDashboard() {
           value: primaryError ? "Degraded" : "Monitor",
           detail: primaryError || "Review triggered alerts and create new guardrails.",
           tone: primaryError ? "text-terminal-neg" : "text-terminal-accent",
-          action: () => navigate("/equity/alerts"),
+          action: () => navigate("/ops/alerts"),
         },
         {
           rank: 3,
@@ -651,7 +651,7 @@ export function CockpitDashboard() {
           value: `${resultsQuery.data?.modelLab.length ?? 0} validated`,
           detail: resultsQuery.data?.modelLab[0]?.name || resultsQuery.data?.modelLab[0]?.strategy || "Run Model Lab to publish signals.",
           tone: "text-terminal-accent",
-          action: () => navigate("/backtesting/model-lab"),
+          action: () => navigate("/labs/model-lab"),
         },
       ],
     [
@@ -839,7 +839,7 @@ export function CockpitDashboard() {
           {showPanel("results") ? <ResultsSummaryCards
             results={resultsQuery.data}
             loading={resultsQuery.isFetching}
-            onRunBacktest={() => navigate("/backtesting")}
+            onRunBacktest={() => navigate("/labs")}
           /> : null}
         </section>
 
@@ -953,8 +953,8 @@ export function CockpitDashboard() {
                         message="Add a watchlist or portfolio holding to build a coverage queue for the desk."
                         icon="WL"
                         actions={[
-                          { label: "Watchlist", onClick: () => navigate("/equity/watchlist") },
-                          { label: "Portfolio", onClick: () => navigate("/equity/portfolio") },
+                          { label: "Watchlist", onClick: () => navigate("/portfolio/watchlists") },
+                          { label: "Portfolio", onClick: () => navigate("/portfolio") },
                         ]}
                       />
                     ) : null}
@@ -1006,7 +1006,7 @@ export function CockpitDashboard() {
                   message="Add alerts or open the news desk to bring ticker-specific shock headlines into the cockpit."
                   icon="WIRE"
                   actions={[
-                    { label: "Add Alert", onClick: () => navigate("/equity/alerts") },
+                    { label: "Add Alert", onClick: () => navigate("/ops/alerts") },
                     { label: "Open News", onClick: () => openDeskRoute("news") },
                   ]}
                 />
@@ -1122,7 +1122,7 @@ export function CockpitDashboard() {
             items={portfolio.items || []}
             correlation={riskSummaryQuery.data}
             defaultMode="sector"
-            onCreateWatchlist={() => navigate("/equity/watchlist")}
+            onCreateWatchlist={() => navigate("/portfolio/watchlists")}
             onOpenRisk={() => openDeskRoute("risk")}
           /> : null}
           {showPanel("timeline") ? <IntelligenceTimeline
@@ -1131,7 +1131,7 @@ export function CockpitDashboard() {
             symbols={portfolioSymbols}
             limit={12}
             title="Cockpit Intelligence Timeline"
-            onAddAlert={() => navigate("/equity/alerts")}
+            onAddAlert={() => navigate("/ops/alerts")}
             onOpenScreener={() => openDeskRoute("screener")}
           /> : null}
         </section>

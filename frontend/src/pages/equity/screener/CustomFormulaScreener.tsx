@@ -260,7 +260,7 @@ export function CustomFormulaScreener() {
           onRowSelect={(index) => {
             const row = result?.results[index];
             if (!row?.symbol) return;
-            navigate(`/equity/security/${encodeURIComponent(String(row.symbol))}`);
+            navigate(`/markets/security/${encodeURIComponent(String(row.symbol))}`);
           }}
           emptyText="Run a formula to see computed results"
           className="max-h-[52vh] xl:max-h-[56vh]"

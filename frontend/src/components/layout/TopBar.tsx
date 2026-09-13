@@ -188,7 +188,7 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
       }
       if ((event.key === "m" || event.key === "M") && !editing) {
         event.preventDefault();
-        navigate("/equity/portfolio");
+        navigate("/portfolio");
         return;
       }
       if (event.key === "Escape") {
@@ -297,16 +297,16 @@ export function TopBar({ hideTickerLoader = false, hideMarketMarquee = false }: 
             <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/" title="Home">
               HOME
             </Link>
-            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/equity/screener" title="Equity Screener">
+            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/markets/screener" title="Equity Screener">
               SCREENER
             </Link>
-            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/equity/compare" title="Compare Stocks">
+            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to="/markets/compare" title="Compare Stocks">
               COMPARE
             </Link>
-            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/fno/heatmap?symbol=${encodeURIComponent(safeTicker)}`} title="Greeks Heatmap">
+            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/markets/derivatives/heatmap?symbol=${encodeURIComponent(safeTicker)}`} title="Greeks Heatmap">
               HEATMAP
             </Link>
-            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/fno?symbol=${encodeURIComponent(safeTicker)}`} title="F&O Options Chain">
+            <Link className="rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text" to={`/markets/derivatives?symbol=${encodeURIComponent(safeTicker)}`} title="F&O Options Chain">
               F&O <span aria-hidden="true">→</span>
             </Link>
           </nav>

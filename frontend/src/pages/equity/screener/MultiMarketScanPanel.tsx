@@ -255,13 +255,13 @@ export function MultiMarketScanPanel() {
   const openChart = (symbol: string) => {
     if (!symbol) return;
     setTicker(symbol);
-    navigate("/equity/chart-workstation");
+    navigate("/terminal/chart-workstation");
   };
 
   const openSecurity = (symbol: string, tab: "overview" | "news") => {
     if (!symbol) return;
     setTicker(symbol);
-    navigate(`/equity/security/${encodeURIComponent(symbol)}?tab=${tab}`);
+    navigate(`/markets/security/${encodeURIComponent(symbol)}?tab=${tab}`);
   };
 
   return (

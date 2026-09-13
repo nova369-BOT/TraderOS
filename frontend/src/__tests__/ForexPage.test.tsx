@@ -98,9 +98,9 @@ describe("ForexPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/equity/forex?pair=EURUSD"]}>
+      <MemoryRouter initialEntries={["/markets/forex?pair=EURUSD"]}>
         <Routes>
-          <Route path="/equity/forex" element={<ForexPage />} />
+          <Route path="/markets/forex" element={<ForexPage />} />
         </Routes>
       </MemoryRouter>,
     );

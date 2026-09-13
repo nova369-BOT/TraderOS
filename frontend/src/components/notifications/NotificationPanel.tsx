@@ -213,7 +213,7 @@ export function NotificationPanel({ onClose }: NotificationPanelProps) {
         )}
       </div>
       <div className="border-t border-terminal-border px-3 py-2 text-sm">
-        <Link to="/equity/alerts" onClick={onClose} className="text-terminal-accent hover:text-terminal-text">
+        <Link to="/ops/alerts" onClick={onClose} className="text-terminal-accent hover:text-terminal-text">
           View All Alerts →
         </Link>
       </div>

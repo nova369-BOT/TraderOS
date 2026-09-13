@@ -114,7 +114,7 @@ export function AppShellContextBar() {
               type="button"
               onClick={() => {
                 setTicker(item.symbol);
-                navigate(`/equity/stocks?ticker=${encodeURIComponent(item.symbol)}`);
+                navigate(`/markets/stocks?ticker=${encodeURIComponent(item.symbol)}`);
               }}
               title={`${item.name} (${item.market})`}
               className={`rounded-sm border border-terminal-border px-1.5 py-0.5 text-terminal-muted hover:border-terminal-accent/50 hover:text-terminal-text ${TABULAR_CLASS}`}

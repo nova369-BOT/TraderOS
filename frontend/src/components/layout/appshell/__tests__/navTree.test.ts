@@ -9,13 +9,10 @@
  *   2. Every real route (minus documented exclusions) must be in navTree.
  */
 
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { NAV_TREE, categoryOfPath, flattenNav, searchNav } from "../navTree";
-
-const APP_TSX = readFileSync(join(__dirname, "../../../..", "App.tsx"), "utf8");
+import { ROUTE_PATHS } from "./parseAppRoutes";
 
 /** Auth/utility pages that deliberately live outside the primary nav. */
 const EXCLUDED_FROM_NAV = new Set([
@@ -35,55 +32,26 @@ function isLegacyAlias(path: string): boolean {
   return path.startsWith("/model-lab") || path.startsWith("/portfolio-lab");
 }
 
-/** Parse App.tsx into absolute route paths (redirects skipped). */
-function parseRoutePaths(source: string): Set<string> {
-  const paths = new Set<string>();
-  const parentStack: string[] = [];
-
-  for (const rawLine of source.split("\n")) {
-    const line = rawLine.trimEnd();
-    if (/^\s*<\/Route>\s*$/.test(line) && parentStack.length > 0) {
-      parentStack.pop();
-      continue;
-    }
-    const match = line.match(/<Route path="([^"]+)"/);
-    if (!match) continue;
-    const raw = match[1];
-    if (raw === "*") continue;
-    if (line.includes("<Navigate")) continue; // legacy redirect alias
-
-    if (raw.startsWith("/")) {
-      paths.add(raw);
-      // A subtree parent ends with ">"; a standalone route self-closes with "/>".
-      if (line.endsWith(">") && !line.endsWith("/>")) parentStack.push(raw);
-    } else {
-      const parent = parentStack[parentStack.length - 1];
-      if (parent) paths.add(`${parent}/${raw}`);
-    }
-  }
-
-  // normalize: strip :param segments (/equity/security/:ticker → /equity/security)
-  const normalized = new Set<string>();
-  for (const path of paths) {
-    normalized.add(path.includes("/:") ? path.slice(0, path.indexOf("/:")) : path);
-  }
-  return normalized;
-}
-
-const ROUTE_PATHS = parseRoutePaths(APP_TSX);
-
 describe("navTree coverage (R2 guardrail)", () => {
   it("parses a representative set of routes from App.tsx", () => {
-    expect(ROUTE_PATHS.size).toBeGreaterThan(60);
+    expect(ROUTE_PATHS.size).toBeGreaterThan(55);
     for (const probe of [
       "/terminal",
-      "/equity/stocks",
-      "/fno/greeks",
-      "/backtesting/model-lab",
+      "/terminal/paper",
+      "/markets",
+      "/markets/stocks",
+      "/markets/derivatives/greeks",
+      "/portfolio/risk",
+      "/labs/model-lab",
+      "/ops/data-quality",
+      "/settings",
       "/account",
-      "/equity/settings",
     ]) {
       expect(ROUTE_PATHS.has(probe), `parser missed ${probe}`).toBe(true);
+    }
+    // legacy splats must not leak into the route set
+    for (const gone of ["/equity/*", "/fno", "/backtesting/model-lab", "/equity/stocks"]) {
+      expect(ROUTE_PATHS.has(gone), `parser leaked legacy ${gone}`).toBe(false);
     }
   });
 
@@ -115,7 +83,7 @@ describe("navTree coverage (R2 guardrail)", () => {
 
     const missing: string[] = [];
     for (const path of ROUTE_PATHS) {
-      if (EXCLUDED_FROM_NAV.has(path) || isLegacyAlias(path)) continue;
+      if (EXCLUDED_FROM_NAV.has(path)) continue;
       if (!isCovered(path)) missing.push(path);
     }
     expect(missing, `routes missing from navTree: ${missing.join(", ")}`).toEqual([]);
@@ -147,8 +115,8 @@ describe("navTree coverage (R2 guardrail)", () => {
 
   it("categoryOfPath finds the owning category", () => {
     expect(categoryOfPath("/terminal")?.id).toBe("terminal");
-    expect(categoryOfPath("/fno/greeks")?.id).toBe("markets");
-    expect(categoryOfPath("/equity/settings")?.id).toBe("data-ops");
+    expect(categoryOfPath("/markets/derivatives/greeks")?.id).toBe("markets");
+    expect(categoryOfPath("/settings")?.id).toBe("data-ops");
     expect(categoryOfPath("/no/such/path")).toBeNull();
   });
 });

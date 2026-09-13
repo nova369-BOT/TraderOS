@@ -5,11 +5,11 @@ import type { RunContext } from "./types";
 // Routes where the active equity symbol (from the stock store) is the subject
 // the user is looking at, even though the ticker isn't in the URL path.
 const EQUITY_SYMBOL_ROUTES = [
-  "/equity/stocks",
-  "/equity/security",
-  "/equity/cockpit",
-  "/equity/chart",
-  "/equity/compare",
+  "/markets/stocks",
+  "/markets/security",
+  "/markets/cockpit",
+  "/markets/chart",
+  "/markets/compare",
   "/stocks",
   "/stock",
   "/security",

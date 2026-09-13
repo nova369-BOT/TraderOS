@@ -157,13 +157,13 @@ export function PortfolioLabPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
-            <TerminalButton size="sm" variant="default" onClick={() => navigate("/equity/portfolio")}>
+            <TerminalButton size="sm" variant="default" onClick={() => navigate("/portfolio")}>
               Equity
             </TerminalButton>
-            <TerminalButton size="sm" variant="default" onClick={() => navigate("/equity/mutual-funds")}>
+            <TerminalButton size="sm" variant="default" onClick={() => navigate("/markets/mutual-funds")}>
               Mutual Funds
             </TerminalButton>
-            <TerminalButton size="sm" variant="accent" onClick={() => navigate("/equity/portfolio/lab")}>
+            <TerminalButton size="sm" variant="accent" onClick={() => navigate("/portfolio/lab")}>
               Open Portfolio Lab
             </TerminalButton>
           </div>
@@ -181,7 +181,7 @@ export function PortfolioLabPage() {
                       <div className="truncate font-semibold text-terminal-text">{portfolio.name}</div>
                       <div className="text-terminal-muted">{portfolio.weighting_method} | {portfolio.rebalance_frequency}</div>
                     </div>
-                    <Link className="rounded-sm border border-terminal-accent px-2 py-1 text-terminal-accent transition-colors hover:bg-terminal-accent/10" to={`/equity/portfolio/lab/portfolios/${portfolio.id}`}>
+                    <Link className="rounded-sm border border-terminal-accent px-2 py-1 text-terminal-accent transition-colors hover:bg-terminal-accent/10" to={`/portfolio/lab/portfolios/${portfolio.id}`}>
                       Open
                     </Link>
                   </div>
@@ -264,7 +264,7 @@ export function PortfolioLabPage() {
               <tbody>
                 {sortedLeaderboard.map((row, index) => (
                   <tr key={`${row.run_id || row.portfolio_id || row.name}-${index}`} className="border-b border-terminal-border/30">
-                    <td className="px-2 py-1">{row.run_id ? <Link className="text-terminal-accent" to={`/equity/portfolio/lab/runs/${row.run_id}`}>{row.run_id}</Link> : "-"}</td>
+                    <td className="px-2 py-1">{row.run_id ? <Link className="text-terminal-accent" to={`/portfolio/lab/runs/${row.run_id}`}>{row.run_id}</Link> : "-"}</td>
                     <td className="px-2 py-1">{row.name || row.portfolio_id || "-"}</td>
                     <td className="px-2 py-1">{row.market || leaderboardMarket}</td>
                     <td className="px-2 py-1 text-right">{Number(row.sharpe || 0).toFixed(2)}</td>

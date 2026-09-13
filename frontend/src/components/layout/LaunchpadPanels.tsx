@@ -360,7 +360,7 @@ export function LaunchpadWatchlistPanel(_: PanelProps) {
           <button
             key={row.id}
             type="button"
-            onClick={() => navigate(`/equity/stocks?ticker=${encodeURIComponent(row.ticker)}`)}
+            onClick={() => navigate(`/markets/stocks?ticker=${encodeURIComponent(row.ticker)}`)}
             className={`grid w-full grid-cols-4 rounded border px-2 py-1 text-left text-xs ${
               idx === nav.selected ? "border-terminal-accent bg-terminal-accent/10" : "border-terminal-border bg-terminal-bg"
             }`}

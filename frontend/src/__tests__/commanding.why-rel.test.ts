@@ -33,20 +33,20 @@ describe("WHY / REL command codes (Market Intelligence navigation)", () => {
   it("'AAPL WHY' navigates to the movement intelligence surface and applies context", () => {
     const result = executeParsedCommand(parseCommand("AAPL WHY"), navigate);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/why/AAPL");
+    expect(navigate).toHaveBeenCalledWith("/markets/why/AAPL");
     expect(useStockStore.getState().ticker).toBe("AAPL");
   });
 
   it("'WHY' without a symbol opens the surface using global context", () => {
     const result = executeParsedCommand(parseCommand("WHY"), navigate);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/why");
+    expect(navigate).toHaveBeenCalledWith("/markets/why");
   });
 
   it("'REL TCS' (and alias GRAPH) open the relationship graph", () => {
     const r1 = executeParsedCommand(parseCommand("REL TCS"), navigate);
     expect(r1.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/relationships/TCS");
+    expect(navigate).toHaveBeenCalledWith("/markets/relationships/TCS");
     const parsed = parseCommand("GRAPH NVDA");
     expect(parsed.kind).toBe("function");
     if (parsed.kind === "function") {
@@ -58,6 +58,6 @@ describe("WHY / REL command codes (Market Intelligence navigation)", () => {
   it("'REL' alone opens the graph using global context", () => {
     const result = executeParsedCommand(parseCommand("REL"), navigate);
     expect(result.ok).toBe(true);
-    expect(navigate).toHaveBeenCalledWith("/equity/relationships");
+    expect(navigate).toHaveBeenCalledWith("/markets/relationships");
   });
 });

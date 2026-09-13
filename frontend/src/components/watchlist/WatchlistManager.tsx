@@ -363,11 +363,11 @@ export function WatchlistManager() {
                             key={s}
                             className="cursor-pointer hover:bg-terminal-accent/5 focus-within:bg-terminal-accent/5"
                             tabIndex={0}
-                            onClick={() => navigate(`/equity/stocks?ticker=${s}`)}
+                            onClick={() => navigate(`/markets/stocks?ticker=${s}`)}
                             onKeyDown={(event) => {
                               if (event.key === "Enter" || event.key === " ") {
                                 event.preventDefault();
-                                navigate(`/equity/stocks?ticker=${s}`);
+                                navigate(`/markets/stocks?ticker=${s}`);
                               }
                               if (event.key === "ContextMenu" || (event.shiftKey && event.key === "F10")) {
                                 event.preventDefault();

@@ -86,7 +86,7 @@ export function ModelLabComparePage() {
           <button className="rounded border border-terminal-accent bg-terminal-accent/10 px-3 py-1 text-terminal-accent" onClick={runCompare}>
             Compare
           </button>
-          <Link className="rounded border border-terminal-border px-3 py-1" to="/backtesting/model-lab">Back to Model Lab</Link>
+          <Link className="rounded border border-terminal-border px-3 py-1" to="/labs/model-lab">Back to Model Lab</Link>
         </div>
         <div className="mt-2 text-[11px] text-terminal-muted">Need at least 2 run ids.</div>
       </TerminalPanel>

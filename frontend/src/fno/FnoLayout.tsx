@@ -12,15 +12,15 @@ import type { FnoContextValue } from "./types/fno";
 import { DEFAULT_FNO_SYMBOLS } from "./types/fno";
 
 const LINKS = [
-  { to: "/fno", label: "Option Chain", key: "F1" },
-  { to: "/fno/greeks", label: "Greeks", key: "F2" },
-  { to: "/fno/futures", label: "Futures", key: "F3" },
-  { to: "/fno/oi", label: "OI Analysis", key: "F4" },
-  { to: "/fno/strategy", label: "Strategy", key: "F5" },
-  { to: "/fno/pcr", label: "PCR", key: "F6" },
-  { to: "/fno/flow", label: "Flow", key: "F7" },
-  { to: "/fno/expiry", label: "Expiry", key: "F8" },
-  { to: "/fno/about", label: "About", key: "F9" },
+  { to: "/markets/derivatives", label: "Option Chain", key: "F1" },
+  { to: "/markets/derivatives/greeks", label: "Greeks", key: "F2" },
+  { to: "/markets/derivatives/futures", label: "Futures", key: "F3" },
+  { to: "/markets/derivatives/oi", label: "OI Analysis", key: "F4" },
+  { to: "/markets/derivatives/strategy", label: "Strategy", key: "F5" },
+  { to: "/markets/derivatives/pcr", label: "PCR", key: "F6" },
+  { to: "/markets/derivatives/flow", label: "Flow", key: "F7" },
+  { to: "/markets/derivatives/expiry", label: "Expiry", key: "F8" },
+  { to: "/markets/derivatives/about", label: "About", key: "F9" },
 ] as const;
 
 const POPULAR_FNO_INDICES = ["NIFTY", "BANKNIFTY", "FINNIFTY", "MIDCPNIFTY", "NIFTYNXT50"] as const;
@@ -66,7 +66,7 @@ function FnoRightRail({ symbol, expiry, expiries, market }: { symbol: string; ex
               Home
             </NavLink>
             <NavLink
-              to={`/equity/stocks?ticker=${encodeURIComponent(symbol)}`}
+              to={`/markets/stocks?ticker=${encodeURIComponent(symbol)}`}
               className="block rounded border border-terminal-border px-2 py-1 text-[11px] text-terminal-muted hover:text-terminal-text"
             >
               Switch to Equity
@@ -79,7 +79,7 @@ function FnoRightRail({ symbol, expiry, expiries, market }: { symbol: string; ex
             <NavLink
               key={link.to}
               to={link.to}
-              end={link.to === "/fno"}
+              end={link.to === "/markets/derivatives"}
               className={({ isActive }) =>
                 `flex items-center justify-between rounded border px-2 py-1 text-[11px] ${
                   isActive

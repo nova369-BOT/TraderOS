@@ -57,7 +57,7 @@ export function HeatmapView({ data, width, height, sizeBy }: Props) {
               key={item.ticker}
               transform={`translate(${d.x0},${d.y0})`}
               className="cursor-pointer group"
-              onClick={() => navigate(`/equity/stocks?ticker=${encodeURIComponent(item.ticker)}`)}
+              onClick={() => navigate(`/markets/stocks?ticker=${encodeURIComponent(item.ticker)}`)}
             >
               <rect
                 width={Math.max(0, rectWidth)}

@@ -61,9 +61,9 @@ describe("ETFAnalyticsPage", () => {
     });
 
     render(
-      <MemoryRouter initialEntries={["/equity/etf-analytics?ticker=SPY"]}>
+      <MemoryRouter initialEntries={["/markets/etf-analytics?ticker=SPY"]}>
         <Routes>
-          <Route path="/equity/etf-analytics" element={<ETFAnalyticsPage />} />
+          <Route path="/markets/etf-analytics" element={<ETFAnalyticsPage />} />
         </Routes>
       </MemoryRouter>,
     );

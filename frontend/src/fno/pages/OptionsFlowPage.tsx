@@ -347,7 +347,7 @@ export function OptionsFlowPage() {
                               </div>
                               <div className="flex items-start">
                                 <Link
-                                  to={`/fno?symbol=${encodeURIComponent(flow.symbol)}`}
+                                  to={`/markets/derivatives?symbol=${encodeURIComponent(flow.symbol)}`}
                                   className="rounded border border-terminal-accent px-3 py-2 text-xs text-terminal-accent hover:bg-terminal-accent/10"
                                 >
                                   Open Full Chain
