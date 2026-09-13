@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { fetchCryptoSearch, searchSymbols, type SearchSymbolItem } from "../../api/client";
 import { useNavigationHistory } from "../../hooks/useNavigationHistory";
+import { useRecentSecurities } from "../../hooks/useRecentSecurities";
+import { useStockStore } from "../../store/stockStore";
+import { OPEN_PALETTE_EVENT } from "./appshell/paletteBus";
 import { useSettingsStore } from "../../store/settingsStore";
 import { TerminalBadge, TerminalInput } from "../terminal";
 
@@ -49,6 +52,8 @@ export function CommandPalette() {
   const navigate = useNavigate();
   const selectedMarket = useSettingsStore((state) => state.selectedMarket);
   const { recentPages } = useNavigationHistory();
+  const { recentSecurities } = useRecentSecurities();
+  const setTicker = useStockStore((state) => state.setTicker);
   const [open, setOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -127,6 +132,19 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [helpOpen, open]);
 
+  // R2: the AppShell global bar opens the palette through the trigger bus.
+  useEffect(() => {
+    const onOpenRequest = () => {
+      setOpen(true);
+      setHelpOpen(false);
+      setQuery("");
+      setSelected(0);
+      setFeedback(null);
+    };
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpenRequest);
+    return () => window.removeEventListener(OPEN_PALETTE_EVENT, onOpenRequest);
+  }, []);
+
   useEffect(() => {
     const firstToken = query.trim().split(/\s+/)[0] ?? "";
     if (!firstToken || !looksLikeTicker(firstToken) || isFunctionToken(firstToken)) {
@@ -182,6 +200,24 @@ export function CommandPalette() {
       .slice(0, 10);
 
     rows.push(...recentPageItems);
+
+    if (!q) {
+      rows.push(
+        ...recentSecurities.slice(0, 5).map((item, idx) => ({
+          id: `recent-security-${item.symbol}`,
+          label: item.symbol,
+          description: `${item.name} (${item.market})`,
+          command: item.symbol,
+          badge: "ASSET" as const,
+          run: () => {
+            setTicker(item.symbol);
+            navigate(`/equity/stocks?ticker=${encodeURIComponent(item.symbol)}`);
+            return { ok: true, target: item.symbol };
+          },
+          score: 1650 - idx,
+        })),
+      );
+    }
 
     rows.push(
       ...disambiguationItems.map((item, idx) => ({
@@ -261,7 +297,7 @@ export function CommandPalette() {
       .sort((a, b) => b.score - a.score)
       .slice(0, 12)
       .map(({ score: _score, ...rest }) => rest);
-  }, [navigate, onChartWorkstation, query, recentPages, searchMatches]);
+  }, [navigate, onChartWorkstation, query, recentPages, recentSecurities, searchMatches, setTicker]);
 
   useEffect(() => {
     if (!open) return;
