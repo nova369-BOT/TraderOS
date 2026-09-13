@@ -9,6 +9,8 @@ import { useTerminalStore } from "../store/terminalStore";
 import { formatNumber, formatPct, formatQty, formatSigned, pnlClass } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
+import { DataState } from "../../design/components/DataState";
+import { MetricValue } from "../../design/components/MetricValue";
 
 /**
  * Quantum Core right column — Account (directive §29–32).
@@ -137,35 +139,44 @@ export function AccountPanel({ portfolios, onSelectInstrument }: Props) {
           <span className="text-[10px] text-terminal-warn">No paper account</span>
         )}
 
-        <dl className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px]">
-          <dt className="text-terminal-muted">Portfolio value</dt>
-          <dd className="text-right tabular-nums text-terminal-text">{formatNumber(equity, { compact: true })}</dd>
-          <dt className="text-terminal-muted">Cash</dt>
-          <dd className="text-right tabular-nums text-terminal-text">
-            {formatNumber(activePortfolio?.current_cash ?? null, { compact: true })}
-          </dd>
-          <dt className="text-terminal-muted">Positions value</dt>
-          <dd className="text-right tabular-nums text-terminal-text">{formatNumber(positionsValue, { compact: true })}</dd>
-          <dt className="text-terminal-muted">Unrealized P&L</dt>
-          <dd className={`text-right tabular-nums ${pnlClass(unrealizedPnl)}`}>{formatSigned(unrealizedPnl)}</dd>
-          <dt className="text-terminal-muted">Total P&L</dt>
-          <dd className={`text-right tabular-nums ${pnlClass(performanceQuery.data?.pnl)}`}>
-            {formatSigned(performanceQuery.data?.pnl ?? null)}
-          </dd>
-        </dl>
+        <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
+          <MetricValue label="Portfolio value" value={formatNumber(equity, { compact: true })} align="right" size="sm" />
+          <MetricValue label="Cash" value={formatNumber(activePortfolio?.current_cash ?? null, { compact: true })} align="right" size="sm" />
+          <MetricValue label="Positions value" value={formatNumber(positionsValue, { compact: true })} align="right" size="sm" />
+          <MetricValue
+            label="Unrealized P&L"
+            value={formatSigned(unrealizedPnl)}
+            valueTone={unrealizedPnl > 0 ? "pos" : unrealizedPnl < 0 ? "neg" : "neutral"}
+            align="right"
+            size="sm"
+          />
+          <MetricValue
+            label="Total P&L"
+            value={formatSigned(performanceQuery.data?.pnl ?? null)}
+            valueTone={
+              (performanceQuery.data?.pnl ?? 0) > 0
+                ? "pos"
+                : (performanceQuery.data?.pnl ?? 0) < 0
+                  ? "neg"
+                  : "neutral"
+            }
+            align="right"
+            size="sm"
+          />
+        </div>
       </div>
 
       {/* Body */}
       <div className="min-h-0 flex-1 overflow-auto" data-testid="account-body">
         {tab === "balances" ? (
           <div className="p-2 text-[10px]">
-            {positionsQuery.isLoading ? (
-              <div className="text-terminal-muted">Loading balances…</div>
-            ) : positionsQuery.isError ? (
-              <div className="text-terminal-warn">Account data unavailable</div>
-            ) : positions.length === 0 ? (
-              <div className="text-terminal-muted">No open positions. Orders you place appear here.</div>
-            ) : (
+            <DataState
+              status={positionsQuery.isLoading ? "loading" : positionsQuery.isError ? "error" : positions.length === 0 ? "empty" : "ready"}
+              loadingLabel="Loading balances"
+              error={(positionsQuery.error as Error | null) ?? "Account data unavailable"}
+              emptyTitle="No open positions"
+              emptyHint="Orders you place appear here."
+            >
               <table className="w-full tabular-nums">
                 <thead>
                   <tr className="text-terminal-muted">
@@ -184,29 +195,19 @@ export function AccountPanel({ portfolios, onSelectInstrument }: Props) {
                   </tr>
                 </tbody>
               </table>
-            )}
+            </DataState>
             <p className="mt-2 text-[9px] leading-relaxed text-terminal-muted/80">
               Paper account — balances and positions are simulated by the ARQOS paper engine.
             </p>
           </div>
-        ) : positionsQuery.isLoading ? (
-          <div className="p-2 text-[11px] text-terminal-muted">Loading positions…</div>
-        ) : positionsQuery.isError ? (
-          <div className="p-2">
-            <div className="text-[11px] text-terminal-warn">Positions unavailable</div>
-            <button
-              type="button"
-              onClick={() => void positionsQuery.refetch()}
-              className="mt-1 rounded-sm border border-terminal-border px-2 py-0.5 text-[10px] text-terminal-accent hover:border-terminal-accent"
-            >
-              Retry
-            </button>
-          </div>
-        ) : positions.length === 0 ? (
-          <div className="p-2 text-[11px] text-terminal-muted" data-testid="positions-empty">
-            No open positions.
-          </div>
         ) : (
+          <DataState
+            status={positionsQuery.isLoading ? "loading" : positionsQuery.isError ? "error" : positions.length === 0 ? "empty" : "ready"}
+            loadingLabel="Loading positions"
+            error={(positionsQuery.error as Error | null) ?? "Positions unavailable"}
+            onRetry={() => void positionsQuery.refetch()}
+            emptyTitle="No open positions."
+          >
           <table className="w-full border-collapse text-[10px] tabular-nums">
             <thead className="sticky top-0 bg-terminal-panel text-[9px] uppercase tracking-wide">
               <tr>
@@ -264,6 +265,7 @@ export function AccountPanel({ portfolios, onSelectInstrument }: Props) {
               </tr>
             </tfoot>
           </table>
+          </DataState>
         )}
       </div>
     </TerminalPanel>

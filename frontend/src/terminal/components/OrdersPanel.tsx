@@ -4,9 +4,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cancelPaperOrder, fetchPaperOrders } from "../../api/portfolio";
 import type { PaperOrder } from "../../types";
 import { useTerminalStore, type OrdersTab } from "../store/terminalStore";
+import { useUiStore } from "../../store/uiStore";
 import { formatNumber, formatQty, formatTime, pnlClass } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
+import { DataState } from "../../design/components/DataState";
+import { useDensity } from "../../design/useDensity";
 
 /**
  * Quantum Core center-bottom — Orders terminal (directive §26–28).
@@ -45,7 +48,10 @@ export function OrdersPanel({ portfolioId, orders }: Props) {
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dense, setDense] = useState(false);
+  // Global density mode (design system R1) — the toggle drives the app-wide mode.
+  const { density } = useDensity();
+  const toggleDensity = useUiStore((s) => s.toggleDensity);
+  const dense = density === "compact";
   const [sortKey, setSortKey] = useState<SortKey>("time");
   const [sortAsc, setSortAsc] = useState(false);
   const [windowOffset, setWindowOffset] = useState(0);
@@ -224,7 +230,8 @@ export function OrdersPanel({ portfolioId, orders }: Props) {
         <button
           type="button"
           aria-pressed={dense}
-          onClick={() => setDense((previous) => !previous)}
+          onClick={toggleDensity}
+          title="Toggle global density"
           className="rounded-sm border border-terminal-border px-1.5 py-0.5 text-[10px] text-terminal-muted hover:border-terminal-muted hover:text-terminal-text"
         >
           {dense ? "Compact" : "Normal"}
@@ -248,25 +255,21 @@ export function OrdersPanel({ portfolioId, orders }: Props) {
 
       {/* Data grid (§27–28) */}
       <div className="min-h-0 flex-1 overflow-auto" data-testid="orders-grid">
-        {orders === undefined && ordersQuery.isLoading ? (
-          <div className="p-3 text-[11px] text-terminal-muted">Loading orders…</div>
-        ) : orders === undefined && ordersQuery.isError ? (
-          <div className="p-3 text-[11px]">
-            <div className="text-terminal-warn">Orders unavailable</div>
-            <button
-              type="button"
-              onClick={() => void ordersQuery.refetch()}
-              className="mt-1 rounded-sm border border-terminal-border px-2 py-0.5 text-[10px] text-terminal-accent hover:border-terminal-accent"
-            >
-              Retry
-            </button>
-          </div>
-        ) : tableRows.length === 0 ? (
-          <div className="p-3 text-[11px] text-terminal-muted" data-testid="orders-empty">
-            {tab === "live" ? "No working orders" : "No order history"}
-            {search || statusFilter !== "all" ? " for the current filter" : ""}.
-          </div>
-        ) : (
+        <DataState
+          status={
+            orders === undefined && ordersQuery.isLoading
+              ? "loading"
+              : orders === undefined && ordersQuery.isError
+                ? "error"
+                : tableRows.length === 0
+                  ? "empty"
+                  : "ready"
+          }
+          loadingLabel="Loading orders"
+          error={(ordersQuery.error as Error | null) ?? "Orders unavailable"}
+          onRetry={() => void ordersQuery.refetch()}
+          emptyTitle={`${tab === "live" ? "No working orders" : "No order history"}${search || statusFilter !== "all" ? " for the current filter" : ""}.`}
+        >
           <table className="w-full border-collapse text-[10px] tabular-nums">
             <thead className="sticky top-0 z-10 bg-terminal-panel text-[9px] uppercase tracking-wide">
               <tr>
@@ -329,7 +332,7 @@ export function OrdersPanel({ portfolioId, orders }: Props) {
               ))}
             </tbody>
           </table>
-        )}
+        </DataState>
       </div>
 
       {virtualized ? (

@@ -10,6 +10,7 @@ import { useTerminalStore } from "../store/terminalStore";
 import { useTerminalQuotes, type TerminalQuote } from "../hooks/useTerminalQuotes";
 import { formatNumber, formatPct, pnlClass } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
+import { DataState } from "../../design/components/DataState";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
 
 /**
@@ -269,24 +270,22 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
         data-testid="watchlist-rows"
         className="min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-1 focus-visible:ring-terminal-accent"
       >
-        {watchlistsQuery.isLoading ? (
-          <div className="p-3 text-[11px] text-terminal-muted">Loading watchlist…</div>
-        ) : watchlistsQuery.isError ? (
-          <div className="p-3">
-            <div className="text-[11px] text-terminal-warn">Watchlist unavailable</div>
-            <button
-              type="button"
-              onClick={() => void watchlistsQuery.refetch()}
-              className="mt-1 rounded-sm border border-terminal-border px-2 py-0.5 text-[10px] text-terminal-accent hover:border-terminal-accent"
-            >
-              Retry
-            </button>
-          </div>
-        ) : orderedSymbols.length === 0 ? (
-          <div className="p-3 text-[11px] text-terminal-muted">
-            No instruments. Use the search above to add instruments to the watchlist.
-          </div>
-        ) : (
+        <DataState
+          status={
+            watchlistsQuery.isLoading
+              ? "loading"
+              : watchlistsQuery.isError
+                ? "error"
+                : orderedSymbols.length === 0
+                  ? "empty"
+                  : "ready"
+          }
+          loadingLabel="Loading watchlist"
+          error={(watchlistsQuery.error as Error | null) ?? "Watchlist unavailable"}
+          onRetry={() => void watchlistsQuery.refetch()}
+          emptyTitle="No instruments"
+          emptyHint="Use the search above to add instruments to the watchlist."
+        >
           <>
             {favorites.length > 0 ? (
               <div className="px-2 pb-0.5 pt-1.5 text-[9px] uppercase tracking-wider text-terminal-muted/70">
@@ -305,7 +304,7 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
               .filter((symbol) => !favorites.includes(symbol))
               .map((symbol, index) => renderRow(symbol, index + favorites.length))}
           </>
-        )}
+        </DataState>
       </div>
 
       {addSymbols.isError ? (

@@ -62,10 +62,10 @@ GEMINI.md
 SPEC.md
 QC_MASTER_PLAN.md
 docs/QC_MASTER_PLAN.md
-500
-diff.txt
-test_api.py
-test_routes.py
+/500
+/diff.txt
+/test_api.py
+/test_routes.py
 
 # Dev/debug utility scripts (not for public repo)
 check_db.py

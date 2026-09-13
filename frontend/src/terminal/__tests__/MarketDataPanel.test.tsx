@@ -91,7 +91,9 @@ describe("MarketDataPanel (§20–25)", () => {
   it("degrades honestly when chart data is unavailable", async () => {
     apiMocks.fetchChart.mockRejectedValue(new Error("provider down"));
     renderPanel();
-    expect(await screen.findByText("Chart data unavailable", {}, { timeout: 4000 })).toBeTruthy();
+    const state = await screen.findByTestId("data-state-error", {}, { timeout: 4000 });
+    expect(state.textContent).toContain("Unavailable");
+    expect(state.textContent).toContain("provider down"); // the real error, not a vague label
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 

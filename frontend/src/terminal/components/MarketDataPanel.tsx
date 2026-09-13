@@ -14,6 +14,7 @@ import { formatNumber, formatPct, formatSigned, pnlClass } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
 import { TradingChart } from "../../components/chart/TradingChart";
+import { DataState } from "../../design/components/DataState";
 
 /**
  * Quantum Core center — Market Data (directive §20–25).
@@ -230,30 +231,24 @@ export function MarketDataPanel({ instrument, market }: Props) {
               </span>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden" data-testid="chart-container">
-              {!activeInstrument ? (
-                <div className="flex h-full items-center justify-center text-[11px] text-terminal-muted">
-                  No instrument selected
-                </div>
-              ) : chartQuery.isLoading ? (
-                <div className="flex h-full items-center justify-center text-[11px] text-terminal-muted">
-                  Loading chart…
-                </div>
-              ) : chartQuery.isError ? (
-                <div className="flex h-full flex-col items-center justify-center gap-1 text-[11px]">
-                  <span className="text-terminal-warn">Chart data unavailable</span>
-                  <button
-                    type="button"
-                    onClick={() => void chartQuery.refetch()}
-                    className="rounded-sm border border-terminal-border px-2 py-0.5 text-[10px] text-terminal-accent hover:border-terminal-accent"
-                  >
-                    Retry
-                  </button>
-                </div>
-              ) : chartData.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-[11px] text-terminal-muted">
-                  No chart data for {activeInstrument}
-                </div>
-              ) : (
+              <DataState
+                status={
+                  !activeInstrument
+                    ? "empty"
+                    : chartQuery.isLoading
+                      ? "loading"
+                      : chartQuery.isError
+                        ? "error"
+                        : chartData.length === 0
+                          ? "empty"
+                          : "ready"
+                }
+                loadingLabel="Loading chart"
+                error={(chartQuery.error as Error | null) ?? "Chart data unavailable"}
+                onRetry={() => void chartQuery.refetch()}
+                emptyTitle={!activeInstrument ? "No instrument selected" : "No chart data"}
+                emptyHint={!activeInstrument ? "Select an instrument to inspect the market" : `No chart data for ${activeInstrument}`}
+              >
                 <TradingChart
                   ticker={activeInstrument}
                   data={chartData}
@@ -262,7 +257,7 @@ export function MarketDataPanel({ instrument, market }: Props) {
                   market={isIndian ? "IN" : "US"}
                   panelId="qc-terminal-chart"
                 />
-              )}
+              </DataState>
             </div>
           </div>
         ) : tab === "fundamentals" ? (

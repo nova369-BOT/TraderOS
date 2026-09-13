@@ -92,6 +92,6 @@ describe("AccountPanel (§29–32)", () => {
     apiMocks.fetchPaperPositions.mockResolvedValue([]);
     renderPanel();
     await userEvent.click(screen.getByTestId("account-tab-positions"));
-    expect(await screen.findByTestId("positions-empty")).toBeTruthy();
+    expect(await screen.findByTestId("data-state-empty")).toBeTruthy();
   });
 });

@@ -157,3 +157,57 @@ label {
     font-size: 10px !important;
   }
 }
+
+/* ============================================================
+   ARQOS DESIGN SYSTEM (R1) — density, skeletons, tabular numerals
+   ============================================================ */
+
+/* Financial numbers align cleanly everywhere (explicit utility for
+   components that reset their font context). */
+.ot-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Density: global mode applied by DensityRuntime via <html data-density>.
+   Components consume the variables; they must not hard-code row geometry. */
+:root {
+  --ot-density-row: var(--ot-density-row-default, 26px);
+  --ot-density-pad-y: 4px;
+}
+
+[data-density="compact"] {
+  --ot-density-row: 22px;
+  --ot-density-pad-y: 2px;
+}
+
+/* Skeleton loader — the standard loading treatment (never fake data). */
+.ot-skeleton-block {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ot-skeleton-line {
+  height: 10px;
+  border-radius: 2px;
+  background: var(--ot-color-surface-3, #23262f);
+  animation: ot-skeleton-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ot-skeleton-line {
+    animation: none;
+  }
+}
+
+@keyframes ot-skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}

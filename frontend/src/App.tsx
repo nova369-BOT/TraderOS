@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RootRedirect } from "./components/RootRedirect";
 import { TerminalBackground } from "./components/TerminalBackground";
 import { ThemeRuntime } from "./components/layout/ThemeRuntime";
+import { DensityRuntime } from "./design/DensityRuntime";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotAccessPage } from "./pages/Auth/ForgotAccessPage";
 import { RegisterPage } from "./pages/Auth/RegisterPage";
@@ -116,6 +117,7 @@ function App() {
   return (
     <div className="ot-app-shell">
       <ThemeRuntime />
+      <DensityRuntime />
       <TerminalBackground />
       <AgentConsole />
       <AgentLauncher />

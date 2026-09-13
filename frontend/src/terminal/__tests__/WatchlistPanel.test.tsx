@@ -77,7 +77,9 @@ describe("WatchlistPanel (§14–15)", () => {
   it("shows an honest error state with retry when the watchlist is unavailable", async () => {
     watchlistsMocks.fetchWatchlists.mockRejectedValue(new Error("network down"));
     renderPanel();
-    expect(await screen.findByText("Watchlist unavailable", {}, { timeout: 4000 })).toBeTruthy();
+    const state = await screen.findByTestId("data-state-error", {}, { timeout: 4000 });
+    expect(state.textContent).toContain("Unavailable");
+    expect(state.textContent).toContain("network down"); // the real error, not a vague label
     expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
   });
 

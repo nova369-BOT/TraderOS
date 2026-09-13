@@ -93,6 +93,6 @@ describe("OrdersPanel (§26–28)", () => {
 
   it("shows an explicit empty state for a clean account", () => {
     renderPanel({ orders: [] });
-    expect(screen.getByTestId("orders-empty").textContent).toContain("No working orders");
+    expect(screen.getByTestId("data-state-empty").textContent).toContain("No working orders");
   });
 });
