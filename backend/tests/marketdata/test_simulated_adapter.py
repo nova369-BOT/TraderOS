@@ -26,8 +26,14 @@ async def test_every_event_is_labeled_simulated() -> None:
         await adapter.subscribe("funding", "BTCUSDT", None)
         await adapter.subscribe("liquidation", "BTCUSDT", None)
         await adapter.subscribe("candle", "BTCUSDT", "1m")
-        deadline = asyncio.get_running_loop().time() + 1.5
-        while len(out) < 20 and asyncio.get_running_loop().time() < deadline:
+        # Candle warm start now backfills history (240 closed candles), so
+        # raw envelope count is dominated by candles — wait for the periodic
+        # event types this test asserts on instead.
+        deadline = asyncio.get_running_loop().time() + 3.0
+        while asyncio.get_running_loop().time() < deadline:
+            types = {envelope.type for envelope in out}
+            if "trade" in types and ("book_delta" in types or "book_snapshot" in types):
+                break
             await asyncio.sleep(0.02)
         assert len(out) >= 20
         for envelope in out:

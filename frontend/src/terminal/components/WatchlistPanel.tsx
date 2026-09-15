@@ -3,6 +3,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { addWatchlistSymbols, fetchWatchlists } from "../../api/watchlist";
 import { searchSymbols } from "../../api/marketData";
+import {
+  fetchMarketdataSymbols,
+  isMarketdataSymbol,
+  type MarketdataSymbolInfo,
+} from "../../api/marketdataFeed";
+import { useMarketdataQuotes, useMarketdataStreamStore } from "../../realtime/marketdataStream";
 import type { SearchSymbolItem } from "../../api/types";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useMarketContextStore } from "../../store/marketContextStore";
@@ -79,18 +85,43 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
   const inQuotes = useTerminalQuotes("NSE", inSymbols);
   const usQuotes = useTerminalQuotes("NASDAQ", usSymbols);
 
+  // Multi-asset instruments (SIM:/BINANCE: crypto, metals, energy, FX) stream
+  // through the unified marketdata WS; provenance rides every quote.
+  const mdSymbols = useMemo(() => symbols.filter(isMarketdataSymbol), [symbols]);
+  useMarketdataQuotes(mdSymbols);
+  const mdQuotes = useMarketdataStreamStore((state) => state.quotes);
+  const mdConnected = useMarketdataStreamStore((state) => state.connected);
+
   const quoteFor = useMemo(() => {
     const map = new Map<string, TerminalQuote>();
     for (const [symbol, quote] of Object.entries(inQuotes.quoteBySymbol)) map.set(symbol, quote);
     for (const [symbol, quote] of Object.entries(usQuotes.quoteBySymbol)) map.set(symbol, quote);
+    for (const symbol of mdSymbols) {
+      const quote = mdQuotes[symbol];
+      if (quote) {
+        map.set(symbol, {
+          symbol,
+          last: quote.last ?? (quote.ask && quote.bid ? (quote.ask + quote.bid) / 2 : null),
+          change: null,
+          changePct: null,
+          basis: "live",
+        });
+      }
+    }
     return map;
-  }, [inQuotes.quoteBySymbol, usQuotes.quoteBySymbol]);
+  }, [inQuotes.quoteBySymbol, usQuotes.quoteBySymbol, mdQuotes, mdSymbols]);
 
-  const quotesState = inSymbols.length && usSymbols.length
+  const equityState = inSymbols.length && usSymbols.length
     ? (inQuotes.dataState === "live" || usQuotes.dataState === "live" ? "live" : inQuotes.dataState)
     : inSymbols.length
       ? inQuotes.dataState
       : usQuotes.dataState;
+  const quotesState =
+    mdSymbols.length > 0 && equityState !== "live"
+      ? mdConnected
+        ? "live"
+        : equityState
+      : equityState;
 
   // Instrument search (adds to the watchlist / selects).
   const searchResults = useQuery({
@@ -98,6 +129,13 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
     queryFn: () => searchSymbols(debounced, selectedMarket),
     enabled: debounced.length >= 1,
     staleTime: 30_000,
+    retry: 1,
+  });
+  const mdSearch = useQuery({
+    queryKey: ["qc-md-symbol-search", debounced],
+    queryFn: () => fetchMarketdataSymbols(debounced),
+    enabled: debounced.length >= 1,
+    staleTime: 60_000,
     retry: 1,
   });
 
@@ -177,7 +215,16 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
           {isFavorite ? "★" : "☆"}
         </button>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[11px] font-medium text-terminal-text">{symbol}</div>
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[11px] font-medium text-terminal-text">
+              {isMarketdataSymbol(symbol) ? symbol.split(":")[1] : symbol}
+            </span>
+            {mdQuotes[symbol]?.provenance === "simulated" ? (
+              <span className="shrink-0 rounded-sm border border-terminal-border px-1 text-[8px] uppercase text-terminal-warn">
+                sim
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2 tabular-nums">
           <span className="text-[11px] text-terminal-text">{formatNumber(quote?.last ?? null)}</span>
@@ -224,14 +271,51 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
         </div>
         {search.trim().length >= 1 ? (
           <div className="mt-1.5 max-h-32 overflow-y-auto rounded-sm border border-terminal-border bg-terminal-bg">
-            {searchResults.isLoading ? (
+            {searchResults.isLoading && mdSearch.isLoading ? (
               <div className="px-2 py-1 text-[10px] text-terminal-muted">Searching…</div>
-            ) : searchResults.isError ? (
+            ) : searchResults.isError && mdSearch.isError ? (
               <div className="px-2 py-1 text-[10px] text-terminal-warn">Search unavailable</div>
-            ) : (searchResults.data ?? []).length === 0 ? (
+            ) : (searchResults.data ?? []).length === 0 && (mdSearch.data ?? []).length === 0 ? (
               <div className="px-2 py-1 text-[10px] text-terminal-muted">No matches</div>
             ) : (
-              (searchResults.data ?? []).slice(0, 8).map((item: SearchSymbolItem) => (
+              <>
+              {(mdSearch.data ?? []).slice(0, 6).map((item: MarketdataSymbolInfo) => (
+                <div
+                  key={`md-${item.symbol}`}
+                  className="flex items-center gap-2 border-b border-terminal-border/40 px-2 py-1 hover:bg-terminal-panel"
+                  data-testid={`search-md-${item.instrument}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => selectInstrument(item.symbol)}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[11px] text-terminal-text">{item.instrument}</span>
+                      <span className="shrink-0 rounded-sm border border-terminal-border px-1 text-[8px] uppercase text-terminal-accent">
+                        {item.kind}
+                      </span>
+                      <span className="shrink-0 text-[8px] uppercase text-terminal-muted/80">
+                        {item.exchange === "SIM" ? "simulated" : item.exchange}
+                      </span>
+                    </div>
+                    <div className="truncate text-[9px] text-terminal-muted">
+                      {item.base ?? ""}{item.quote ? `/${item.quote}` : ""} · {item.kind === "forex" ? "FX pair" : item.kind}
+                    </div>
+                  </button>
+                  {activeWatchlist && !symbols.includes(item.symbol.toUpperCase()) ? (
+                    <button
+                      type="button"
+                      aria-label={`Add ${item.instrument} to watchlist`}
+                      onClick={() => addSymbols.mutate([item.symbol])}
+                      className="shrink-0 rounded-sm border border-terminal-border px-1.5 py-0.5 text-[10px] text-terminal-accent hover:border-terminal-accent"
+                    >
+                      + Add
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+              {(searchResults.data ?? []).slice(0, 8).map((item: SearchSymbolItem) => (
                 <div
                   key={item.ticker}
                   className="flex items-center gap-2 border-b border-terminal-border/40 px-2 py-1 last:border-b-0 hover:bg-terminal-panel-hover"
@@ -255,7 +339,8 @@ export function WatchlistPanel({ onSelectInstrument, registerSearchRef }: Props)
                     </button>
                   ) : null}
                 </div>
-              ))
+              ))}
+              </>
             )}
           </div>
         ) : null}
