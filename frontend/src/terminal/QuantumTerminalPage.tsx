@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 
 import { SplitPane } from "../components/layout/SplitPane";
-import { TerminalContextBar } from "./components/TerminalContextBar";
 import { WatchlistPanel } from "./components/WatchlistPanel";
 import { OrderEntryPanel } from "./components/OrderEntryPanel";
 import { MarketDataPanel } from "./components/MarketDataPanel";
@@ -14,7 +13,7 @@ import { LAYOUT_KEYS } from "./store/terminalStore";
  * QUANTUM CORE TERMINAL FOUNDATION (directive §2, §12).
  *
  * Global application bar  → provided by the Terminal workspace layout (AppShell)
- * Terminal context        → TerminalContextBar
+ * Terminal context        → AppShell persistent context bar (global instrument/market/feed)
  * Three-column workspace → SplitPane-based resizable columns
  *
  *   LEFT                CENTER                    RIGHT
@@ -106,7 +105,7 @@ export function QuantumTerminalPage() {
   ) : (
     // Narrow viewports (§60): single column, fixed section heights, each
     // region owns its scrolling — no body scroll (§51).
-    <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-y-auto p-1.5">
+    <div className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-1">
       <section className="h-64 shrink-0">
         <WatchlistPanel registerSearchRef={registerSearchRef} />
       </section>
@@ -126,9 +125,6 @@ export function QuantumTerminalPage() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-terminal-bg">
-      <TerminalContextBar />
-      <main className="min-h-0 flex-1 p-1.5">{workspace}</main>
-    </div>
+    <main className="h-full min-h-0 bg-terminal-bg p-1">{workspace}</main>
   );
 }

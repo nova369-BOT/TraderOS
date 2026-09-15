@@ -67,7 +67,7 @@ function Popover({
         aria-haspopup="true"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-6 items-center gap-1 rounded-sm border border-terminal-border px-1.5 text-[10px] text-terminal-muted hover:border-terminal-accent/50 hover:text-terminal-text ${buttonClassName}`}
+        className={`inline-flex h-5 items-center gap-1 rounded-sm border border-terminal-border px-1.5 text-[10px] text-terminal-muted hover:border-terminal-accent/50 hover:text-terminal-text ${buttonClassName}`}
       >
         {label}
       </button>
@@ -128,7 +128,7 @@ export function AppShellBar({
   return (
     <header
       role="banner"
-      className="flex h-9 shrink-0 items-center gap-2 border-b border-terminal-border bg-terminal-panel px-2"
+      className="flex h-8 shrink-0 items-center gap-2 border-b border-terminal-border bg-terminal-panel px-2"
     >
       <button
         type="button"
@@ -136,14 +136,14 @@ export function AppShellBar({
         aria-label={sidebarCollapsed ? "Expand navigation sidebar" : "Collapse navigation sidebar"}
         aria-expanded={!sidebarCollapsed}
         title="Toggle sidebar (Ctrl+B)"
-        className="inline-flex h-6 w-6 items-center justify-center rounded-sm border border-terminal-border text-[11px] text-terminal-muted hover:border-terminal-accent/50 hover:text-terminal-text"
+        className="inline-flex h-5 w-5 items-center justify-center rounded-sm border border-terminal-border text-[11px] text-terminal-muted hover:border-terminal-accent/50 hover:text-terminal-text"
       >
         ☰
       </button>
 
       <Link
         to="/"
-        className="inline-flex h-6 items-center gap-1.5 rounded-sm border border-terminal-border bg-terminal-bg px-1.5"
+        className="inline-flex h-5 items-center gap-1.5 rounded-sm border border-terminal-border bg-terminal-bg px-1.5"
         aria-label="ARQOS home"
         title="ARQOS home"
       >
@@ -156,7 +156,7 @@ export function AppShellBar({
         type="button"
         onClick={openCommandPalette}
         aria-label="Search markets, commands and pages"
-        className="mx-1 flex h-6 max-w-md flex-1 items-center gap-2 rounded-sm border border-terminal-border bg-terminal-bg px-2 text-left text-[11px] text-terminal-muted hover:border-terminal-accent/50"
+        className="mx-1 flex h-5 max-w-md flex-1 items-center gap-2 rounded-sm border border-terminal-border bg-terminal-bg px-2 text-left text-[11px] text-terminal-muted hover:border-terminal-accent/50"
       >
         <span aria-hidden="true">⌕</span>
         <span className="truncate">Search markets, commands, pages…</span>
@@ -191,7 +191,7 @@ export function AppShellBar({
           onClick={toggleDensity}
           aria-label={`Density: ${density}. Click to switch.`}
           title={`Row density: ${density} (global, persisted)`}
-          className={`inline-flex h-6 items-center rounded-sm border px-1.5 text-[10px] uppercase ${
+          className={`inline-flex h-5 items-center rounded-sm border px-1.5 text-[10px] uppercase ${
             density === "compact"
               ? "border-terminal-accent text-terminal-accent"
               : "border-terminal-border text-terminal-muted hover:text-terminal-text"

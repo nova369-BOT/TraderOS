@@ -52,7 +52,7 @@ function Centered({
     <div
       className={[
         "flex min-h-0 w-full items-center justify-center text-center",
-        compact ? "px-2 py-2" : "min-h-[4rem] flex-1 px-3 py-4",
+        compact ? "px-2 py-1.5" : "min-h-[2.5rem] flex-1 px-3 py-3",
         className,
       ]
         .join(" ")

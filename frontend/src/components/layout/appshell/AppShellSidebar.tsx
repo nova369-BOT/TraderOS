@@ -6,7 +6,7 @@ import { useAlertsStore } from "../../../store/alertsStore";
 import { NAV_TREE, searchNav, type NavItem } from "./navTree";
 import { TABULAR_CLASS } from "../../../design/tokens";
 
-const SIDEBAR_WIDTH = "w-56"; // 224px — compact by design (mockup target)
+const SIDEBAR_WIDTH = "w-52"; // 208px — compact by design (mockup target)
 
 /**
  * AppShell navigation sidebar (R2).
@@ -185,7 +185,7 @@ export function AppShellSidebar() {
                   type="button"
                   onClick={() => toggleNavCategory(category.id)}
                   aria-expanded={!isCollapsed}
-                  className="flex w-full items-center gap-1 px-2 py-1 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-muted/90 hover:text-terminal-text"
+                  className="flex w-full items-center gap-1 px-2 py-0.5 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-terminal-muted/90 hover:text-terminal-text"
                 >
                   <span aria-hidden="true" className={`transition-transform ${isCollapsed ? "" : "rotate-90"}`}>
                     ▸
@@ -196,7 +196,7 @@ export function AppShellSidebar() {
                   ? null
                   : category.groups.map((group) => (
                       <div key={group.id}>
-                        <div className="px-3 pt-1 pb-0.5 text-[9px] uppercase tracking-wide text-terminal-muted/60">
+                        <div className="px-3 pt-1 pb-0 text-[9px] uppercase tracking-wide text-terminal-muted/60">
                           {group.label}
                         </div>
                         <ul>

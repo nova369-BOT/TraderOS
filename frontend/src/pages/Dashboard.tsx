@@ -13,32 +13,32 @@ export function DashboardPage() {
     const hasMarketData = Array.isArray((marketStatus as { marketState?: unknown[] } | undefined)?.marketState);
 
     return (
-        <div className="space-y-4 px-3 py-2">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-terminal-accent">Market Overview</h1>
-                <p className="text-terminal-muted">Live market insights and upcoming events.</p>
+        <div className="space-y-3 px-3 py-2">
+            <div className="mb-2">
+                <h1 className="ot-type-panel-title uppercase text-terminal-accent">Market Overview</h1>
+                <p className="text-[11px] text-terminal-muted">Live market insights and upcoming events.</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="rounded border border-terminal-border bg-terminal-panel p-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div className="lg:col-span-2 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                        <div className="rounded border border-terminal-border bg-terminal-panel p-2">
                             <div className="text-xs uppercase text-terminal-muted">NIFTY 50</div>
-                            <div className="text-xl font-bold text-terminal-text">{hasMarketData ? "LIVE" : "NA"}</div>
-                            <div className="text-sm text-terminal-pos">{hasMarketData ? "Feed Connected" : "Fallback Mode"}</div>
+                            <div className="ot-type-title font-bold text-terminal-text">{hasMarketData ? "LIVE" : "NA"}</div>
+                            <div className="text-[10px] text-terminal-pos">{hasMarketData ? "Feed Connected" : "Fallback Mode"}</div>
                         </div>
-                        <div className="rounded border border-terminal-border bg-terminal-panel p-4">
+                        <div className="rounded border border-terminal-border bg-terminal-panel p-2">
                             <div className="text-xs uppercase text-terminal-muted">Market Status</div>
-                            <div className="text-xl font-bold text-terminal-text">
+                            <div className="ot-type-title font-bold text-terminal-text">
                                 {(marketStatus as { error?: string } | undefined)?.error ? "Unavailable" : "Available"}
                             </div>
                             <div className={`text-sm ${(marketStatus as { error?: string } | undefined)?.error ? "text-terminal-neg" : "text-terminal-pos"}`}>
                                 {(marketStatus as { error?: string } | undefined)?.error ? "NSE endpoint failed" : "Realtime endpoint active"}
                             </div>
                         </div>
-                        <div className="rounded border border-terminal-border bg-terminal-panel p-4">
+                        <div className="rounded border border-terminal-border bg-terminal-panel p-2">
                             <div className="text-xs uppercase text-terminal-muted">Data Vendor</div>
-                            <div className="text-xl font-bold text-terminal-text">NSE/Yahoo</div>
+                            <div className="ot-type-title font-bold text-terminal-text">NSE/Yahoo</div>
                             <div className="text-sm text-terminal-muted">Auto-fallback enabled</div>
                         </div>
                     </div>
@@ -46,9 +46,9 @@ export function DashboardPage() {
                     <BulkDealsTable />
                 </div>
 
-                <div className="space-y-6">
+                <div className="space-y-3">
                     <EventCalendar />
-                    <div className="rounded border border-terminal-border bg-terminal-panel p-4">
+                    <div className="rounded border border-terminal-border bg-terminal-panel p-2">
                         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-terminal-accent">Events This Week</h3>
                         {earningsThisWeek.length === 0 ? (
                             <div className="text-xs text-terminal-muted">No earnings events available for this week.</div>
@@ -64,7 +64,7 @@ export function DashboardPage() {
                         )}
                     </div>
 
-                    <div className="rounded border border-terminal-border bg-terminal-panel p-4">
+                    <div className="rounded border border-terminal-border bg-terminal-panel p-2">
                         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-terminal-accent">Market Movers</h3>
                         <div className="space-y-2">
                             <div className="flex justify-between text-sm">

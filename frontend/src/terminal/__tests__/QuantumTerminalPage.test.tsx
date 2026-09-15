@@ -8,7 +8,7 @@ import { QuantumTerminalPage } from "../QuantumTerminalPage";
 /**
  * Composition test (§56): the three-column Quantum Core workstation must
  * mount every panel together — Watchlist, Order Entry, Market Data, Orders,
- * Account — under the terminal context bar.
+ * Account — right column, below positions.
  */
 
 vi.mock("../../components/layout/TerminalShell", () => ({
@@ -56,7 +56,7 @@ vi.mock("../../hooks/useStocks", () => ({
 }));
 
 describe("QuantumTerminalPage composition (§2, §12, §56)", () => {
-  it("mounts the full workstation: context bar + all six panels", () => {
+  it("mounts the full workstation: all six panels", () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <MemoryRouter>
@@ -66,7 +66,6 @@ describe("QuantumTerminalPage composition (§2, §12, §56)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Trading Terminal")).toBeTruthy();
     expect(screen.getByText("WATCHLIST")).toBeTruthy();
     expect(screen.getByText("ORDER ENTRY")).toBeTruthy();
     expect(screen.getByText("MARKET DATA")).toBeTruthy();

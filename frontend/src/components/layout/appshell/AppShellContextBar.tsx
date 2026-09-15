@@ -77,7 +77,7 @@ export function AppShellContextBar() {
     <div
       role="region"
       aria-label="Global context"
-      className="flex h-7 shrink-0 items-center gap-2 overflow-x-auto border-b border-terminal-border bg-terminal-bg/80 px-2 text-[10px]"
+      className="flex h-6 shrink-0 items-center gap-1.5 overflow-x-auto border-b border-terminal-border bg-terminal-bg/80 px-2 text-[10px]"
     >
       {/* Breadcrumbs — where am I */}
       <nav aria-label="Breadcrumb" className="flex shrink-0 items-center gap-1 text-terminal-muted">

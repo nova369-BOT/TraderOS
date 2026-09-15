@@ -98,7 +98,7 @@ export function SplitPane({
       ref={rootRef}
       className={[
         "min-h-0 min-w-0",
-        vertical ? "grid grid-cols-[minmax(0,var(--split-a))_10px_minmax(0,var(--split-b))]" : "grid grid-rows-[minmax(0,var(--split-a))_10px_minmax(0,var(--split-b))]",
+        vertical ? "grid grid-cols-[minmax(0,var(--split-a))_6px_minmax(0,var(--split-b))]" : "grid grid-rows-[minmax(0,var(--split-a))_6px_minmax(0,var(--split-b))]",
         className,
       ]
         .join(" ")

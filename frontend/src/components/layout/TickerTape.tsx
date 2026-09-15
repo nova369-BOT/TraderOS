@@ -170,7 +170,7 @@ export function TickerTape() {
   };
 
   return (
-    <div className="relative z-30 h-8 overflow-hidden border-b border-terminal-border bg-terminal-bg text-[12px]">
+    <div className="relative z-30 h-6 overflow-hidden border-b border-terminal-border bg-terminal-bg text-[11px]">
       <div className="ticker-tape-track h-full hover:[animation-play-state:paused]">
         <div className="ticker-tape-segment">
           {items.map((item) => {
@@ -183,7 +183,7 @@ export function TickerTape() {
                 type="button"
                 onClick={() => handleClick(item)}
                 className={[
-                  "inline-flex h-6 items-center gap-2 rounded-sm border border-transparent px-2 ot-type-data text-[12px] hover:border-terminal-border",
+                  "inline-flex h-4 items-center gap-2 rounded-sm border border-transparent px-2 ot-type-data text-[11px] hover:border-terminal-border",
                   selectedTicker?.toUpperCase() === item.symbol ? "text-terminal-accent" : "text-terminal-text",
                   flash === "up" ? "bg-emerald-500/10" : flash === "down" ? "bg-rose-500/10" : "",
                 ].join(" ")}
@@ -208,7 +208,7 @@ export function TickerTape() {
             return (
               <div
                 key={`${item.key}:ghost`}
-                className="inline-flex h-6 items-center gap-2 px-2 ot-type-data text-[12px] text-terminal-text"
+                className="inline-flex h-4 items-center gap-2 px-2 ot-type-data text-[11px] text-terminal-text"
               >
                 <span className="text-[#FF6B00]">{item.label}</span>
                 <span>{formatPrice(item.price)}</span>
