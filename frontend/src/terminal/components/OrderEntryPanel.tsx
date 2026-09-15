@@ -9,6 +9,7 @@ import type { PaperOrder, PaperPortfolio } from "../../types";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useStockStore } from "../../store/stockStore";
 import { useTerminalStore } from "../store/terminalStore";
+import { useContextStore } from "../../store/contextStore";
 import { useTerminalQuotes } from "../hooks/useTerminalQuotes";
 import { formatNumber } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
@@ -48,8 +49,8 @@ export function OrderEntryPanel({ instrument, market, portfolios, onSubmitOrder 
   const contextTicker = useStockStore((s) => s.ticker);
   const selectedMarket = useSettingsStore((s) => s.selectedMarket);
   const displayCurrency = useSettingsStore((s) => s.displayCurrency);
-  const selectedPortfolioId = useTerminalStore((s) => s.selectedPortfolioId);
-  const selectPortfolio = useTerminalStore((s) => s.selectPortfolio);
+  const selectedPortfolioId = useContextStore((s) => s.accountPortfolioId);
+  const selectPortfolio = useContextStore((s) => s.setAccountPortfolioId);
   const setOrdersTab = useTerminalStore((s) => s.setOrdersTab);
 
   const activeInstrument = (instrument ?? contextTicker ?? "").trim().toUpperCase();

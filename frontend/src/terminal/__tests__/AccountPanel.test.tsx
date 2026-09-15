@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AccountPanel } from "../components/AccountPanel";
 import { useTerminalStore } from "../store/terminalStore";
+import { useContextStore } from "../../store/contextStore";
 
 const apiMocks = vi.hoisted(() => ({
   fetchPaperPortfolios: vi.fn(),
@@ -39,10 +40,10 @@ describe("AccountPanel (§29–32)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useTerminalStore.setState({
-      selectedPortfolioId: "pf-1",
-      accountTab: "balances",
+            accountTab: "balances",
       selectedPositionId: null,
     });
+    useContextStore.setState({ accountPortfolioId: "pf-1" });
     apiMocks.fetchPaperPositions.mockResolvedValue(POSITIONS);
     apiMocks.fetchPaperPerformance.mockResolvedValue({
       portfolio_id: "pf-1",

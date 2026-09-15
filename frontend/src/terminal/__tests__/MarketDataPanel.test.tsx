@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MarketDataPanel } from "../components/MarketDataPanel";
 import { useTerminalStore } from "../store/terminalStore";
+import { useContextStore } from "../../store/contextStore";
 
 const apiMocks = vi.hoisted(() => ({
   fetchChart: vi.fn(),
@@ -55,8 +56,8 @@ describe("MarketDataPanel (§20–25)", () => {
     vi.clearAllMocks();
     useTerminalStore.setState({
       marketDataTab: "chart",
-      selectedPortfolioId: "pf-1",
-    });
+          });
+    useContextStore.setState({ accountPortfolioId: "pf-1" });
   });
 
   it("renders the market-data views: Chart, Fundamentals, Holdings, News", () => {

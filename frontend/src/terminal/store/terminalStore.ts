@@ -24,6 +24,9 @@ export type AccountTab = "balances" | "positions";
 
 type TerminalState = {
   /** Paper portfolio (account) the terminal acts for. */
+  /** @deprecated R4: the active account now lives in contextStore (ot:ctx:v1).
+   *  Kept only so pre-R4 sessions migrate via ContextSync; product code must
+   *  read contextStore.accountPortfolioId. */
   selectedPortfolioId: string | null;
   selectPortfolio: (id: string | null) => void;
 

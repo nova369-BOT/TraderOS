@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 
 import { ErrorBoundary } from "../../common/ErrorBoundary";
 import { AlertToasts } from "../AlertToasts";
@@ -11,6 +12,7 @@ import { StatusBar } from "../StatusBar";
 import { TickerTape } from "../TickerTape";
 import { ShortcutOverlay } from "../../common/ShortcutOverlay";
 import { useUiStore } from "../../../store/uiStore";
+import { useContextStore } from "../../../store/contextStore";
 import { AppShellBar } from "./AppShellBar";
 import { AppShellContextBar } from "./AppShellContextBar";
 import { AppShellSidebar } from "./AppShellSidebar";
@@ -62,6 +64,14 @@ export function AppShell({
 }: Props) {
   const tickerTapeVisible = useUiStore((s) => s.tickerTapeVisible);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
+  const location = useLocation();
+
+  // R4: remember the active workspace so the next session returns here.
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === "/" || ["/login", "/register", "/forgot-access"].includes(path)) return;
+    useContextStore.getState().setLastPath(path);
+  }, [location.pathname]);
 
   // Ctrl/Cmd+B toggles the sidebar (standard shell convention).
   useEffect(() => {

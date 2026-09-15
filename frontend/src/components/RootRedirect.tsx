@@ -2,12 +2,13 @@ import { useEffect } from "react";
 import { Navigate } from "react-router-dom";
 
 import { useAuth } from "../contexts/AuthContext";
+import { useContextStore } from "../store/contextStore";
 
 /**
  * Root path policy: the public marketing landing (served statically from
  * `public/landing/`, outside the SPA) is the default page for guests, while
- * authenticated users are taken straight into the Quantum Core trading
- * terminal at `/terminal`.
+ * authenticated users return to their last workspace (R4 persisted context)
+ * or the Quantum Core trading terminal at `/terminal`.
  */
 export function RootRedirect() {
   const { isAuthenticated, isInitializing } = useAuth();
@@ -30,7 +31,16 @@ export function RootRedirect() {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/terminal" replace />;
+    // R4: return the user to their last workspace (persisted context),
+    // defaulting to the trading terminal. Auth pages and external paths are
+    // never restored.
+    const lastPath = useContextStore.getState().lastPath;
+    const restoreable = Boolean(
+      lastPath &&
+      lastPath.startsWith("/") &&
+      !["/login", "/register", "/forgot-access", "/"].includes(lastPath),
+    );
+    return <Navigate to={restoreable ? lastPath! : "/terminal"} replace />;
   }
 
   // Guests: the effect kicks off the redirect to the static landing; render

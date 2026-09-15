@@ -13,6 +13,7 @@ import { OpsLayout } from "./components/layout/workspaces/OpsLayout";
 import { TerminalBackground } from "./components/TerminalBackground";
 import { ThemeRuntime } from "./components/layout/ThemeRuntime";
 import { DensityRuntime } from "./design/DensityRuntime";
+import { ContextSync } from "./components/ContextSync";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotAccessPage } from "./pages/Auth/ForgotAccessPage";
 import { RegisterPage } from "./pages/Auth/RegisterPage";
@@ -122,6 +123,7 @@ function App() {
     <div className="ot-app-shell">
       <ThemeRuntime />
       <DensityRuntime />
+      <ContextSync />
       <TerminalBackground />
       <AgentConsole />
       <AgentLauncher />

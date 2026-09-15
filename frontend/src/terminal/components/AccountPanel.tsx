@@ -6,6 +6,7 @@ import type { PaperPortfolio } from "../../types";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useMarketContextStore } from "../../store/marketContextStore";
 import { useTerminalStore } from "../store/terminalStore";
+import { useContextStore } from "../../store/contextStore";
 import { formatNumber, formatPct, formatQty, formatSigned, pnlClass } from "../format";
 import { TerminalPanel } from "../../components/terminal/TerminalPanel";
 import { TerminalBadge } from "../../components/terminal/TerminalBadge";
@@ -27,8 +28,8 @@ type Props = {
 
 export function AccountPanel({ portfolios, onSelectInstrument }: Props) {
   const displayCurrency = useSettingsStore((s) => s.displayCurrency);
-  const selectedPortfolioId = useTerminalStore((s) => s.selectedPortfolioId);
-  const selectPortfolio = useTerminalStore((s) => s.selectPortfolio);
+  const selectedPortfolioId = useContextStore((s) => s.accountPortfolioId);
+  const selectPortfolio = useContextStore((s) => s.setAccountPortfolioId);
   const selectContextInstrument = useMarketContextStore((s) => s.selectInstrument);
   const tab = useTerminalStore((s) => s.accountTab);
   const setTab = useTerminalStore((s) => s.setAccountTab);

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { OrderEntryPanel } from "../components/OrderEntryPanel";
 import { useTerminalStore } from "../store/terminalStore";
+import { useContextStore } from "../../store/contextStore";
 
 const portfolioMocks = vi.hoisted(() => ({
   fetchPaperPortfolios: vi.fn(),
@@ -44,7 +45,8 @@ function renderPanel(props?: Parameters<typeof OrderEntryPanel>[0]) {
 describe("OrderEntryPanel (§17–19)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useTerminalStore.setState({ selectedPortfolioId: "pf-1", ordersTab: "live" });
+    useContextStore.setState({ accountPortfolioId: "pf-1" });
+    useTerminalStore.setState({ ordersTab: "live" });
   });
 
   it("renders the institutional context block with the PAPER execution label", () => {
