@@ -219,59 +219,10 @@ class PaperTradingEngine:
             return None
         return (fill_price - _f(pos.avg_entry_price)) * _f(order.quantity)
 
-    async def _marketdata_last(self, symbol: str) -> float | None:
-        """Last price from the unified marketdata service (canonical symbols).
-
-        Covers the multi-asset universe (SIM:/BINANCE: crypto, metals, energy,
-        FX). The quote topic is subscribed on demand (idempotent, ref-counted)
-        so the adapter — simulated offline, live Binance when egress exists —
-        starts publishing. Equity symbols return None and keep using the
-        legacy unified fetcher path.
-        """
-        head, sep, _ = symbol.strip().upper().partition(":")
-        if not sep or head not in {"SIM", "BINANCE"}:
-            return None
-        try:
-            from backend.marketdata.service import get_marketdata_service
-
-            service = get_marketdata_service()
-            canonical = symbol.strip().upper()
-            try:
-                await service.subscribe_topic(f"quote:{canonical}")
-            except ValueError:
-                return None
-            # give the adapter a moment to publish the first quote
-            for _ in range(20):
-                if service.get_quote(canonical) is not None:
-                    break
-                await asyncio.sleep(0.05)
-            quote = service.get_quote(canonical)
-            if quote is None:
-                return None
-            price = quote.last or (
-                (quote.ask + quote.bid) / 2 if quote.ask and quote.bid else None
-            )
-            return float(price) if price and price > 0 else None
-        except Exception:  # pragma: no cover - defensive
-            return None
-
-    async def refresh_mark(self, symbol: str) -> float | None:
-        """Current mark for a position symbol (marketdata symbols refresh live)."""
-        head, sep, _ = symbol.strip().upper().partition(":")
-        if sep and head in {"SIM", "BINANCE"}:
-            price = await self._marketdata_last(symbol)
-            if price is not None:
-                self._mark_prices[symbol] = price
-                return price
-            return self._mark_prices.get(symbol)
-        return self._mark_prices.get(symbol)
-
     async def maybe_fill_market_order_now(self, db: Session, order: VirtualOrder) -> None:
         if str(order.order_type).lower() != VirtualOrderType.MARKET.value:
             return
         ltp = self._mark_prices.get(order.symbol)
-        if ltp is None:
-            ltp = await self._marketdata_last(order.symbol)
         if ltp is None:
             fetcher = await get_unified_fetcher()
             raw_symbol = order.symbol.split(":")[-1]

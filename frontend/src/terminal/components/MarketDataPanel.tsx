@@ -1,12 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import { fetchChartData } from "../../services/chartDataService";
-import {
-  fetchMarketdataCandles,
-  isMarketdataSymbol,
-} from "../../api/marketdataFeed";
-import { useMarketdataQuotes } from "../../realtime/marketdataStream";
 import { fetchPitFundamentals } from "../../api/equity";
 import { fetchLatestNews } from "../../api/news";
 import { fetchPaperPositions } from "../../api/portfolio";
@@ -69,40 +64,9 @@ export function MarketDataPanel({ instrument, market }: Props) {
   const [chartKind, setChartKind] = useState<ChartKind>("candles");
   const timeframe = TIMEFRAMES[timeframeIndex];
 
-  // Multi-asset instruments (SIM:/BINANCE: crypto, metals, energy, FX) chart
-  // from the unified marketdata service: subscribe the candle topic so the
-  // adapter publishes (labeled simulated offline, live Binance when egress
-  // exists), poll REST for the series, and stream quotes for the header.
-  const mdInstrument = isMarketdataSymbol(activeInstrument) ? activeInstrument.trim().toUpperCase() : null;
-  const mdInterval = timeframe.interval.replace("w", "1w");
-  useMarketdataQuotes(mdInstrument ? [mdInstrument] : []);
-  // keep the candle topic warm while the chart tab is open
-  useEffect(() => {
-    if (!mdInstrument || tab !== "chart") return;
-    let release: (() => void) | null = null;
-    let cancelled = false;
-    void import("../../realtime/marketdataStream").then(({ createCandleTopicSubscription }) => {
-      if (cancelled) return;
-      release = createCandleTopicSubscription(mdInstrument, mdInterval);
-    });
-    return () => {
-      cancelled = true;
-      release?.();
-    };
-  }, [mdInstrument, mdInterval, tab]);
-
-  const mdChartQuery = useQuery({
-    queryKey: ["qc-md-chart", mdInstrument, mdInterval],
-    queryFn: () => fetchMarketdataCandles(mdInstrument!, mdInterval),
-    enabled: tab === "chart" && Boolean(mdInstrument),
-    refetchInterval: 3_000, // live-ish updates while the simulator streams
-    staleTime: 1_000,
-    retry: 1,
-  });
-
-  // Unified (normalized) chart source ONLY for equities — the legacy /chart
-  // fallback fabricates synthetic bars offline, which must never be presented
-  // as market data (no-false-data law). Provider outage → explicit error state.
+  // Unified (normalized) chart source ONLY — the legacy /chart fallback
+  // fabricates synthetic bars offline, which must never be presented as
+  // market data (no-false-data law). Provider outage → explicit error state.
   const chartQuery = useQuery({
     queryKey: ["qc-chart", activeInstrument, timeframe.interval, timeframe.range, activeMarket],
     queryFn: () =>
@@ -111,28 +75,11 @@ export function MarketDataPanel({ instrument, market }: Props) {
         interval: timeframe.interval,
         period: timeframe.range,
       }),
-    enabled: tab === "chart" && Boolean(activeInstrument) && !mdInstrument,
+    enabled: tab === "chart" && Boolean(activeInstrument),
     staleTime: 60_000,
     retry: 1,
   });
-
-  const activeChartQuery = mdInstrument ? mdChartQuery : chartQuery;
-  const chartProvenance: string | null = mdInstrument
-    ? (mdChartQuery.data?.provenance ?? null)
-    : null;
-
   const chartData: ChartPoint[] = useMemo(() => {
-    if (mdInstrument) {
-      const rows = mdChartQuery.data?.items ?? [];
-      return rows.map((row) => ({
-        t: Math.floor(Number(row.open_time) / 1000),
-        o: Number(row.open),
-        h: Number(row.high),
-        l: Number(row.low),
-        c: Number(row.close),
-        v: Number(row.volume ?? 0),
-      }));
-    }
     const rows = chartQuery.data?.data ?? [];
     return Array.isArray(rows)
       ? rows.map((row) => ({
@@ -146,7 +93,7 @@ export function MarketDataPanel({ instrument, market }: Props) {
           ext: row.ext,
         }))
       : [];
-  }, [mdInstrument, mdChartQuery.data, chartQuery.data]);
+  }, [chartQuery.data]);
 
   const fundamentalsQuery = useQuery({
     queryKey: ["qc-fundamentals", activeInstrument],
@@ -280,19 +227,7 @@ export function MarketDataPanel({ instrument, market }: Props) {
                 ))}
               </div>
               <span className="ml-auto text-[9px] text-terminal-muted">
-                {chartProvenance ? (
-                  <span
-                    className={`rounded-sm border px-1 text-[8px] uppercase ${
-                      chartProvenance === "simulated"
-                        ? "border-terminal-warn/50 text-terminal-warn"
-                        : "border-terminal-pos/50 text-terminal-pos"
-                    }`}
-                    data-testid="chart-provenance"
-                  >
-                    {chartProvenance}
-                  </span>
-                ) : null}
-                {activeChartQuery.isFetching ? "Loading…" : chartData.length ? `${chartData.length} bars` : ""}
+                {chartQuery.isFetching ? "Loading…" : chartData.length ? `${chartData.length} bars` : ""}
               </span>
             </div>
             <div className="min-h-0 flex-1 overflow-hidden" data-testid="chart-container">
@@ -300,16 +235,16 @@ export function MarketDataPanel({ instrument, market }: Props) {
                 status={
                   !activeInstrument
                     ? "empty"
-                    : activeChartQuery.isLoading
+                    : chartQuery.isLoading
                       ? "loading"
-                      : activeChartQuery.isError
+                      : chartQuery.isError
                         ? "error"
                         : chartData.length === 0
                           ? "empty"
                           : "ready"
                 }
                 loadingLabel="Loading chart"
-                error={(activeChartQuery.error as Error | null) ?? "Chart data unavailable"}
+                error={(chartQuery.error as Error | null) ?? "Chart data unavailable"}
                 onRetry={() => void chartQuery.refetch()}
                 emptyTitle={!activeInstrument ? "No instrument selected" : "No chart data"}
                 emptyHint={!activeInstrument ? "Select an instrument to inspect the market" : `No chart data for ${activeInstrument}`}

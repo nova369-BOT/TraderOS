@@ -41,44 +41,18 @@ from backend.marketdata.types import (
 logger = logging.getLogger(__name__)
 
 EMIT_INTERVAL_S = 0.2
-#: Closed candles synthesized at warm start so charts have history offline.
-SIM_CANDLE_HISTORY = 240
 MAX_TRADES_RING = 200
 MAX_CANDLES = 600
 
 #: Fixed catalog (perp-style specs, plausible prices — clearly simulated).
-@dataclass(frozen=True)
-class SimSpec:
-    """Instrument specification for the simulated catalog."""
-
-    base_price: float
-    tick_size: float
-    step_size: float
-    kind: str = "perp"  # perp | metal | energy | forex
-    quote: str = "USDT"
-    price_precision: int = 2
-    quantity_precision: int = 3
-
-
-#: Multi-asset offline catalog (crypto perps, metals, energy, FX majors).
-#: Every event from these instruments is labeled provenance="simulated".
-SIM_CATALOG: dict[str, SimSpec] = {
-    # crypto perps (names match Binance so the live adapter maps 1:1)
-    "BTCUSDT": SimSpec(110_000.0, 0.1, 0.001),
-    "ETHUSDT": SimSpec(3_500.0, 0.01, 0.01),
-    "SOLUSDT": SimSpec(180.0, 0.01, 0.1),
-    "BNBUSDT": SimSpec(900.0, 0.01, 0.01),
-    "XRPUSDT": SimSpec(2.2, 0.0001, 0.1),
-    "DOGEUSDT": SimSpec(0.16, 0.00001, 1.0),
-    # metals
-    "XAUUSD": SimSpec(2_650.0, 0.01, 0.01, kind="metal", quote="USD", price_precision=2, quantity_precision=2),
-    "XAGUSD": SimSpec(31.5, 0.001, 0.1, kind="metal", quote="USD", price_precision=3, quantity_precision=2),
-    # energy
-    "USOIL": SimSpec(71.2, 0.01, 0.1, kind="energy", quote="USD", price_precision=2, quantity_precision=1),
-    # FX majors
-    "EURUSD": SimSpec(1.0845, 0.0001, 100, kind="forex", quote="USD", price_precision=5, quantity_precision=0),
-    "GBPUSD": SimSpec(1.2975, 0.0001, 100, kind="forex", quote="USD", price_precision=5, quantity_precision=0),
-    "USDJPY": SimSpec(142.3, 0.001, 100, kind="forex", quote="JPY", price_precision=3, quantity_precision=0),
+SIM_CATALOG: dict[str, tuple[float, float, float]] = {
+    # instrument: (base_price, tick_size, step_size)
+    "BTCUSDT": (110_000.0, 0.1, 0.001),
+    "ETHUSDT": (3_500.0, 0.01, 0.01),
+    "SOLUSDT": (180.0, 0.01, 0.1),
+    "BNBUSDT": (900.0, 0.01, 0.01),
+    "XRPUSDT": (2.2, 0.0001, 0.1),
+    "DOGEUSDT": (0.16, 0.00001, 1.0),
 }
 
 
@@ -92,7 +66,6 @@ class _SimInstrument:
     mid: float = 0.0
     seq: int = 0
     trades: list[Trade] = field(default_factory=list)
-    candle_history_done: set[str] = field(default_factory=set)
     bids: dict[float, float] = field(default_factory=dict)
     asks: dict[float, float] = field(default_factory=dict)
     last_update_id: int = 0
@@ -152,12 +125,12 @@ class SimulatedAdapter(MarketDataAdapter):
         if self._started:
             return
         self._started = True
-        for instrument, spec in SIM_CATALOG.items():
+        for instrument, (base_price, tick, step) in SIM_CATALOG.items():
             self._instruments[instrument] = _SimInstrument(
                 instrument=instrument,
-                base_price=spec.base_price,
-                tick_size=spec.tick_size,
-                step_size=spec.step_size,
+                base_price=base_price,
+                tick_size=tick,
+                step_size=step,
                 rng=random.Random(f"sim:{instrument}"),
             )
         logger.info("simulated market adapter started (%d instruments)", len(self._instruments))
@@ -183,29 +156,20 @@ class SimulatedAdapter(MarketDataAdapter):
             events_published=self._events_published,
         )
 
-    @staticmethod
-    def _base_asset(instrument: str) -> str | None:
-        spec = SIM_CATALOG.get(instrument)
-        if spec is None:
-            return instrument.removesuffix("USDT") or None
-        if spec.kind == "forex" and len(instrument) == 6:
-            return instrument[:3]
-        return instrument.removesuffix(spec.quote) or None
-
     async def list_symbols(self, query: str | None = None) -> list[SymbolInfo]:
         items = [
             SymbolInfo(
                 symbol=f"{self.exchange}:{inst}",
                 exchange=self.exchange,
                 instrument=inst,
-                base=self._base_asset(inst),
-                quote=SIM_CATALOG[inst].quote,
-                kind=SIM_CATALOG[inst].kind,
+                base=inst.removesuffix("USDT") or None,
+                quote="USDT",
+                kind="perp",
                 status="trading",
                 tick_size=row.tick_size,
                 step_size=row.step_size,
-                price_precision=SIM_CATALOG[inst].price_precision,
-                quantity_precision=SIM_CATALOG[inst].quantity_precision,
+                price_precision=2,
+                quantity_precision=3,
             )
             for inst, row in self._instruments.items()
         ]
@@ -261,7 +225,6 @@ class SimulatedAdapter(MarketDataAdapter):
         elif stream == "candle":
             interval = param or "1m"
             self._seed_candle(row, interval)
-            self._backfill_candles(row, interval)
             candle = row.candles.get(interval)
             if candle is not None:
                 self._emit("candle", row, candle.model_dump(), param=interval)
@@ -310,61 +273,6 @@ class SimulatedAdapter(MarketDataAdapter):
                 open=row.mid, high=row.mid, low=row.mid, close=row.mid,
                 volume=0.0, closed=False, trade_count=0,
             )
-
-    def _backfill_candles(self, row: _SimInstrument, interval: str) -> None:
-        """Emit SIM_CANDLE_HISTORY closed candles ending at the last bucket.
-
-        Deterministic per (instrument, interval) so offline charts look the
-        same across reconnects. Prices walk backward from the current mid.
-        """
-        bucket = self._bucket_ms(interval)
-        if bucket <= 0:
-            return
-        if interval in row.candle_history_done:
-            return
-        current = row.candles.get(interval)
-        if current is None:
-            return
-        rng = random.Random(f"sim:{row.instrument}:{interval}:history")
-        symbol = f"{self.exchange}:{row.instrument}"
-        close = current.open
-        now_ms = utc_now_ms()
-        last_open = (now_ms // bucket) * bucket - bucket  # previous closed bucket
-        for i in range(SIM_CANDLE_HISTORY):
-            open_time = last_open - i * bucket
-            open_price = close
-            drift = rng.gauss(0, open_price * 0.0009)
-            close = max(row.tick_size, open_price + drift)
-            wick = abs(rng.gauss(0, open_price * 0.0006)) + row.tick_size
-            high = max(open_price, close) + wick
-            low = max(row.tick_size, min(open_price, close) - wick)
-            candle = Candle(
-                symbol=symbol,
-                interval=interval,
-                open_time=open_time,
-                close_time=open_time + bucket - 1,
-                open=round(open_price, 8),
-                high=round(high, 8),
-                low=round(low, 8),
-                close=round(close, 8),
-                volume=round(rng.uniform(10.0, 500.0), 4),
-                closed=True,
-                trade_count=rng.randint(20, 400),
-            )
-            self._emit("candle", row, candle.model_dump(), param=interval)
-        row.candle_history_done.add(interval)
-
-    @staticmethod
-    def _bucket_ms(interval: str) -> int:
-        if interval.endswith("m"):
-            return int(interval[:-1]) * 60_000
-        if interval.endswith("h"):
-            return int(interval[:-1]) * 3_600_000
-        if interval.endswith("d"):
-            return int(interval[:-1]) * 86_400_000
-        if interval.endswith("w"):
-            return int(interval[:-1]) * 604_800_000
-        return 0
 
     def _step(self, row: _SimInstrument) -> list[tuple[str, dict[str, Any], str | None]]:
         """Advance the random walk; return the events to publish."""

@@ -143,21 +143,17 @@ async def place_virtual_order(
 
 
 @router.get("/paper/portfolios/{portfolio_id}/positions")
-async def get_positions(
+def get_positions(
     portfolio_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     _portfolio_for_user(db, portfolio_id, current_user.id)
     rows = db.query(VirtualPosition).filter(VirtualPosition.portfolio_id == portfolio_id).all()
-    engine = get_paper_engine()
+    mark_map = get_paper_engine()._mark_prices
     items = []
     for row in rows:
-        mark = engine._mark_prices.get(row.symbol)  # noqa: SLF001
-        if mark is None:
-            mark = await engine.refresh_mark(row.symbol)
-        if mark is None:
-            mark = row.avg_entry_price
+        mark = mark_map.get(row.symbol, row.avg_entry_price)
         unrealized = (mark - row.avg_entry_price) * row.quantity
         items.append(
             {
