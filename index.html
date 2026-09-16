@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Quantum Core — LSE TraderOS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+<div id="app">
+  <!-- TOP APPLICATION HEADER -->
+  <header id="app-header">
+    <div class="header-left">
+      <div class="brand">
+        <span class="brand-lse">LSE</span>
+        <span class="brand-core">QUANTUM CORE</span>
+      </div>
+      <div class="header-divider"></div>
+      <div class="instrument-select" id="instrumentSelect">
+        <span class="inst-pair">BTC/USDT</span>
+        <span class="chev">▼</span>
+        <div class="dropdown-menu" id="instrumentMenu">
+          <div class="dd-item active">BTC/USDT</div>
+          <div class="dd-item">ETH/USDT</div>
+          <div class="dd-item">SOL/USDT</div>
+          <div class="dd-item">AVAX/USDT</div>
+          <div class="dd-item">BTC/USD</div>
+        </div>
+      </div>
+      <div class="venue-select" id="venueSelect">
+        <span class="venue-name">BINANCE</span>
+        <span class="chev">▼</span>
+        <div class="dropdown-menu" id="venueMenu">
+          <div class="dd-item active">BINANCE</div>
+          <div class="dd-item">COINBASE</div>
+          <div class="dd-item">BYBIT</div>
+          <div class="dd-item">OKX</div>
+          <div class="dd-item">DERIBIT</div>
+        </div>
+      </div>
+      <div class="connection-state" id="connState">
+        <span class="conn-dot live"></span>
+        <span class="conn-text">LIVE</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="perf-metrics">
+        <span id="cpuMetric">CPU 12%</span>
+        <span id="gpuMetric">GPU 34%</span>
+        <span id="fpsMetric">FPS 60</span>
+        <span id="dataMetric">DATA OK</span>
+      </div>
+      <div class="header-actions">
+        <button class="hdr-btn" id="btnReplayTop">Replay</button>
+        <button class="hdr-btn" id="btnLayouts">Layouts ▾</button>
+        <button class="hdr-btn" id="btnAlerts">Alerts <span class="badge">3</span></button>
+        <button class="hdr-btn" id="btnSettings">Settings</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HEATMAP TOOLBAR -->
+  <div id="heatmap-toolbar">
+    <div class="toolbar-left">
+      <div class="tb-group">
+        <span class="tb-label">HEATMAP</span>
+        <div class="mode-toggle" id="heatmapModeToggle">
+          <button class="mode-btn active" data-mode="liquidity">LIQUIDITY</button>
+          <button class="mode-btn" data-mode="flow">FULL FLOW</button>
+        </div>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="control-group" id="liquidityControl">
+        <button class="ctrl-btn minus" data-action="liquidity-minus">−</button>
+        <span class="ctrl-label">LIQUIDITY</span>
+        <span class="ctrl-value" id="liquidityValue">72</span>
+        <button class="ctrl-btn plus" data-action="liquidity-plus">+</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="control-group" id="precisionControl">
+        <button class="ctrl-btn minus" data-action="precision-minus">−</button>
+        <span class="ctrl-label">PRECISION</span>
+        <span class="ctrl-value" id="precisionValue">4</span>
+        <button class="ctrl-btn plus" data-action="precision-plus">+</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="control-group" id="contrastControl">
+        <button class="ctrl-btn minus" data-action="contrast-minus">−</button>
+        <span class="ctrl-label">CONTRAST</span>
+        <span class="ctrl-value" id="contrastValue">65</span>
+        <button class="ctrl-btn plus" data-action="contrast-plus">+</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="control-group" id="opacityControl">
+        <button class="ctrl-btn minus" data-action="opacity-minus">−</button>
+        <span class="ctrl-label">OPACITY</span>
+        <span class="ctrl-value" id="opacityValue">80</span>
+        <button class="ctrl-btn plus" data-action="opacity-plus">+</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="tb-group">
+        <div class="dropdown-control" id="tradesDropdown">
+          <button class="tb-select" id="tradesSelectBtn">TRADES <span id="tradesModeLabel">BUY+SELL</span> <span class="chev">▼</span></button>
+          <div class="dropdown-menu" id="tradesMenu">
+            <div class="dd-item" data-trade="off">OFF</div>
+            <div class="dd-item active" data-trade="both">BUY + SELL</div>
+            <div class="dd-item" data-trade="buy">BUY ONLY</div>
+            <div class="dd-item" data-trade="sell">SELL ONLY</div>
+            <div class="dd-item" data-trade="delta">DELTA</div>
+            <div class="dd-item" data-trade="total">TOTAL VOLUME</div>
+            <div class="dd-item" data-trade="large">LARGE TRADES</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tb-group">
+        <button class="tb-btn" id="domToggleBtn">DOM</button>
+      </div>
+
+      <div class="tb-group">
+        <div class="auto-manual-toggle" id="autoManualToggle">
+          <button class="am-btn active" data-am="manual">MANUAL</button>
+          <button class="am-btn" data-am="auto">AUTO</button>
+        </div>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="tb-group">
+        <button class="tb-btn reset-btn" id="resetBtn">[ RESET ]</button>
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <button class="icon-btn" id="settingsGear" title="Heatmap Settings">⚙</button>
+    </div>
+  </div>
+
+  <!-- MAIN WORKSPACE -->
+  <div id="workspace">
+    <!-- LEFT TOOLBAR -->
+    <div id="left-toolbar">
+      <div class="lt-group">
+        <button class="lt-btn active" data-tool="cursor" title="Cursor (C)"><svg viewBox="0 0 24 24"><path d="M5 3l14 9-7 1-4 7-3-17z" fill="none" stroke="currentColor" stroke-width="1.5"/></svg></button>
+        <button class="lt-btn" data-tool="pan" title="Pan (Hand)"><svg viewBox="0 0 24 24"><path d="M8 11V7a2 2 0 0 1 2-2h.5M12 11V5a2 2 0 0 1 2-2h.5M16 11V8a2 2 0 0 1 2-2h.5M8 11a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="zoom" title="Zoom (+/-)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M11 8v6M8 11h6M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="crosshair" title="Crosshair (C)"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="measure" title="Measure (M)"><svg viewBox="0 0 24 24"><path d="M3 3l7 7M14 14l7 7M10 3H3v7M21 14v7h-7" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="hlevel" title="Horizontal Level"><svg viewBox="0 0 24 24"><path d="M3 12h18M7 9l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="trend" title="Trend Line"><svg viewBox="0 0 24 24"><path d="M3 20L21 4M12 4h9v9" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="rect" title="Rectangle"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="extend" title="Extend"><svg viewBox="0 0 24 24"><path d="M5 19L19 5M9 5h10v10" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn" data-tool="liquidity" title="Liquidity Marker"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 2"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></button>
+        <button class="lt-btn" data-tool="screenshot" title="Screenshot"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="17" cy="7" r="1" fill="currentColor"/></svg></button>
+      </div>
+      <div class="lt-separator"></div>
+      <div class="lt-group">
+        <button class="lt-btn active-layer" data-layer="heatmap" title="Heatmap (H)"><svg viewBox="0 0 24 24"><path d="M12 3L4 7v10l8 4 8-4V7l-8-4z" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></button>
+        <button class="lt-btn active-layer" data-layer="trades" title="Trades (T)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="7" cy="7" r="1.2" fill="currentColor" opacity="0.7"/><circle cx="17" cy="8" r="1.5" fill="currentColor" opacity="0.6"/><circle cx="8" cy="17" r="1" fill="currentColor" opacity="0.5"/></svg></button>
+        <button class="lt-btn" data-layer="volume" title="Volume"><svg viewBox="0 0 24 24"><path d="M4 18V6M8 18V9M12 18V4M16 18V10M20 18V12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+        <button class="lt-btn" data-layer="delta" title="Delta (Δ)"><svg viewBox="0 0 24 24"><path d="M12 3L3 20h18L12 3z" fill="none" stroke="currentColor" stroke-width="1.3"/><text x="12" y="16" text-anchor="middle" font-size="8" fill="currentColor" font-family="JetBrains Mono">Δ</text></svg></button>
+        <button class="lt-btn" data-layer="indicators" title="Indicators"><svg viewBox="0 0 24 24"><path d="M3 17c3-6 6-8 9-6s6 5 9 2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="11" r="1.2" fill="currentColor"/></svg></button>
+      </div>
+    </div>
+
+    <!-- RESIZER LEFT -->
+    <div class="resizer" id="resizerLeft"></div>
+
+    <!-- CENTRAL HEATMAP AREA -->
+    <div id="center-area">
+      <div id="heatmap-container">
+        <canvas id="heatmapCanvas"></canvas>
+        <canvas id="overlayCanvas"></canvas>
+        <div id="priceScale">
+          <canvas id="priceScaleCanvas"></canvas>
+        </div>
+        <div id="timeScale">
+          <canvas id="timeScaleCanvas"></canvas>
+        </div>
+        <div id="currentPriceLabel">
+          <div class="cpl-price" id="currentPriceValue">105,420.50</div>
+          <div class="cpl-line"></div>
+        </div>
+        <div id="crosshair-h" class="crosshair-line h"></div>
+        <div id="crosshair-v" class="crosshair-line v"></div>
+        <div id="tooltip" class="hidden">
+          <div class="tt-row"><span>PRICE</span><b id="ttPrice">105,420.00</b></div>
+          <div class="tt-row"><span>LIQUIDITY</span><b id="ttLiq">842.5 BTC</b></div>
+          <div class="tt-row"><span>SIDE</span><b id="ttSide">BID</b></div>
+          <div class="tt-row secondary"><span>CHANGE</span><b id="ttChange">+214.5 BTC</b></div>
+          <div class="tt-row secondary"><span>PERSISTENCE</span><b id="ttPersist">18.4 sec</b></div>
+          <div class="tt-row advanced hidden" id="ttAdv1"><span>ORDER COUNT</span><b>23</b></div>
+          <div class="tt-row advanced hidden" id="ttAdv2"><span>SOURCE</span><b>BINANCE L2</b></div>
+        </div>
+        <div id="measureOverlay" class="hidden">
+          <div class="measure-box">
+            <div><span>Δ PRICE</span><b id="mPrice">+0.00</b></div>
+            <div><span>Δ TIME</span><b id="mTime">00:00:00</b></div>
+            <div><span>CHANGE</span><b id="mChange">+0.00%</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESIZER RIGHT -->
+    <div class="resizer" id="resizerRight"></div>
+
+    <!-- DOM PANEL -->
+    <div id="dom-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>DOM</span>
+          <span class="panel-subtitle" id="domVenueLabel">BINANCE</span>
+          <div class="dom-mode-select" id="domModeSelect">
+            <button class="tb-select small" id="domModeBtn">L2 <span class="chev">▼</span></button>
+            <div class="dropdown-menu" id="domModeMenu">
+              <div class="dd-item" data-dom="L1">L1</div>
+              <div class="dd-item active" data-dom="L2">L2</div>
+              <div class="dd-item" data-dom="L3">L3 / MBO</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel-actions">
+          <button class="icon-btn small" id="domCollapseBtn" title="Collapse">◀</button>
+          <button class="icon-btn small" id="domCloseBtn" title="Close">✕</button>
+        </div>
+      </div>
+
+      <div id="domL2View">
+        <div class="dom-table-header">
+          <span>ASK</span><span>PRICE</span><span>BID</span>
+        </div>
+        <div id="domTable" class="dom-table"></div>
+        <div class="dom-footer">
+          <div class="dom-stat"><span>SPREAD</span><b id="domSpread">1.0</b></div>
+          <div class="dom-stat"><span>IMB</span><b id="domImb">+12%</b></div>
+        </div>
+      </div>
+
+      <div id="domL3View" class="hidden">
+        <div class="dom-l3-header">
+          <span>AGE</span><span>SIZE</span><span>PRICE</span><span>ORDER ID</span>
+        </div>
+        <div id="domL3Table" class="dom-l3-table"></div>
+        <div id="domL3Unavailable" class="hidden">
+          <div class="unavailable-box">
+            <b>L3 / MBO</b>
+            <span>UNAVAILABLE</span>
+            <p>Venue does not provide order-level data. L3 fabrication from L2 is disabled.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ANALYTICS PANEL -->
+  <div id="analytics-panel">
+    <div class="analytics-header">
+      <div class="analytics-tabs" id="analyticsTabs">
+        <button class="a-tab active" data-tab="volume">VOLUME</button>
+        <button class="a-tab" data-tab="delta">DELTA</button>
+        <button class="a-tab" data-tab="cvd">CVD</button>
+        <button class="a-tab" data-tab="vwap">VWAP</button>
+        <button class="a-tab" data-tab="profile">PROFILE</button>
+        <button class="a-tab" data-tab="imbalance">IMBALANCE</button>
+        <button class="a-tab" data-tab="oi">OPEN INTEREST</button>
+        <button class="a-tab" data-tab="trades">TRADES</button>
+      </div>
+      <div class="analytics-actions">
+        <button class="icon-btn small" id="analyticsCollapseBtn">▼</button>
+      </div>
+    </div>
+    <div class="analytics-content">
+      <canvas id="analyticsCanvas"></canvas>
+      <div class="analytics-overlay" id="analyticsOverlay"></div>
+    </div>
+    <div class="resizer horizontal" id="resizerAnalytics"></div>
+  </div>
+
+  <!-- REPLAY BAR -->
+  <div id="replay-bar">
+    <div class="replay-controls">
+      <button class="replay-btn live active" id="replayLiveBtn">LIVE</button>
+      <div class="replay-sep"></div>
+      <button class="replay-btn" id="replayBackBtn" title="Step Back">◀</button>
+      <button class="replay-btn" id="replayPlayBtn" title="Play/Pause">▶</button>
+      <button class="replay-btn" id="replayPauseBtn" title="Pause">⏸</button>
+      <button class="replay-btn" id="replayFwdBtn" title="Step Forward">▶▶</button>
+      <div class="replay-sep"></div>
+      <div class="dropdown-control">
+        <button class="tb-select small" id="replaySpeedBtn">SPEED 1x <span class="chev">▼</span></button>
+        <div class="dropdown-menu up" id="replaySpeedMenu">
+          <div class="dd-item" data-speed="0.25">0.25x</div>
+          <div class="dd-item" data-speed="0.5">0.5x</div>
+          <div class="dd-item active" data-speed="1">1x</div>
+          <div class="dd-item" data-speed="2">2x</div>
+          <div class="dd-item" data-speed="5">5x</div>
+          <div class="dd-item" data-speed="10">10x</div>
+        </div>
+      </div>
+    </div>
+    <div class="replay-timeline">
+      <div class="timeline-track" id="timelineTrack">
+        <div class="timeline-progress" id="timelineProgress"></div>
+        <div class="timeline-handle" id="timelineHandle"></div>
+      </div>
+      <div class="timeline-labels">
+        <span id="timelineStart">08:43:21</span>
+        <span id="timelineEnd">12:42:15</span>
+        <span id="timelineCurrent">12:42:15</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div id="contextMenu" class="context-menu hidden"></div>
+
+  <!-- LAYOUTS MODAL -->
+  <div id="layoutsModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header"><span>Layouts</span><button class="icon-btn small" id="closeLayouts">✕</button></div>
+      <div class="modal-body">
+        <div class="layout-option active" data-layout="default"><b>Heatmap + DOM</b><span>Default professional layout</span></div>
+        <div class="layout-option" data-layout="heatmapOnly"><b>Heatmap Only</b><span>Full-screen heatmap</span></div>
+        <div class="layout-option" data-layout="full"><b>Heatmap + DOM + Tape</b><span>Full order-flow workstation</span></div>
+        <div class="layout-option" data-layout="flow"><b>Full Order Flow</b><span>Heatmap + Analytics + Tape</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>
