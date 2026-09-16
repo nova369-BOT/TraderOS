@@ -169,6 +169,28 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Gates still open: **H9-broker** (per-adapter L2 as feeds offer it),
     **H10** (perf + golden images + e2e + guide section). On-screen paint
     check still owed (no browser in sandbox).
+- **2026-09-16 — H10 landed (sandbox-adapted).**
+  - Golden image: the engine half of the pipeline (demo events → grid →
+    cut-offs → LUT → RGB) is deterministic; `tests/test_depth_heat_h10.py`
+    renders it through a stdlib PNG encoder (zero new deps) and compares
+    hashes against `tests/data/depth_heat_golden.png` (regenerate with
+    UPDATE_GOLDEN=1 when a change is intentional). The browser canvas pass
+    needs a real screen — pending on-screen check.
+  - Perf budgets: 10 min × 120 levels grid ingest+finalize+viewport,
+    240-col book rebuild, LUT builds, 1M-size_to_index — all under
+    generous budgets (order-of-magnitude regression guards, measured green
+    on this machine).
+  - e2e: `tools/depth_e2e.py` boots the real engine on a loopback port and
+    walks the whole surface over real sockets — providers, history fill,
+    book, live WS depth+trade frames, record → sessions → load → delete,
+    and the crypto live-only contract. 11 steps, all green. (Playwright was
+    planned for CI-with-browser; no browser exists in this sandbox.)
+  - guide.md: a MARKETS → Price & charts walkthrough of Depth Heat in the
+    guide's own voice — pane, sources in real-data order, controls,
+    recording, and the data-honesty rules.
+  - Full suite green; bundle + guide ship together.
+  - Remaining (browser-bound): on-screen paint check of the pane; per-
+    adapter broker L2 (H9 remainder) as feeds offer it.
 
 ---
 
@@ -401,7 +423,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine + frontend | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof); pane records/lists/loads recordings | ✅ 2026-09-16 (engine slice 3f067fb; pane record/list/load wiring this slice) |
 | H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |
 | H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | ✅ core 2026-09-16 (MBO provider + tests); broker-L2 per adapter remains open |
-| H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | open |
+| H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | ✅ 2026-09-16, sandbox-adapted: engine-pipeline golden PNG (bit-stable, stdlib encoder, no new deps) + engine perf budgets (grid/book/LUT/normalize) + real-socket e2e (`tools/depth_e2e.py`, 11 steps green). Playwright / on-screen paint remain browser-bound — run where a browser exists (see log) |
 
 **Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→{H8b∥H9}→H10. H5 may start after H3
 (demo feed available); H8b and H9 are independent of each other and of the pane work;
