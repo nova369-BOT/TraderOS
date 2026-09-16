@@ -78,9 +78,18 @@ all arrive through the same two methods. Nothing special-cases a source (product
 
 ### 2.3 Sources and data reality (researched and confirmed 2026-09-16)
 
-Research performed against three primary sources: the installed `lse-data` client
-(0.14.0), the terminal's own MBO integration code, and the company's public API/WebSocket
-documentation (api.londonstrategicedge.com, fetched 2026-09-16). Findings:
+Research performed against primary sources, all checked 2026-09-16: the installed
+`lse-data` client (0.14.0), the terminal's own MBO integration code, the company's
+public API/WebSocket documentation (api.londonstrategicedge.com), the public
+GitHub repos (lse-data, brue-connect, brue, lse-terminal), and **direct probes of
+the production API** (`GET /vault/mbo/contracts` and `/vault/meta` both answer
+`{"detail":"missing x-api-key"}` — the MBO door is live at that exact path and
+key-gated). Additional checks: public `lse-data` GitHub `main` is byte-identical
+to the installed client and contains **no** depth/MBO methods (the vault MBO door
+is consumed engine-side, exactly as the terminal already proxies it);
+`brue-connect`'s public `SPEC.md` (1,005 lines) is the broker-connector protocol
+only — the MBO capture itself is server-side, not part of the public spec surface.
+Findings:
 
 - **The public data surface carries no order-book depth for any symbol.** The live
   WebSocket tick is exactly `{symbol, price, bid, ask, volume, ts}` (top of book only);
