@@ -55,9 +55,13 @@ matching the terminal's existing provider model.
 
 - **DepthEvent**: `symbol, ts, type (SNAPSHOT | DELTA), bids [(price, size)…], asks [(price, size)…]`
   — size 0 in a delta = level removed. Prices are the instrument's tick grid.
-- **TradeEvent**: `symbol, ts, price, size, side (BUY | SELL | UNKNOWN)` — extends the
-  existing `stream()` tick dict with an optional `side` (backward compatible: existing
-  providers unaffected; `UNKNOWN` where the source has no aggressor side).
+- **TradeEvent**: `symbol, ts, price, size, side (BUY | SELL | INFERRED-BUY | INFERRED-SELL | UNKNOWN)`
+  — extends the existing `stream()` tick dict with an optional `side` (backward compatible:
+  existing providers unaffected). **Side availability is confirmed per source (§2.3):** the
+  public live feed carries no aggressor side at all, so side arrives (a) from MBO events
+  where the contract is covered, or (b) inferred at the top of book from the tick's own
+  bid/ask (print ≥ ask → buy, ≤ bid → sell — exact for trades at the touch, and labelled
+  *inferred* in the UI, never presented as exchange-stamped).
 
 ### 2.2 Provider contract extension (follows the existing `NotSupported` pattern)
 
@@ -72,21 +76,49 @@ capability, exactly like `quote()`/`stream()` today:
 **This is the whole multi-asset discipline:** vault, brokers, demo, and any future source
 all arrive through the same two methods. Nothing special-cases a source (product invariant).
 
-### 2.3 Sources, in wiring order
+### 2.3 Sources and data reality (researched and confirmed 2026-09-16)
 
-1. **Demo provider extension** (ships with Phase 1) — deterministic synthetic L2:
-   seeded per (symbol, date); 50–100 levels/side on the tick grid around the mid;
-   log-normal sizes decaying with distance; scripted, reproducible dynamics — standing
-   walls, **iceberg refills** (size restored after hits), **pulls on approach** (spoof
-   behaviour), sweep-throughs. Emits SNAPSHOT at start, DELTAs on the existing ~1s tick
-   cycle; demo ticks carry `side`. Serves three roles at once: day-one functionality
-   without a key, the deterministic compliance/test source (`deterministic=True` pattern),
-   and the golden-image fixture source.
-2. **LSE vault** — where it carries L2/MBO depth history (futures MBO is already served
-   and plan-gated via the existing `/api/mbo/*` surface). Wires through `depth_history` /
-   `depth_stream` once the recon confirms the schema (see §8).
-3. **Broker adapters** — where a connected broker's feed carries L2, the adapter offers
+Research performed against three primary sources: the installed `lse-data` client
+(0.14.0), the terminal's own MBO integration code, and the company's public API/WebSocket
+documentation (api.londonstrategicedge.com, fetched 2026-09-16). Findings:
+
+- **The public data surface carries no order-book depth for any symbol.** The live
+  WebSocket tick is exactly `{symbol, price, bid, ask, volume, ts}` (top of book only);
+  history is candles (down to 1s) and a raw tick tape with no side and no depth. The
+  public docs state `/catalog` + `/meta` are the source of truth for what exists.
+- **There is exactly one depth source today: the vault's MBO (order-by-order) futures
+  capture, plan-gated.** Endpoints `/vault/mbo/contracts` and `/vault/mbo/events`
+  (the terminal already proxies them at `/api/mbo/*`). Event shape:
+  `seq` (exchange sequence no.), `ts`, `price`, `size`, `type ∈ {NEW, CHANGE, DELETE}`,
+  `side ∈ {BUY, SELL}` — true L3, from which the exact book (L2) is reconstructable.
+  Entitlement is server-side per key plan; most keys report `available:false`.
+  Access is REST-only, sliding windows to 60s, 1–5s visibility lag (batch flush),
+  20,000 events per window. The terminal's code comment: *"the vault door is REST-only
+  for now; a push stream is the planned upgrade."*
+- **The terminal already renders a heatmap prototype on this data.** The Level-3 (MBO)
+  rail (app.js) builds a "stacking heatmap": net resting size per price (NEW adds,
+  DELETE subtracts) over a 60s rolling buffer, seq-gated dedupe, per-level buy/sell
+  counts — polling `/api/mbo/events` every 2s. That rail is the in-product precedent:
+  the Depth Heat pane generalises exactly this engine into a full chart pane with
+  history, colour control and recording.
+
+**Sources, in wiring order (real data first, per founder directive 2026-09-16):**
+
+1. **Vault MBO (futures, plan-gated) — the real-data launch surface.** Wires through
+   `depth_stream` (poll `/vault/mbo/events` at the rail's cadence, seq-gated, engine-side)
+   and `depth_history` (same door, wider windows — subject to the §8 server-side
+   confirmations on retention/window). Reuses the L3 rail's proven client logic, moved
+   engine-side so the pane, the rail, and recording share one MBO feed per symbol.
+2. **Broker adapters** — where a connected broker's feed carries L2, the adapter offers
    it through the same contract (generic path, reconciliation as today).
+3. **Demo provider extension** — deterministic synthetic L2: seeded per (symbol, date);
+   50–100 levels/side on the tick grid around the mid; log-normal sizes decaying with
+   distance; scripted, reproducible dynamics — standing walls, **iceberg refills** (size
+   restored after hits), **pulls on approach** (spoof behaviour), sweep-throughs. Emits
+   SNAPSHOT at start, DELTAs on the existing ~1s tick cycle; demo ticks carry `side`.
+   Role is explicitly fallback + development: deterministic compliance/test source
+   (`deterministic=True` pattern) and golden-image fixture source. Clearly labelled
+   DEMO; it is never the first choice for any real symbol.
 
 ## 3. Engine design (`lse_terminal/engine/orderflow/`, new module)
 
@@ -176,7 +208,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) |
-| H9 | Vault/MBO + broker depth wiring | engine | Recon-driven: vault `depth_history`/`depth_stream` live where data exists (plan-gated); broker L2 where adapters offer it. **If recon not ready at gate: phase ships on demo + broker paths; vault lands later with zero contract changes** |
+| H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them |
 | H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged |
 
 **Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→H9→H10. H5 may start after H3
@@ -201,16 +233,22 @@ others (contract-first).
 
 ## 8. External dependencies & open items
 
-| Item | Owner | Blocks |
-|---|---|---|
-| **Recon brief: vault depth coverage** — what L2/MBO history exists per asset class, tick-side availability, key-plan gating | Data team (founder) | H9 only — nothing else |
-| Place plan-gating rows for depth in the directory API (server-side) | LSE API team | H9 (live vault path) |
-| M0 sign-off (D1/D2/D4) + this phase's placement (§9) | Founder | All |
+Data research is **done** (§2.3, confirmed 2026-09-16). The only open items are three
+precise server-side questions — the MBO capture lives in *your* vault, so these are
+answerable from the vault's own code/configuration, no third party involved:
 
-The recon brief is a one-page ask: for each asset class — depth history (yes/no, depth
-levels, granularity, retention) · tick aggressor side (yes/no) · MBO plan gates ·
-broker L2 availability per connected adapter. Answer decides *which real instruments show
-real depth on day one*; it cannot change this plan's architecture.
+| # | Question (precise) | Why it matters | Blocks |
+|---|---|---|---|
+| Q1 | **MBO coverage & entitlement** — which futures contracts are in the capture (the `/mbo/contracts` rows on an entitled key), and which key plan grants the entitlement (so the UI can show the gate reason, not a dead button)? | Defines the day-one real-data symbol list and the pane's "plan-gated" messaging | H9 symbol list only |
+| Q2 | **MBO history window & retention** — can `/vault/mbo/events` serve windows beyond the 60s the terminal currently clamps to (e.g. a full trading session), and how long is the capture retained? | History depth of the pane. If no: history = what the terminal itself records (S10 ships in Phase 1) and the pane shows its honest range | H9 history reach only — **live heat is unaffected** |
+| Q3 | **MBO trade prints** — do the MBO events include executed prints, or resting-order events (NEW/CHANGE/DELETE) only? | Volume dots + CVD on MBO symbols (S7). If no: dots there fall back to the top-of-book inference labelled as such | H7 dot source for MBO symbols only |
+
+Nothing else is external: brokers ride the existing adapter contract, the demo source is
+self-contained, and the frontend work (H5–H8) depends on none of Q1–Q3.
+
+| Other | Owner | Blocks |
+|---|---|---|
+| M0 sign-off (D1/D2/D4) + this phase's placement (§9) | Founder | All |
 
 ## 9. Placement (proposal for sign-off)
 
