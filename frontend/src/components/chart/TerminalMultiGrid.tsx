@@ -16,11 +16,12 @@
 // having to fan ticks into React.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ProChart from '@/components/chart/ProChart';
+import DepthHeatPane from '@/components/chart/depth/DepthHeatPane';
 import { DEFAULT_INDICATOR_CONFIG } from '@/components/chart/IndicatorSettings';
 import { getDefaultColors, type Candle } from '@/components/chart/core/types';
 import { type LayoutType, type SyncSettings } from '@/components/chart/MultiTimeframeLayoutSelector';
 import { fetchLocalCandles } from '@/lib/localEngine';
-import { layoutStore, useLayoutState } from '@/lib/layoutStore';
+import { layoutStore, useLayoutState, type PanelKind } from '@/lib/layoutStore';
 import { useChartSettings } from '@/contexts/ChartSettingsContext';
 
 const LAYOUTS: Record<LayoutType, { count: number; cols: number; rows: number }> = {
@@ -41,12 +42,14 @@ const LAYOUTS: Record<LayoutType, { count: number; cols: number; rows: number }>
 const STAGGER = ['1h', '4h', '1d', '15m', '5m', '1w', '30m', '1m'];
 
 function Panel({
-  symbol, timeframe, colors, active, onActivate,
+  symbol, timeframe, colors, active, onActivate, kind, onToggleKind,
   syncedCrosshairTime, onCrosshairMove, syncedViewportTime, onViewportTimeChange,
   quote,
 }: {
   symbol: string; timeframe: string; colors: any; active: boolean;
   onActivate: () => void;
+  kind: PanelKind;
+  onToggleKind: () => void;
   syncedCrosshairTime: number | null;
   onCrosshairMove: (t: number | null) => void;
   syncedViewportTime: number | null;
@@ -61,6 +64,7 @@ function Panel({
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
 
   useEffect(() => {
+    if (kind !== 'chart') return;   // the depth pane owns its own feed
     let cancelled = false;
     setCandles([]);
     const load = async () => {
@@ -83,7 +87,7 @@ function Panel({
     load();
     const t = setInterval(load, 10_000);   // live-ish tail refresh
     return () => { cancelled = true; clearInterval(t); };
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, kind]);
 
   return (
     <div
@@ -100,7 +104,15 @@ function Panel({
           OHLC legend and looked wrong. The SELECTED pane's name
           shows in the window title instead, and a sidebar/search pick
           retargets the selected pane; ProChart's own legend covers values. */}
-      {candles.length > 0 && (
+      {kind === 'depth' ? (
+        <DepthHeatPane
+          symbol={symbol}
+          colors={colors}
+          syncedCrosshairTime={syncedCrosshairTime}
+          onCrosshairMove={onCrosshairMove}
+          onToggleKind={onToggleKind}
+        />
+      ) : candles.length > 0 && (
         <ProChart
           candles={candles}
           symbol={symbol}
@@ -120,6 +132,20 @@ function Panel({
           brokerAsk={quote?.ask ?? null}
         />
       )}
+      {/* Pane-kind flip (F1): chart ⇄ Depth Heat. Kept as a quiet corner
+          control so the grid presets stay untouched. */}
+      {kind === 'chart' && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onToggleKind(); }}
+          title="Open the Depth Heat (order-flow liquidity heatmap) pane"
+          style={{
+            position: 'absolute', top: 4, right: 4, zIndex: 5,
+            background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
+            border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
+            fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
+          }}
+        >🔥 depth</button>
+      )}
     </div>
   );
 }
@@ -137,7 +163,7 @@ export default function TerminalMultiGrid({
   const cfg = LAYOUTS[layout] || LAYOUTS['2x2'];
   // Selection and per-panel symbols live in layoutStore, not local state: the
   // shell reads them to name the window title and to retarget symbol picks.
-  const { activePanel, panelSymbols } = useLayoutState();
+  const { activePanel, panelSymbols, panelKinds } = useLayoutState();
   const active = Math.min(activePanel, cfg.count - 1);
   const [panelTfs, setPanelTfs] = useState<string[]>([]);
   const [crossT, setCrossT] = useState<number | null>(null);
@@ -175,6 +201,9 @@ export default function TerminalMultiGrid({
           colors={base}
           active={i === active}
           onActivate={() => layoutStore.setActivePanel(i)}
+          kind={panelKinds[i] || 'chart'}
+          onToggleKind={() => layoutStore.setPanelKind(
+            i, (panelKinds[i] || 'chart') === 'chart' ? 'depth' : 'chart')}
           syncedCrosshairTime={syncSettings.syncCrosshair ? crossT : null}
           onCrosshairMove={onCross}
           syncedViewportTime={syncSettings.syncTime ? viewT : null}

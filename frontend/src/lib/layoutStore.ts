@@ -19,10 +19,15 @@
 import { useEffect, useState } from 'react';
 import { type LayoutType, type SyncSettings } from '@/components/chart/MultiTimeframeLayoutSelector';
 
+export type PanelKind = 'chart' | 'depth';
+
 export type LayoutState = {
   layout: LayoutType;
   sync: SyncSettings;
   panelSymbols: string[];
+  // Per-panel pane kind (F1 Depth Heat): 'chart' (ProChart) or 'depth'
+  // (the Depth Heat orderflow pane). Persisted like panelSymbols.
+  panelKinds: PanelKind[];
   // Which grid panel is selected (border highlight + title-bar name + where
   // a sidebar/search symbol pick lands). Session-only, not persisted.
   activePanel: number;
@@ -35,6 +40,7 @@ const _state: LayoutState = (() => {
       sync: JSON.parse(localStorage.getItem('lset-layout-sync') || 'null') ||
         { syncSymbol: false, syncInterval: false, syncCrosshair: false, syncTime: false },
       panelSymbols: JSON.parse(localStorage.getItem('lset-layout-symbols') || '[]') || [],
+      panelKinds: JSON.parse(localStorage.getItem('lset-layout-kinds') || '[]') || [],
       activePanel: 0,
     };
   } catch {
@@ -44,6 +50,7 @@ const _state: LayoutState = (() => {
       layout: '1x1' as LayoutType,
       sync: { syncSymbol: false, syncInterval: false, syncCrosshair: false, syncTime: false },
       panelSymbols: [],
+      panelKinds: [],
       activePanel: 0,
     };
   }
@@ -71,6 +78,12 @@ export const layoutStore = {
     _state.panelSymbols = [..._state.panelSymbols];
     _state.panelSymbols[i] = sym;
     persist('lset-layout-symbols', JSON.stringify(_state.panelSymbols));
+    notify();
+  },
+  setPanelKind(i: number, kind: PanelKind) {
+    _state.panelKinds = [..._state.panelKinds];
+    _state.panelKinds[i] = kind;
+    persist('lset-layout-kinds', JSON.stringify(_state.panelKinds));
     notify();
   },
   setActivePanel(i: number) {

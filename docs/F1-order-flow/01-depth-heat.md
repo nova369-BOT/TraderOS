@@ -40,10 +40,26 @@ Footprints come in Phase 2; nothing in this document depends on them.
     MY DATA (`data/depth-sessions/`), JSON sidecar metadata, size rotation,
     lossless `read_events` round-trip; the replay-readiness invariant is tested
     (recorded session rebuilds a fingerprint-identical grid).
-  - Gates still open: **H5–H7** (pane, HeatmapRenderer, controls, COB column,
-    dots overlay — frontend), **H8 UI half** (record/list wiring in the pane),
-    **H8b** (ccxt crypto L2), **H9** (vault MBO wiring + broker L2), **H10**
-    (perf + golden images + e2e + guide section).
+- **2026-09-16 — H5 core landed (frontend pane + renderer).**
+  - `frontend/src/components/chart/depth/`: `DepthHeatRenderer` (canvas 2D,
+    own rAF loop, offscreen-ImageData + LUT bulk blit, ring-bounded columns
+    mirroring the engine grid, dots pass, BBO lines, wheel/drag/dbl-click
+    recentering, synced-crosshair line — zero React state in the frame path)
+    and `DepthHeatPane` (history fill from `/api/orderflow/depth`, live
+    `depth:{symbol}` WS with trade dots, contrast slider above the pane per
+    S3, scheme/dots controls, per-instrument settings persistence, honest
+    "No depth data for {symbol}" state with the engine's reason, DEMO label).
+  - Layout wiring: `layoutStore.panelKinds` (persisted) + a quiet 🔥 depth
+    toggle on every multi-grid panel; `TerminalMultiGrid` renders the pane
+    for `depth` panels; crosshair time sync flows through the existing
+    `syncedCrosshairTime` channel.
+  - Bundle rebuilt into `lse_terminal/ui/static/chart/`; new files type-clean
+    (repo-wide tsc has pre-existing errors unrelated to this slice).
+  - Gates still open: **H6** (full settings window + apply-globally),
+    **H7** (COB column component + dot drawing types), **H8 UI half**
+    (record/list wiring in the pane), **H8b** (ccxt crypto L2), **H9**
+    (vault MBO wiring + broker L2), **H10** (perf + golden images + e2e +
+    guide section).
 
 ---
 
@@ -270,7 +286,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H2 | `book.py` + `grid.py` + `normalize.py` + unit tests | engine | All §3 unit tests green; determinism tests (same events → same grid/LUT) | ✅ 2026-09-16 |
 | H3 | Demo provider L2 extension + deterministic fixtures | engine | Heatmap works end-to-end **in-process** on DEMO symbols, no key; fixtures committed for golden images | ✅ 2026-09-16 (golden PNGs land with H10) |
 | H4 | API + WS (depth/book/record/sessions + `depth:{symbol}` topic) | engine/API | Integration tests: history fill, snapshot-on-subscribe, coalescing bound, degradation reasons | ✅ 2026-09-16 |
-| H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | next |
+| H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | ✅ core 2026-09-16 — pane + renderer + grid wiring shipped & built; **on-screen paint check pending** (built headless; confirm in the app next session), perf budget at H10 |
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | open |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | open |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
