@@ -65,8 +65,41 @@ class Provider(ABC):
         raise NotSupported(f"{self.name} does not serve quotes")
 
     def stream(self, symbols: list[str]) -> AsyncIterator[dict]:
-        """Async iterator of tick dicts: {symbol, price, ts, bid?, ask?, volume?}."""
+        """Async iterator of tick dicts: {symbol, price, ts, bid?, ask?, volume?}.
+
+        Ticks may additionally carry ``side`` (BUY / SELL / INFERRED-BUY /
+        INFERRED-SELL / UNKNOWN) — the aggressor side of the print, used for
+        the Depth Heat volume dots. Optional and backward compatible: sources
+        without a side simply omit the key and the UI degrades (plan §2.1).
+        """
         raise NotSupported(f"{self.name} does not stream")
+
+    def depth_history(
+        self,
+        symbol: str,
+        start: float,
+        end: float,
+        column_ms: int = 1000,
+        max_levels: int = 50,
+    ) -> list:
+        """Order-book depth history as a list of :class:`DepthEvent`.
+
+        First event is a SNAPSHOT, the rest are DELTAs. Sources that keep no
+        depth history raise :class:`NotSupported`; the pane then shows its
+        honest range (data honesty rule, plan §1.3).
+        """
+        raise NotSupported(f"{self.name} does not serve depth history")
+
+    def depth_stream(self, symbols: list[str]) -> AsyncIterator:
+        """Async iterator of :class:`DepthEvent`: SNAPSHOT per subscribed
+        symbol first, then DELTAs, in arrival order. Sources may interleave
+        :class:`TradeEvent` prints (consumers dispatch on type).
+
+        Implementation rule: validate eagerly. This call must RAISE for
+        unknown/unserveable symbols instead of returning an iterator whose
+        first ``__anext__`` raises — source resolution decides availability
+        from the call itself (an async-generator body would defer that)."""
+        raise NotSupported(f"{self.name} does not stream depth")
 
     def configured(self) -> bool:
         """False when the source needs setup (an API key, a path) it doesn't have."""
@@ -79,4 +112,8 @@ class Provider(ABC):
             caps.add("quote")
         if type(self).stream is not Provider.stream:
             caps.add("stream")
+        if type(self).depth_history is not Provider.depth_history:
+            caps.add("depth_history")
+        if type(self).depth_stream is not Provider.depth_stream:
+            caps.add("depth_stream")
         return caps

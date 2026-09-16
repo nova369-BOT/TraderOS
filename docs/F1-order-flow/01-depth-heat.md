@@ -5,9 +5,45 @@
 **Scope:** the heatmap phase — build and ship first, per founder directive (2026-09-16).
 Footprints come in Phase 2; nothing in this document depends on them.
 
-> **Status: planning — no implementation.** This document is the contract for the build:
-> every work item has an owner surface (engine / API / frontend / demo / data), a done-
-> criterion, and a gate.
+> **Status: building — engine slice landed (2026-09-16).** This document is the
+> contract for the build: every work item has an owner surface (engine / API /
+> frontend / demo / data), a done-criterion, and a gate. Per-gate status lives in
+> the §6 table and the progress log at the bottom of this file.
+
+### Progress log
+
+- **2026-09-16 — H1, H2, H3, H4 landed (+ H8 engine half); full suite green.**
+  - **H1 contracts**: `DepthEvent` / `TradeEvent` + side constants in
+    `contracts/types.py`; `depth_history()` / `depth_stream()` optional methods on
+    `Provider` (NotSupported pattern); tick dicts may carry `side` + `volume`
+    (backward compatible); `capabilities()` auto-reports `depth_history` /
+    `depth_stream` (verified via `/api/providers`). Contract rule added:
+    `depth_stream` must validate eagerly (async-generator bodies would defer it).
+  - **H2 engine core** (`engine/orderflow/`): `book.py` (persistent L2 book —
+    last-seen persistence, size-0 removals, active-range override, depth reset,
+    COB ladder), `grid.py` (DepthGrid: last-value columns, carry-forward over
+    quiet gaps, ring-bounded, viewport queries, sha256 fingerprint for replay
+    checks), `normalize.py` (pure LUTs: heat/greyscale, intensity/dimming/
+    contrast/brightness, percentile+exact cut-offs, shade quantization).
+    All §3 unit-test gates covered in `tests/test_orderflow.py`.
+  - **H3 demo L2**: `providers/demo_depth.py` — deterministic per (symbol,
+    start); scripted walls / iceberg refills / pulls-on-approach /
+    sweep-throughs; crossed levels fill (book never crosses); anchors to the
+    candle walk for history and to the live tick price for `depth_stream`;
+    demo ticks now carry `side` + `volume`.
+  - **H4 API + WS** (`/api/orderflow/*`): `depth` (history fill, 404-with-reason
+    degradation), `book` (persistent-book snapshot), `record` / `record/stop`,
+    `sessions` list + delete, and the `depth:{symbol}` WS topic (SNAPSHOT on
+    subscribe, ≤15 Hz coalesced deltas with latest-state-wins, trade frames
+    interleaved for the dots).
+  - **H8 engine half**: `session.py` recorder — incremental parquet parts under
+    MY DATA (`data/depth-sessions/`), JSON sidecar metadata, size rotation,
+    lossless `read_events` round-trip; the replay-readiness invariant is tested
+    (recorded session rebuilds a fingerprint-identical grid).
+  - Gates still open: **H5–H7** (pane, HeatmapRenderer, controls, COB column,
+    dots overlay — frontend), **H8 UI half** (record/list wiring in the pane),
+    **H8b** (ccxt crypto L2), **H9** (vault MBO wiring + broker L2), **H10**
+    (perf + golden images + e2e + guide section).
 
 ---
 
@@ -228,19 +264,19 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 
 ## 6. Sequencing & gates (each item lands green or not at all)
 
-| # | Item | Surface | Gate (exit criterion) |
-|---|---|---|---|
-| H1 | DepthEvent/TradeEvent models + Provider contract extension (`depth_history`, `depth_stream`, tick `side`) | engine/contracts | No behavior change; **full suite green**; capability listing in `/api/providers` shows new caps |
-| H2 | `book.py` + `grid.py` + `normalize.py` + unit tests | engine | All §3 unit tests green; determinism tests (same events → same grid/LUT) |
-| H3 | Demo provider L2 extension + deterministic fixtures | engine | Heatmap works end-to-end **in-process** on DEMO symbols, no key; fixtures committed for golden images |
-| H4 | API + WS (depth/book/record/sessions + `depth:{symbol}` topic) | engine/API | Integration tests: history fill, snapshot-on-subscribe, coalescing bound, degradation reasons |
-| H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency |
-| H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified |
-| H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override |
-| H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) |
-| H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned |
-| H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them |
-| H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged |
+| # | Item | Surface | Gate (exit criterion) | Status |
+|---|---|---|---|---|
+| H1 | DepthEvent/TradeEvent models + Provider contract extension (`depth_history`, `depth_stream`, tick `side`) | engine/contracts | No behavior change; **full suite green**; capability listing in `/api/providers` shows new caps | ✅ 2026-09-16 |
+| H2 | `book.py` + `grid.py` + `normalize.py` + unit tests | engine | All §3 unit tests green; determinism tests (same events → same grid/LUT) | ✅ 2026-09-16 |
+| H3 | Demo provider L2 extension + deterministic fixtures | engine | Heatmap works end-to-end **in-process** on DEMO symbols, no key; fixtures committed for golden images | ✅ 2026-09-16 (golden PNGs land with H10) |
+| H4 | API + WS (depth/book/record/sessions + `depth:{symbol}` topic) | engine/API | Integration tests: history fill, snapshot-on-subscribe, coalescing bound, degradation reasons | ✅ 2026-09-16 |
+| H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | next |
+| H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | open |
+| H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | open |
+| H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
+| H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | open |
+| H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | open |
+| H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | open |
 
 **Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→{H8b∥H9}→H10. H5 may start after H3
 (demo feed available); H8b and H9 are independent of each other and of the pane work;

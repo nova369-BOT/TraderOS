@@ -17,6 +17,8 @@ import numpy as np
 import pandas as pd
 
 from lse_terminal.contracts import CANDLE_COLUMNS, Instrument, NotSupported, Provider, Quote
+from lse_terminal.contracts import TRADE_BUY, TRADE_SELL
+from lse_terminal.providers.demo_depth import DEPTH_CFG, MAX_HISTORY_STEPS, DepthSim
 
 _TF_SECONDS = {
     # "tick" is a per-second walk here: demo trades print about once a
@@ -149,4 +151,88 @@ class DemoProvider(Provider):
             s = wanted[int(rng.integers(len(wanted)))]
             scale = _UNIVERSE[s][3]
             self._last[s] *= float(np.exp(rng.normal(0.0, scale / 6.0)))
-            yield {"symbol": s, "price": round(self._last[s], 6), "ts": time.time()}
+            # Optional tick extras (plan §2.1): aggressor side + print size,
+            # consumed by the Depth Heat volume dots; ignored by everyone
+            # else (backward compatible).
+            yield {"symbol": s, "price": round(self._last[s], 6),
+                   "ts": time.time(),
+                   "volume": round(float(rng.lognormal(2.0, 0.8)), 2),
+                   "side": TRADE_BUY if rng.random() < 0.5 else TRADE_SELL}
+
+    # ── Order-flow depth (F1 Depth Heat): deterministic synthetic L2 ─────
+
+    def _close_at(self, symbol: str, ts: float) -> float:
+        """The demo walk's last 1m close at or before ``ts`` — anchors the
+        synthetic book to the same price path the chart shows."""
+        df = self._walk(symbol, "1m")
+        arr = df["ts"].to_numpy()
+        i = int(np.searchsorted(arr, int(ts), side="right")) - 1
+        return float(df["close"].to_numpy()[max(0, i)])
+
+    def depth_history(self, symbol: str, start: float, end: float,
+                      column_ms: int = 1000, max_levels: int = 50) -> list:
+        """Deterministic depth history: SNAPSHOT then per-step DELTAs.
+
+        Same (symbol, start, end, params) ⇒ bit-identical event stream on
+        any machine (H3 golden-image requirement). Requests wider than
+        MAX_HISTORY_STEPS coarsen their step instead of simulating forever."""
+        if symbol not in DEPTH_CFG:
+            raise ValueError(f"unknown demo symbol: {symbol}")
+        start_i, end_i = int(start), int(end)
+        if end_i <= start_i:
+            return []
+        step_s = max(1, int(round(column_ms / 1000)))
+        if (end_i - start_i) // step_s > MAX_HISTORY_STEPS:
+            step_s = -(-(end_i - start_i) // MAX_HISTORY_STEPS)
+        sim = DepthSim(self, symbol, start_i,
+                       vol_scale=_UNIVERSE[symbol][3],
+                       anchor_price=self._close_at(symbol, start_i),
+                       live=False,
+                       window_override=min(int(max_levels),
+                                           DEPTH_CFG[symbol][1]))
+        out = [sim.snapshot(float(start_i))]
+        t = start_i + step_s
+        while t <= end_i:
+            ev, _trades = sim.step(float(t))
+            out.append(ev)
+            t += step_s
+        return out
+
+    def depth_stream(self, symbols: list[str]):
+        """Live synthetic depth: SNAPSHOT per symbol, then ~1 Hz DELTAs with
+        side-stamped trade prints interleaved (consumers dispatch on type —
+        the demo bundles its prints with its book). The book's mid adopts
+        the demo tick price, so heat tracks the chart's live price.
+
+        Plain method (not an async generator) so symbol validation raises
+        EAGERLY: an async generator defers its body to the first __anext__,
+        which would let source resolution "open" a stream for a symbol that
+        can never emit."""
+        unknown = [s for s in symbols if s not in DEPTH_CFG]
+        if unknown:
+            # Raise (not silently skip) so source resolution reports the
+            # real reason instead of opening a stream that emits nothing.
+            raise ValueError(f"unknown demo symbol: {unknown[0]}")
+        return self._depth_stream(list(symbols))
+
+    async def _depth_stream(self, wanted: list[str]):
+        now = time.time()
+        sims = []
+        for s in wanted:
+            self._walk(s, "1m")
+            sims.append(DepthSim(self, s, int(now),
+                                 vol_scale=_UNIVERSE[s][3],
+                                 anchor_price=self._last.get(s),
+                                 live=True))
+        for sim in sims:
+            self._last[sim.symbol] = sim.mid
+            yield sim.snapshot(now)
+        i = 0
+        while True:
+            await asyncio.sleep(1.0)
+            sim = sims[i % len(sims)]
+            i += 1
+            ev, trades = sim.step(time.time())
+            yield ev
+            for tr in trades:
+                yield tr

@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -364,6 +364,17 @@ class LseBankImportIn(BaseModel):
     start: str = ""
     end: str = ""
     folder: str = ""
+
+
+class OrderflowRecordIn(BaseModel):
+    # /api/orderflow/record: start a depth+trades session recording (S10).
+    symbol: str
+    provider: str = ""     # empty = auto-resolve the first depth source
+    max_mb: float = 250    # soft per-part size limit before rotation
+
+
+class OrderflowRecordStopIn(BaseModel):
+    id: str = ""           # empty = stop every running recording
 
 
 class _LocalOnlyGuard:
@@ -7118,6 +7129,184 @@ def create_app() -> FastAPI:
                 pass
         finally:
             await agen.aclose()
+
+    # ── Order flow: Depth Heat (F1 Phase 1) ─────────────────────────────
+    #
+    # The liquidity heatmap's plumbing: depth history + a current book for
+    # the pane's initial fill, the live depth WS topic (coalesced to at most
+    # ~15 Hz per symbol; the latest state always wins, intermediate states
+    # may be dropped), and session recording into parquet under MY DATA.
+    # All compute is local; every source arrives through the generic
+    # depth_history / depth_stream Provider contract, so nothing here
+    # special-cases a vendor (spec: docs/F1-order-flow/01-depth-heat.md).
+    from lse_terminal.contracts import DepthEvent as _DepthEvent
+    from lse_terminal.engine.orderflow import DepthBook as _DepthBook
+    from lse_terminal.engine.orderflow.service import (
+        OrderflowService as _OrderflowService,
+        OrderflowUnavailable as _OrderflowUnavailable)
+    from lse_terminal.engine.orderflow.session import (
+        SessionRecorder as _SessionRecorder)
+
+    _of_service = _OrderflowService(reg)
+    of_records: dict[str, dict] = {}
+
+    def _of_recorder():
+        from lse_terminal.providers import userdata
+        # Root resolved per call so a config-dir override (tests, portable
+        # runs) always wins; session state is shared through the JSON
+        # sidecar, so a fresh instance is safe for management calls.
+        return _SessionRecorder(userdata.data_dir() / "depth-sessions")
+
+    @app.get("/api/orderflow/depth")
+    def of_depth(symbol: str,
+                 frm: float | None = Query(default=None, alias="from"),
+                 to: float | None = None,
+                 column_ms: int = 1000, max_levels: int = 50,
+                 provider: str = ""):
+        """History grid fill for pane open: SNAPSHOT then DELTAs, sourced per
+        capability (404-with-reason when no source carries depth for the
+        symbol — the pane shows that reason, never silent synthesis)."""
+        now = time.time()
+        end = float(to) if to is not None else now
+        start = float(frm) if frm is not None else end - 4 * 3600
+        column_ms = max(100, min(int(column_ms), 60000))
+        max_levels = max(5, min(int(max_levels), 200))
+        try:
+            p, events = _of_service.resolve_history(
+                symbol, start, end, column_ms, max_levels, provider or None)
+        except _OrderflowUnavailable as e:
+            raise HTTPException(404, str(e))
+        # Data honesty (plan §1.3): the pane labels synthetic sources.
+        demo = p.name == "demo"
+        return {"symbol": symbol, "provider": p.name, "demo": demo,
+                "source_label": "DEMO (synthetic)" if demo else p.title,
+                "column_ms": column_ms, "start": start, "end": end,
+                "events": [ev.to_dict() for ev in events]}
+
+    @app.get("/api/orderflow/book")
+    def of_book(symbol: str, provider: str = ""):
+        """Current L2 snapshot (also feeds the COB column): the persistent
+        book rebuilt from the last two minutes of depth history."""
+        now = time.time()
+        try:
+            p, events = _of_service.resolve_history(
+                symbol, now - 120.0, now, 1000, 100, provider or None)
+        except _OrderflowUnavailable as e:
+            raise HTTPException(404, str(e))
+        book = _DepthBook(symbol)
+        book.apply_all(events)
+        out = book.snapshot()
+        out["provider"] = p.name
+        out["demo"] = p.name == "demo"
+        return out
+
+    @app.post("/api/orderflow/record")
+    async def of_record_start(body: OrderflowRecordIn):
+        """Start recording live depth + trades for a symbol into MY DATA."""
+        deny_hosted()
+        symbol = body.symbol.strip()
+        if not symbol:
+            raise HTTPException(400, "symbol required")
+        try:
+            p, agen = _of_service.resolve_stream(symbol, body.provider or None)
+            await agen.aclose()
+        except _OrderflowUnavailable as e:
+            raise HTTPException(404, str(e))
+        rec = _of_recorder()
+        meta = rec.start(symbol, source=p.name, demo=(p.name == "demo"),
+                         max_mb=max(1.0, float(body.max_mb)))
+        sid = meta["id"]
+
+        async def run():
+            try:
+                async for ev in _of_service.coalesced(
+                        symbol, hz=15.0, provider=body.provider or None):
+                    rec.write(sid, ev)
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                sys.stderr.write(f"orderflow recording {sid} failed: {e}\n")
+            finally:
+                rec.stop(sid)
+                of_records.pop(sid, None)
+
+        of_records[sid] = {"task": asyncio.create_task(run()),
+                           "recorder": rec, "symbol": symbol}
+        return {"ok": True, "id": sid, "symbol": symbol, "provider": p.name,
+                "demo": p.name == "demo"}
+
+    @app.post("/api/orderflow/record/stop")
+    async def of_record_stop(body: OrderflowRecordStopIn):
+        deny_hosted()
+        rids = [body.id] if body.id.strip() else list(of_records)
+        stopped = []
+        for rid in rids:
+            r = of_records.pop(rid.strip(), None)
+            if r is None:
+                continue
+            r["task"].cancel()
+            try:
+                await asyncio.wait_for(r["task"], timeout=5.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
+            stopped.append(rid.strip())
+        return {"ok": True, "stopped": stopped}
+
+    @app.get("/api/orderflow/sessions")
+    def of_sessions():
+        """Recorded depth sessions (workspace/MY DATA), newest first."""
+        return _of_recorder().sessions()
+
+    @app.delete("/api/orderflow/sessions/{sid}")
+    async def of_session_delete(sid: str):
+        deny_hosted()
+        r = of_records.pop(sid, None)
+        if r is not None:  # deleting a live recording stops it first
+            r["task"].cancel()
+            try:
+                await asyncio.wait_for(r["task"], timeout=5.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError, Exception):
+                pass
+        if not _of_recorder().delete(sid):
+            raise HTTPException(404, f"no such session: {sid}")
+        return {"ok": True}
+
+    @app.websocket("/api/orderflow/ws")
+    async def of_ws(websocket: WebSocket, symbol: str, provider: str = ""):
+        """The depth:{symbol} topic: SNAPSHOT on subscribe, then coalesced
+        DELTAs ({"type": "depth"}) with trade prints interleaved as
+        {"type": "trade"} for the volume dots."""
+        await websocket.accept()
+        try:
+            p, agen = _of_service.resolve_stream(symbol, provider or None)
+            await agen.aclose()
+        except _OrderflowUnavailable as e:
+            await websocket.send_json({"type": "error", "message": str(e)})
+            await websocket.close()
+            return
+        await websocket.send_json({"type": "subscribed",
+                                   "topic": f"depth:{symbol}",
+                                   "provider": p.name,
+                                   "demo": p.name == "demo"})
+        try:
+            async for ev in _of_service.coalesced(
+                    symbol, hz=15.0, provider=provider or None):
+                # The event rides under "event": its own SNAPSHOT/DELTA
+                # `type` field must not collide with the frame type.
+                if isinstance(ev, _DepthEvent):
+                    await websocket.send_json({"type": "depth",
+                                               "event": ev.to_dict()})
+                else:
+                    await websocket.send_json({"type": "trade",
+                                               "event": ev.to_dict()})
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            try:
+                await websocket.send_json({"type": "error",
+                                           "message": str(e)[:200]})
+            except Exception:
+                pass
 
     # ── Algo trading: run a strategy LIVE against a brue-connect adapter ──
     #
