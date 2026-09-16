@@ -22,6 +22,7 @@ import {
 } from './depthHeatTypes';
 import { DepthHeatRenderer } from './DepthHeatRenderer';
 import DepthHeatSettingsWindow from './DepthHeatSettingsWindow';
+import DepthHeatCob, { ClientBook } from './DepthHeatCob';
 
 const HISTORY_SECONDS = 4 * 3600;   // pane-open history fill (S1)
 
@@ -62,6 +63,10 @@ export default function DepthHeatPane({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<DepthHeatRenderer | null>(null);
+  // The COB column's persistent book (S8): engine patch semantics, seeded
+  // from /api/orderflow/book, then fed by the live depth frames.
+  const cobBookRef = useRef<ClientBook | null>(null);
+  if (!cobBookRef.current) cobBookRef.current = new ClientBook();
   const [state, setState] = useState<PaneState>({ kind: 'loading' });
   const [settings, setSettings] = useState<DepthHeatSettings>(
     () => loadSettings(symbol));
@@ -134,6 +139,7 @@ export default function DepthHeatPane({
     let cancelled = false;
     let ws: WebSocket | null = null;
     setState({ kind: 'loading' });
+    cobBookRef.current?.seed([], []);   // fresh book per symbol
 
     const load = async () => {
       const r = rendererRef.current;
@@ -180,6 +186,7 @@ export default function DepthHeatPane({
         if (res.ok) {
           const b = await res.json();
           r.setBook(b.best_bid ?? null, b.best_ask ?? null);
+          cobBookRef.current?.seed(b.bids ?? [], b.asks ?? []);
         }
       } catch { /* BBO lines simply stay off */ }
       if (!cancelled) setState({ kind: 'live', demo, provider });
@@ -196,6 +203,7 @@ export default function DepthHeatPane({
         if (!rr) return;
         if (frame.type === 'depth') {
           rr.applyDepth(frame.event);
+          cobBookRef.current?.apply(frame.event);   // S8 ladder live feed
           // The subscribe-time SNAPSHOT carries the full transmitted book:
           // derive the BBO lines from it. (Live-only sources like the crypto
           // public feeds have no /api/orderflow/book to seed them from; the
@@ -325,7 +333,10 @@ export default function DepthHeatPane({
       </div>
 
       <div
-        style={{ position: 'relative', flex: 1, minHeight: 0 }}
+        style={{
+          position: 'relative', flex: 1, minHeight: 0,
+          display: 'flex', flexDirection: 'row',
+        }}
         onContextMenu={(e) => {
           // Right-click = pane settings (matches chart conventions, §5.2).
           e.preventDefault();
@@ -333,28 +344,38 @@ export default function DepthHeatPane({
           setSettingsOpen(true);
         }}
       >
-        <canvas
-          ref={canvasRef}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
-          onWheel={onWheel}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={onMouseLeave}
-          onDoubleClick={onDblClick}
-        />
-        {state.kind === 'loading' && (
-          <div style={overlay}>Loading depth history…</div>
-        )}
-        {state.kind === 'nodata' && (
-          <div style={overlay}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>
-              No depth data for {symbol}
+        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+          <canvas
+            ref={canvasRef}
+            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            onWheel={onWheel}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseLeave}
+            onDoubleClick={onDblClick}
+          />
+          {state.kind === 'loading' && (
+            <div style={overlay}>Loading depth history…</div>
+          )}
+          {state.kind === 'nodata' && (
+            <div style={overlay}>
+              <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                No depth data for {symbol}
+              </div>
+              <div style={{ opacity: 0.7, maxWidth: 340, textAlign: 'center' }}>
+                {state.reason}
+              </div>
             </div>
-            <div style={{ opacity: 0.7, maxWidth: 340, textAlign: 'center' }}>
-              {state.reason}
-            </div>
-          </div>
+          )}
+        </div>
+        {/* COB column (S8): numeric ladder, pixel-aligned with the heat */}
+        {settings.cob && state.kind === 'live' && (
+          <DepthHeatCob
+            rendererRef={rendererRef}
+            book={cobBookRef.current!}
+            settings={settings}
+          />
         )}
         {settingsOpen && (
           <DepthHeatSettingsWindow

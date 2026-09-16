@@ -112,6 +112,25 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Gates still open: **H7** (COB column + boundary lines), **H8 UI half**
     (record/list wiring in the pane), **H9** (vault MBO + broker L2),
     **H10** (perf + golden + e2e + guide). On-screen paint check still owed.
+- **2026-09-16 — H7 landed (COB column + boundary lines).**
+  - `DepthHeatCob.tsx`: numeric DOM ladder **pixel-aligned with the heat's
+    price axis** — it reads the renderer's published viewport
+    (`getViewMetrics()` + frame-version bump), zero React state in either
+    frame path. Per-level size bars + optional cumulative strip, spread chip
+    between the BBO rows, bright BBO lines; fresh per symbol.
+  - Live-updating: the ladder keeps its own persistent book (`ClientBook`,
+    exact engine patch semantics — SNAPSHOT/DELTA patch identically, size 0
+    removes), seeded from `/api/orderflow/book` then fed by the WS depth
+    frames.
+  - S6 boundary lines: with an active-range override, out-of-window levels
+    dim and two amber dashes mark the window edge on the ladder.
+  - Settings: COB column + cumulative toggles in the window (BOOK & MOTION).
+  - Frontend type-clean + bundle rebuilt. Renderer exposes `getViewMetrics`
+    for the alignment. No engine change needed (book endpoint already
+    serves the ladder shape).
+  - Gates still open: **H8 UI half** (record/list wiring in the pane),
+    **H9** (vault MBO + broker L2), **H10** (perf + golden + e2e + guide).
+    On-screen paint check of the pane still owed (no browser in sandbox).
 
 ---
 
@@ -340,7 +359,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H4 | API + WS (depth/book/record/sessions + `depth:{symbol}` topic) | engine/API | Integration tests: history fill, snapshot-on-subscribe, coalescing bound, degradation reasons | ✅ 2026-09-16 |
 | H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | ✅ core 2026-09-16 — pane + renderer + grid wiring shipped & built; **on-screen paint check pending** (built headless; confirm in the app next session), perf budget at H10 |
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | ✅ 2026-09-16 (window + global scheme broadcast; pie dots, auto smoothing, eased recenter shipped in the renderer) |
-| H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | open |
+| H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | ✅ 2026-09-16 (pixel-aligned ladder w/ ClientBook live feed; dots shipped with the H6 renderer pass) |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
 | H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |
 | H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | open |

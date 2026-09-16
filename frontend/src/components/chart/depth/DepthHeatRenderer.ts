@@ -45,6 +45,13 @@ export class DepthHeatRenderer {
   private recenterTarget: number | null = null;  // S9 eased recentering
   private hover: { x: number; y: number } | null = null;
   private syncedCrosshair: number | null = null;
+  // Last painted viewport — the COB column (S8) pixel-aligns against it.
+  private viewLo = 0;
+  private viewHi = 1;
+  private viewCentre = 0.5;
+  private viewPpu = 1;
+  private viewH = 0;
+  private viewVersion = 0;         // bumped on every painted frame
 
   // colour
   private settings: DepthHeatSettings;
@@ -331,6 +338,21 @@ export class DepthHeatRenderer {
     return [this.lo, this.hi];
   }
 
+  /** Viewport metrics for the COB column (S8): the ladder pixel-aligns its
+   * rows with the heatmap's price axis. `version` bumps every painted frame
+   * so the ladder knows when to redraw without sharing React state. */
+  getViewMetrics(): {
+    lo: number; hi: number; centre: number; ppu: number;
+    cssH: number; version: number; yOf: (p: number) => number;
+  } {
+    const centre = this.viewCentre, ppu = this.viewPpu, h = this.viewH;
+    return {
+      lo: this.viewLo, hi: this.viewHi, centre, ppu, cssH: h,
+      version: this.viewVersion,
+      yOf: (p: number) => h / 2 - (p - centre) * ppu,
+    };
+  }
+
   // ── coordinate mapping ─────────────────────────────────────────────────
 
   private liveEdgeMs(): number {
@@ -420,6 +442,10 @@ export class DepthHeatRenderer {
     if (this.basePpu === null) this.basePpu = ppu;   // S4 zoom reference
     const centre = this.priceCenter ?? (pLo + pHi) / 2;
     const yOf = (p: number) => this.cssH / 2 - (p - centre) * ppu;
+    // Publish the viewport for the COB column (S8).
+    this.viewLo = pLo; this.viewHi = pHi;
+    this.viewCentre = centre; this.viewPpu = ppu; this.viewH = this.cssH;
+    this.viewVersion += 1;
 
     // visible columns
     const t0 = this.xToTs(0);

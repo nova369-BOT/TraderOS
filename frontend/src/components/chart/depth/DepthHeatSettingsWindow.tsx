@@ -341,8 +341,17 @@ export default function DepthHeatSettingsWindow({
           {/* ── BOOK & MOTION (S6 · S9 · S11) ───────────────────────── */}
           <div className="dh-section">
             <div className="dh-section-title">BOOK &amp; MOTION</div>
+            <Row label="COB column"
+              hint="S8: the numeric DOM ladder beside the heatmap — per-level size + cumulative, spread and BBO rows.">
+              <Toggle on={s.cob} onChange={(v) => onChange({ cob: v })} />
+              <span className="dh-hint" style={{ marginLeft: s.cob ? 0 : 8 }}>
+                cumulative column
+              </span>
+              <Toggle on={s.cobCumulative}
+                onChange={(v) => onChange({ cobCumulative: v })} />
+            </Row>
             <Row label="Active range"
-              hint="S6 override: expose only N levels around mid instead of the full transmitted book.">
+              hint="S6 override: expose only N levels around mid instead of the full transmitted book. Amber boundary lines mark the window on the COB column.">
               <Toggle on={s.activeRange > 0}
                 onChange={(v) => onChange({ activeRange: v ? 10 : 0 })} />
               <NumInput value={s.activeRange || 10} min={1} max={200}

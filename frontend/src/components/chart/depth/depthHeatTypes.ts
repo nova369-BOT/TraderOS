@@ -53,6 +53,8 @@ export interface DepthHeatSettings {
   dotScale: number;
   dotAlpha: number;       // 0..1
   activeRange: number;    // 0 = off; else N-level active-range override (S6)
+  cob: boolean;           // S8: show the COB column beside the heatmap
+  cobCumulative: boolean; // S8 column set: running cumulative per side
   recenterMode: 'bbo' | 'trades' | 'off';      // S9 auto-recentering source
   recenterTolerance: number;  // % of visible half-range before recentering
   resetPolicy: 'session' | 'interval';         // S11 depth reset
@@ -78,6 +80,8 @@ export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   dotScale: 1.0,
   dotAlpha: 0.85,
   activeRange: 0,
+  cob: true,
+  cobCumulative: true,
   recenterMode: 'bbo',
   recenterTolerance: 15,
   resetPolicy: 'session',
