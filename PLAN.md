@@ -90,8 +90,8 @@ pytest tests/  →  109 passed, 2 failed, 1 skipped   (≈110 s)
 
 | # | Gap | Severity | Evidence |
 |---|-----|----------|----------|
-| G1 | **No CI for tests/typecheck/build** — release workflow only | **High** | `.github/workflows/` contains only `release.yml` |
-| G2 | **`brue-connect` not declared in `pyproject.toml`** yet `broker_hub`/`algo` import it and 2 tests need it — execution surface untestable in clean installs | **High** | pyproject deps vs `connect_base()`; the 2 failing tests |
+| G1 | **No CI for tests/typecheck/build** — release workflow only. *Partially resolved 2026-09-16:* backend `tests.yml` (pytest, py 3.11, every push/PR) merged. Frontend checks, version matrix, branch protection remain in E1 | **High** | `.github/workflows/` now contains `tests.yml` + `release.yml` |
+| G2 | **2 broker tests failing in clean installs** (KeyError 'paper-fast'). *Resolved 2026-09-16:* root cause was not a missing dependency — brueconnect ships inside the `brue-language` wheel on PyPI and imports fine in a clean venv. The real bug: `paper-fast` (the accelerated-clock paper twin that the frontend hides by name and the tests pin) was never defined in `builtin_brokers()`. Fixed; clean venv now **111 passed / 1 skipped** | **Resolved** | clean-venv run 2026-09-16; `tests.yml` |
 | G3 | **Version drift**: repo says 0.0.1 (`__init__.py`, pyproject), releases are tagged 0.0.13; update flow reads versions from tags/releases | Medium | tag `0.0.13` vs source |
 | G4 | **`server.py` monolith**: 7,555 lines, 130+ routes, 8 WS handlers, 12 domains | Medium | file size; churn risk for every feature |
 | G5 | **Frontend monolith files**: `ProChart.tsx` 9,774 LOC, `BTChart.tsx` 8,562 LOC, `ChartDrawingOverlay.tsx` 5,131 | Medium | file sizes |
@@ -148,6 +148,80 @@ cloud layer on top of the existing `api.londonstrategicedge.com` surface.
 - No re-architecture of the local-first core, loopback model, or extension contracts.
 - No new strategy *language* (plain Python stays; Brue stays an execution language).
 
+### 3.5 Feature request F1 — Order Flow Suite ("Bookmap-class" analysis)
+
+**Requested:** 2026-09-16 (founder). **Reference studied:**
+`gbzenobi/CSharp-NT8-OrderFlowKit` — NinjaTrader 8 toolkit, ~7k LOC C#:
+DOM/Level-2 depth heatmap, order-flow footprints, volume profile (POC/POI/value area),
+market volume (total/delta/bid-ask), Wyckoff render, session capture to `.db` + replay.
+
+**Goal in LSE:** a first-class order-flow suite in the terminal — depth heat (liquidity
+heatmap over time), footprints (per-bar bid/ask volume per price level, imbalances),
+volume profile (session/range POC, VAH/VAL, POC shift), delta & CVD, session capture +
+deterministic replay — computed in the **local engine**, rendered in the existing
+multi-pane canvas chart, and (ultimately) readable from plain-Python strategies.
+
+**Two boundaries fixed before any code:**
+1. The reference repo carries **no license** ("I release the code to help the community"
+   is not a license) → all rights reserved. It is studied **as a spec only; no code is
+   copied**. The standard formulas (POC, 70% value area, delta, CVD, footprint bins) are
+   common knowledge and are implemented fresh in Python/TS.
+2. **"Bookmap" is a competitor's trademark** — never used as a feature name or in
+   marketing. Ours: *Order Flow Suite*, *Depth Heat*, *Footprint*, etc.
+
+**Why it was "easy in C#":** NinjaTrader hands indicators (a) **L2 market depth as a data
+series** (`OnMarketDepth`), (b) **tick replay with aggressor side** (tick-type bars),
+(c) a chart render API. LSE equivalents: (a) LSE vault (tick/1s timeframes) + MBO L3
+(futures, plan-gated) + broker L2 streams via adapters · (b) vault tick data (schema to
+verify) · (c) existing canvas multi-pane renderers + Python engine (numpy price×time
+binning). **The gate is data availability, not code.**
+
+**Data gate per feature:**
+
+| Feature | Data required | LSE status |
+|---|---|---|
+| Volume profile (approx) | candles / 1s bars | ✅ available |
+| Delta & CVD | ticks **with aggressor side** | ⚠️ vault tick schema to verify |
+| Footprint / clusters | per-trade side per price level | ⚠️ same |
+| Depth heat (DOM heatmap) | **L2 depth history** (bid/ask sizes over time) | ⚠️ MBO L3 (futures, plan-gated) or broker L2; vault depth to verify |
+| Session capture + replay | recording of the above | ✅ MY DATA + run-pin model fits (parquet) |
+
+**Recon item (blocks phase ordering, not the plan):** confirm what the vault's tick
+series carry (side? depth? per asset class) and which key plans carry L2/MBO — data team.
+
+**Phases (reordered 2026-09-16 per founder directive: heatmap first):**
+- **OF-H — Depth Heat (Phase 1, built first)** — the liquidity heatmap: time×price field
+  of resting limit-order size, colour maps + upper/lower cut-offs + vertical smoothing
+  (specified against Bookmap's actual behaviour, researched 2026-09-16), volume dots,
+  COB column, BBO/recentering, session recording. Full implementation plan:
+  [`docs/F1-order-flow/01-depth-heat.md`](docs/F1-order-flow/01-depth-heat.md) — product
+  spec, data contracts, engine units, API, renderer design, performance budget, work
+  items H1–H10 with gates.
+- **OF-F — Footprints / clusters (Phase 2)** — per-bar bid/ask volume per price level,
+  imbalances; plus **replay playback** of recorded sessions (recording ships in Phase 1;
+  the grid engine consumes the same event stream).
+- **OF-D — Delta & CVD (Phase 2)** — requires tick side; cumulative-delta pane + per-bar
+  delta.
+- **OF-V — Volume profile (Phase 3)** — POC/VAH/VAL, POC shift, session/range profiles
+  (also the candle-approximation fallback for instruments without depth).
+- **OF-S — Strategy bridge (with Phase 2/3)** — order-flow features exposed to
+  plain-Python strategies (bridge into pillar 2).
+
+**Placement (proposed — founder decides):** standalone milestone **M-OF (Phase 1:
+Depth Heat)** immediately after M1 (the CI safety net); M2 execution hardening follows.
+It is pillar-1 (data moat) work that feeds pillar 2 (strategy platform) and monetizes
+plan-gated data. A compression option (M1-lite first) is flagged in the phase plan §9 as
+a risk acceptance.
+
+**Invariant check:** ✅ local-first (all compute in the local engine) · ✅ fail-open
+(panes degrade to "no depth data" like other optional surfaces) · ✅ extension contracts
+(optional `ticks()`/`depth()` provider methods behind `NotSupported` — same pattern as
+`stream()`) · ✅ no broker special-casing (MBO/broker feeds enter through the existing
+provider/broker contracts).
+
+**Positioning non-goals (from the reference's marketing):** no "HFT / market-manipulation
+detection" claims; no backtest claims on data we don't carry.
+
 ## 4. Engineering program
 
 Each item maps to a gap; each has a done-criterion. Order matters: E1–E3 before feature
@@ -157,7 +231,7 @@ execution surface grows.
 | # | Item | Closes | Done when |
 |---|------|--------|-----------|
 | E1 | **CI**: on every PR — backend `pytest` (py 3.10 + 3.12 matrix), frontend `tsc --noEmit` + `vite build`, indicator parity check; branch protection requires green | G1 | A red PR cannot merge; release workflow reuses the same job artifacts |
-| E2 | **brue-connect dependency boundary**: publish a proper wheel (PyPI or private index) OR declare a git dependency; `broker_hub` comment says it's "a real dependency" — make it true; the 2 failing tests must run in a clean venv | G2 | Clean `pip install` → **112/112 green**; docs updated |
+| E2 | **brue-connect dependency boundary**: publish a proper wheel (PyPI or private index) OR declare a git dependency; `broker_hub` comment says it's "a real dependency" — make it true; the 2 failing tests must run in a clean venv. *Premise corrected 2026-09-16 (see G2):* brueconnect already ships inside the `brue-language` wheel and the 2 tests were fixed by defining the missing `paper-fast` builtin. Remaining: confirm the dep path on py 3.10/3.12 and document it | G2 | Clean `pip install` → **112/112 green**; docs updated |
 | E3 | **Version integrity**: single source of truth; release automation stamps `__version__` + pyproject from the tag; `/api/update/status` verified against it | G3 | Any installed build reports the exact release it is; no drift possible |
 | E4 | **Server modularization** (incremental): extract per-domain route modules (markets, backtest, ml, ai, broker, sim/algo, data, workspace) around a shared app-state object; **every step gated by the full suite + smoke** | G4 | `server.py` under ~1,500 lines of wiring; zero behavior change (suite + e2e green) |
 | E5 | **Frontend decomposition** (incremental): `ProChart`/`BTChart` into composable chart core + feature modules; typecheck + build + manual checklist gate per step | G5 | No single file > 2,000 LOC; checklist green per step |
