@@ -168,6 +168,13 @@ multi-pane canvas chart, and (ultimately) readable from plain-Python strategies.
    common knowledge and are implemented fresh in Python/TS.
 2. **"Bookmap" is a competitor's trademark** — never used as a feature name or in
    marketing. Ours: *Order Flow Suite*, *Depth Heat*, *Footprint*, etc.
+3. **CryptoFeed is rejected (2026-09-16, proposed for crypto L2)** — its license is
+   **AGPL-3.0** (+ 7(b) attribution): bundling it into the distributed terminal would
+   copyleft the entire product (AGPL's network clause + installer distribution),
+   destroying the commercial model. Same treatment as the no-license reference repo:
+   reference only, zero code. Crypto L2 comes from **ccxt (MIT)** instead — websocket
+   streaming has been part of the free MIT package since v1.95; declared as a pinned
+   dependency with a thin adapter behind the same `depth_stream` contract.
 
 **Why it was "easy in C#":** NinjaTrader hands indicators (a) **L2 market depth as a data
 series** (`OnMarketDepth`), (b) **tick replay with aggressor side** (tick-type bars),

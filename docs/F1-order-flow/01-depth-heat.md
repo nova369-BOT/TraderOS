@@ -57,11 +57,13 @@ matching the terminal's existing provider model.
   — size 0 in a delta = level removed. Prices are the instrument's tick grid.
 - **TradeEvent**: `symbol, ts, price, size, side (BUY | SELL | INFERRED-BUY | INFERRED-SELL | UNKNOWN)`
   — extends the existing `stream()` tick dict with an optional `side` (backward compatible:
-  existing providers unaffected). **Side availability is confirmed per source (§2.3):** the
-  public live feed carries no aggressor side at all, so side arrives (a) from MBO events
-  where the contract is covered, or (b) inferred at the top of book from the tick's own
-  bid/ask (print ≥ ask → buy, ≤ bid → sell — exact for trades at the touch, and labelled
-  *inferred* in the UI, never presented as exchange-stamped).
+  existing providers unaffected). **Side availability is confirmed per source (§2.3):**
+  (a) MBO events carry exchange-stamped side on covered futures;
+  (b) the crypto feed via ccxt carries exchange-stamped side on most exchanges;
+  (c) for the rest, the public live feed has no aggressor side, so it is inferred at
+  the top of book from the tick's own bid/ask (print ≥ ask → buy, ≤ bid → sell — exact
+  for trades at the touch, and labelled *inferred* in the UI, never presented as
+  exchange-stamped).
 
 ### 2.2 Provider contract extension (follows the existing `NotSupported` pattern)
 
@@ -111,6 +113,14 @@ Findings:
   the Depth Heat pane generalises exactly this engine into a full chart pane with
   history, colour control and recording.
 
+- **Crypto L2 evaluated 2026-09-16:** the proposed **CryptoFeed is rejected on
+  license** — it is AGPL-3.0 (+ 7(b) attribution); bundling it into the distributed
+  terminal would copyleft the whole product. The same class of legal boundary as the
+  no-license reference repo: reference only, zero code. **ccxt (MIT) is the adopted
+  source** for crypto depth: its websocket streaming (formerly paid "CCXT Pro") has
+  been part of the free MIT package since v1.95, covers 100+ exchanges, and public
+  book/trade channels on the major exchanges need no API key ($0).
+
 **Sources, in wiring order (real data first, per founder directive 2026-09-16):**
 
 1. **Vault MBO (futures, plan-gated) — the real-data launch surface.** Wires through
@@ -118,9 +128,16 @@ Findings:
    and `depth_history` (same door, wider windows — subject to the §8 server-side
    confirmations on retention/window). Reuses the L3 rail's proven client logic, moved
    engine-side so the pane, the rail, and recording share one MBO feed per symbol.
-2. **Broker adapters** — where a connected broker's feed carries L2, the adapter offers
+2. **Crypto public L2 via ccxt (MIT, declared pinned dependency).** A thin adapter
+   maps `watch_order_book` (snapshot + deltas) → `DepthEvent` and `watch_trades` →
+   `TradeEvent` with exchange-stamped side, on the public keyless channels of the major
+   exchanges covering the platform's ~58 crypto symbols (symbol map: platform
+   canonicals like `BTC/USD` → exchange pairs). **Live only** — exchanges expose no L2
+   history — so history = what the terminal's own session recorder captures (S10,
+   ships in Phase 1); the pane shows its honest range.
+3. **Broker adapters** — where a connected broker's feed carries L2, the adapter offers
    it through the same contract (generic path, reconciliation as today).
-3. **Demo provider extension** — deterministic synthetic L2: seeded per (symbol, date);
+4. **Demo provider extension** — deterministic synthetic L2: seeded per (symbol, date);
    50–100 levels/side on the tick grid around the mid; log-normal sizes decaying with
    distance; scripted, reproducible dynamics — standing walls, **iceberg refills** (size
    restored after hits), **pulls on approach** (spoof behaviour), sweep-throughs. Emits
@@ -217,12 +234,13 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) |
+| H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned |
 | H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them |
 | H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged |
 
-**Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→H9→H10. H5 may start after H3
-(demo feed available); H9 is the only externally-dependent item and never blocks the
-others (contract-first).
+**Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→{H8b∥H9}→H10. H5 may start after H3
+(demo feed available); H8b and H9 are independent of each other and of the pane work;
+H9's open items (§8) never block live heat (contract-first).
 
 ## 7. Testing & quality bar (professional standard)
 
