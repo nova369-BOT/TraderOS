@@ -7201,16 +7201,30 @@ def create_app() -> FastAPI:
                 "events": [ev.to_dict() for ev in events]}
 
     @app.get("/api/orderflow/book")
-    def of_book(symbol: str, provider: str = ""):
+    def of_book(symbol: str, provider: str = "", active_levels: int = 0,
+                reset: str = "session", reset_interval_min: int = 60):
         """Current L2 snapshot (also feeds the COB column): the persistent
-        book rebuilt from the last two minutes of depth history."""
+        book rebuilt from recent depth history.
+
+        Pane settings honoured here (H6):
+        - ``active_levels`` > 0 → S6 active-range override: the UI-facing
+          views expose only this many levels around mid.
+        - ``reset=interval`` → S11 depth reset on a fixed interval: the
+          rebuild starts from the last epoch-aligned boundary, so stale
+          last-seen liquidity never survives the boundary."""
         now = time.time()
+        window_from = now - 120.0
+        if reset == "interval":
+            span = max(1, int(reset_interval_min)) * 60.0
+            boundary = math.floor(now / span) * span
+            window_from = max(window_from, boundary)
         try:
             p, events = _of_service.resolve_history(
-                symbol, now - 120.0, now, 1000, 100, provider or None)
+                symbol, window_from, now, 1000, 100, provider or None)
         except _OrderflowUnavailable as e:
             raise HTTPException(404, str(e))
-        book = _DepthBook(symbol)
+        book = _DepthBook(
+            symbol, active_levels=int(active_levels) or None)
         book.apply_all(events)
         out = book.snapshot()
         out["provider"] = p.name

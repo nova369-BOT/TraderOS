@@ -41,6 +41,8 @@ export class DepthHeatRenderer {
   private follow = true;           // auto-scroll with the live edge
   private priceCenter: number | null = null;
   private pxPerUnit: number | null = null;   // null = auto price fit
+  private basePpu: number | null = null;     // first-fit zoom reference (S4)
+  private recenterTarget: number | null = null;  // S9 eased recentering
   private hover: { x: number; y: number } | null = null;
   private syncedCrosshair: number | null = null;
 
@@ -108,8 +110,24 @@ export class DepthHeatRenderer {
 
   setSettings(s: DepthHeatSettings) {
     this.settings = s;
-    this.lut = buildLut(s);       // LUT rebuild on change, never per frame
+    // LUT rebuild on change, never per frame (auto smoothing resolves the
+    // shade count from the current zoom — S4).
+    this.lut = buildLut(s, this.effSmoothing());
     this.dirty = true;
+  }
+
+  /** S4: resolved vertical-smoothing shade count (0 = no quantization).
+   * Auto = zoom-adaptive: the tighter the price zoom, the finer the bands. */
+  private effSmoothing(): number {
+    const s = this.settings;
+    if (s.smoothingMode === 'none') return 0;
+    if (s.smoothingMode === 'manual') {
+      return Math.min(20, Math.max(0, Math.round(s.smoothing)));
+    }
+    const ppu = this.pxPerUnit ?? this.basePpu ?? 0;
+    if (!ppu || !this.basePpu) return 24;      // default zoom: gentle bands
+    const zoom = Math.max(0.02, ppu / this.basePpu);
+    return Math.min(64, Math.max(4, Math.round(24 / Math.sqrt(zoom))));
   }
 
   setSyncedCrosshair(tsMs: number | null) {
@@ -153,22 +171,48 @@ export class DepthHeatRenderer {
       buy: t.side === 'BUY' || t.side === 'INFERRED-BUY',
     });
     if (this.dots.length > 5000) this.dots.splice(0, this.dots.length - 4000);
+    // S9: trade-following recentering tracks the last print.
+    if (this.settings.recenterMode === 'trades') this.requestRecenter(t.price);
     this.dirty = true;
   }
 
   setBook(bestBid: number | null, bestAsk: number | null) {
     this.bookBid = bestBid;
     this.bookAsk = bestAsk;
+    // S9: BBO recentering keeps the spread band in frame, inside tolerance.
+    if (this.settings.recenterMode === 'bbo') {
+      const mid = bestBid !== null && bestAsk !== null
+        ? (bestBid + bestAsk) / 2
+        : (bestBid ?? bestAsk);
+      if (mid !== null) this.requestRecenter(mid);
+    }
     this.dirty = true;
+  }
+
+  /** S9 auto-recentering: engage only when the anchor drifts beyond the
+   * tolerance fraction of the visible half-range (prevents jitter). The
+   * actual motion is eased in the paint loop; manual interaction cancels. */
+  private requestRecenter(anchorPrice: number) {
+    if (this.priceCenter === null || this.pxPerUnit === null) return;
+    const half = this.cssH / 2 / this.pxPerUnit;
+    const tol = half * Math.min(90, Math.max(1, this.settings.recenterTolerance)) / 100;
+    if (Math.abs(anchorPrice - this.priceCenter) > tol) {
+      this.recenterTarget = anchorPrice;
+      this.dirty = true;
+    }
   }
 
   // ── interaction ────────────────────────────────────────────────────────
 
   wheel(dx: number, deltaY: number, shift: boolean) {
+    this.recenterTarget = null;   // manual navigation wins over S9 easing
     if (shift) {
       // price zoom around the viewport centre
       const z = Math.exp(-deltaY * 0.001);
       this.pxPerUnit = (this.pxPerUnit ?? this.autoPxPerUnit()) * z;
+      if (this.settings.smoothingMode === 'auto') {
+        this.lut = buildLut(this.settings, this.effSmoothing());
+      }
     } else {
       const z = Math.exp(deltaY * 0.001);
       this.msPerPx = Math.min(120, Math.max(0.5, this.msPerPx * z));
@@ -179,6 +223,7 @@ export class DepthHeatRenderer {
   }
 
   drag(dxPx: number, dyPx: number) {
+    this.recenterTarget = null;
     this.follow = false;
     this.priceCenter = (this.priceCenter ?? this.autoPriceCenter())
       + dyPx / (this.pxPerUnit ?? this.autoPxPerUnit());
@@ -192,6 +237,7 @@ export class DepthHeatRenderer {
     this.follow = true;
     this.priceCenter = null;
     this.pxPerUnit = null;
+    this.recenterTarget = null;
     this.dirty = true;
   }
 
@@ -279,6 +325,12 @@ export class DepthHeatRenderer {
     this.dirty = true;
   }
 
+  /** The resolved cut-off sizes [lo, hi] — the settings window shows them
+   * next to the percentile controls so the mapping stays tangible. */
+  getCutoffs(): [number, number] {
+    return [this.lo, this.hi];
+  }
+
   // ── coordinate mapping ─────────────────────────────────────────────────
 
   private liveEdgeMs(): number {
@@ -348,8 +400,24 @@ export class DepthHeatRenderer {
     ctx.fillRect(0, 0, this.cssW, this.cssH);
     if (!this.cols.length) return;
 
+    // S9 eased recentering: glide toward the anchor, keep frames coming
+    // until snapped; manual interaction already cancelled the target.
+    if (this.recenterTarget !== null && this.priceCenter !== null) {
+      const d = this.recenterTarget - this.priceCenter;
+      const snap = Math.max(
+        1e-9, (this.cssH / 2 / (this.pxPerUnit ?? 1)) / 240);
+      if (Math.abs(d) <= snap) {
+        this.priceCenter = this.recenterTarget;
+        this.recenterTarget = null;
+      } else {
+        this.priceCenter += d * 0.14;
+        this.dirty = true;
+      }
+    }
+
     const [pLo, pHi] = this.visiblePriceRange();
     const ppu = this.pxPerUnit ?? this.cssH / Math.max(pHi - pLo, 1e-9);
+    if (this.basePpu === null) this.basePpu = ppu;   // S4 zoom reference
     const centre = this.priceCenter ?? (pLo + pHi) / 2;
     const yOf = (p: number) => this.cssH / 2 - (p - centre) * ppu;
 
@@ -401,24 +469,8 @@ export class DepthHeatRenderer {
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(this.off, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
 
-    // volume dots (S7)
-    if (this.settings.dots) {
-      ctx.globalAlpha = Math.min(1, Math.max(0, this.settings.dotAlpha));
-      for (const d of this.dots) {
-        if (d.tsMs < t0 || d.tsMs > t1) continue;
-        if (d.price < pLo || d.price > pHi) continue;
-        const r = Math.max(1.5, Math.sqrt(d.size) * 0.9 * this.settings.dotScale);
-        const x = this.tsToX(d.tsMs), y = yOf(d.price);
-        ctx.beginPath();
-        ctx.arc(x, y, Math.min(r, 14), 0, Math.PI * 2);
-        ctx.fillStyle = d.buy ? 'rgba(38, 166, 154, 0.95)' : 'rgba(239, 83, 80, 0.95)';
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
+    // volume dots (S7): gradient / solid / pie-by-aggressor-split
+    if (this.settings.dots) this.drawDots(ctx, t0, t1, pLo, pHi, yOf);
 
     // BBO lines (S9)
     const bbo = (p: number | null, color: string) => {
@@ -485,6 +537,105 @@ export class DepthHeatRenderer {
       ctx.fillText(d.toISOString().slice(11, 19), x + 2, this.cssH - 4);
       ctx.fillRect(x, this.cssH - 14, 1, 4);
     }
+  }
+
+  /** Volume dots (S7). Three honest drawing types:
+   *  - gradient: radial glow centred on the print (default)
+   *  - solid:    flat discs
+   *  - pie:      prints are aggregated per price-time cell and drawn as a
+   *              disc split by aggressor-side volume (buy arc vs sell arc). */
+  private drawDots(
+    ctx: CanvasRenderingContext2D,
+    t0: number, t1: number, pLo: number, pHi: number,
+    yOf: (p: number) => number,
+  ) {
+    const alpha = Math.min(1, Math.max(0, this.settings.dotAlpha));
+    if (alpha <= 0) return;
+    const scale = this.settings.dotScale;
+    const BUY = 'rgba(38, 166, 154, 0.95)';
+    const SELL = 'rgba(239, 83, 80, 0.95)';
+    ctx.globalAlpha = alpha;
+
+    if (this.settings.dotType === 'pie') {
+      // Aggregate visible prints into price-time cells (one disc per cell).
+      const cellH = Math.max(3, this.cssH / 90);
+      const cellW = Math.max(4, 1000 / this.msPerPx);   // one column wide
+      const cells = new Map<string, {
+        x: number; y: number; n: number; size: number; buy: number; sell: number;
+      }>();
+      for (const d of this.dots) {
+        if (d.tsMs < t0 || d.tsMs > t1 || d.price < pLo || d.price > pHi) continue;
+        const x = this.tsToX(d.tsMs), y = yOf(d.price);
+        const key = `${Math.round(x / cellW)}:${Math.round(y / cellH)}`;
+        let c = cells.get(key);
+        if (!c) { c = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }; cells.set(key, c); }
+        c.x += x; c.y += y; c.n += 1; c.size += d.size;
+        if (d.buy) c.buy += d.size; else c.sell += d.size;
+      }
+      for (const c of cells.values()) {
+        const cx = c.x / c.n, cy = c.y / c.n;
+        const r = Math.min(16, Math.max(2.5, Math.sqrt(c.size) * 0.9 * scale));
+        const total = c.buy + c.sell;
+        const buyFrac = total > 0 ? c.buy / total : 0.5;
+        const a0 = -Math.PI / 2;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.arc(cx, cy, r, a0, a0 + buyFrac * Math.PI * 2);
+        ctx.closePath();
+        ctx.fillStyle = BUY;
+        ctx.fill();
+        if (buyFrac < 1) {
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.arc(cx, cy, r, a0 + buyFrac * Math.PI * 2, a0 + Math.PI * 2);
+          ctx.closePath();
+          ctx.fillStyle = SELL;
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    const gradient = this.settings.dotType === 'gradient';
+    for (const d of this.dots) {
+      if (d.tsMs < t0 || d.tsMs > t1) continue;
+      if (d.price < pLo || d.price > pHi) continue;
+      const r = Math.min(14, Math.max(1.5, Math.sqrt(d.size) * 0.9 * scale));
+      const x = this.tsToX(d.tsMs), y = yOf(d.price);
+      if (gradient) {
+        const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r);
+        if (d.buy) {
+          g.addColorStop(0, 'rgba(178, 255, 244, 0.95)');
+          g.addColorStop(0.55, 'rgba(38, 166, 154, 0.85)');
+          g.addColorStop(1, 'rgba(38, 166, 154, 0.15)');
+        } else {
+          g.addColorStop(0, 'rgba(255, 205, 196, 0.95)');
+          g.addColorStop(0.55, 'rgba(239, 83, 80, 0.85)');
+          g.addColorStop(1, 'rgba(239, 83, 80, 0.15)');
+        }
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = d.buy ? BUY : SELL;
+        ctx.fill();
+      }
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
   }
 
   private lowerBound(tsMs: number): number {

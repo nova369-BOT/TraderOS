@@ -37,6 +37,7 @@ export type DepthWsFrame =
 /** Pane colour/normalization settings (persisted per instrument — H6). */
 export interface DepthHeatSettings {
   scheme: 'heat' | 'greyscale';
+  applySchemeGlobally: boolean;  // scheme writes to the terminal-wide store
   intensity: number;      // 0..2, 1 = scheme colours
   dimming: number;        // 0..1 toward all-black
   contrast: number;       // -1..1
@@ -44,15 +45,23 @@ export interface DepthHeatSettings {
   cutoffMode: 'percentile' | 'exact';
   cutoffLower: number;    // percentile (0-100) or exact size
   cutoffUpper: number;
-  smoothing: number;      // 0 = none; 2..64 = shade count (S4)
+  smoothingMode: 'auto' | 'manual' | 'none';   // S4
+  smoothing: number;      // manual shade count 0..20 (S4)
   dots: boolean;
+  dotType: 'gradient' | 'solid' | 'pie';       // S7 drawing type
   dotMinSize: number;
   dotScale: number;
   dotAlpha: number;       // 0..1
+  activeRange: number;    // 0 = off; else N-level active-range override (S6)
+  recenterMode: 'bbo' | 'trades' | 'off';      // S9 auto-recentering source
+  recenterTolerance: number;  // % of visible half-range before recentering
+  resetPolicy: 'session' | 'interval';         // S11 depth reset
+  resetIntervalMin: number;   // minutes, when policy = interval
 }
 
 export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   scheme: 'heat',
+  applySchemeGlobally: false,
   intensity: 1.0,
   dimming: 0.0,
   contrast: 0.0,
@@ -61,12 +70,44 @@ export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   cutoffMode: 'percentile',
   cutoffLower: 5,
   cutoffUpper: 95,
+  smoothingMode: 'auto',
   smoothing: 0,
   dots: true,
+  dotType: 'gradient',
   dotMinSize: 0,
   dotScale: 1.0,
   dotAlpha: 0.85,
+  activeRange: 0,
+  recenterMode: 'bbo',
+  recenterTolerance: 15,
+  resetPolicy: 'session',
+  resetIntervalMin: 60,
 };
+
+// ── terminal-wide scheme ("apply globally", persisted per terminal) ────────
+// Panes publish/subscribe through these so an open grid updates live.
+
+export const GLOBAL_SCHEME_KEY = 'lset-depth-global-scheme';
+export const GLOBAL_APPLY_KEY = 'lset-depth-global-apply';
+export const GLOBAL_SCHEME_EVENT = 'lse-depth-global-scheme';
+
+export function loadGlobalScheme(): { scheme: 'heat' | 'greyscale'; apply: boolean } {
+  let scheme: 'heat' | 'greyscale' = 'heat';
+  let apply = false;
+  try {
+    const s = localStorage.getItem(GLOBAL_SCHEME_KEY);
+    if (s === 'heat' || s === 'greyscale') scheme = s;
+    apply = localStorage.getItem(GLOBAL_APPLY_KEY) === '1';
+  } catch { /* defaults */ }
+  return { scheme, apply };
+}
+
+export function saveGlobalScheme(scheme: 'heat' | 'greyscale', apply: boolean) {
+  try {
+    localStorage.setItem(GLOBAL_SCHEME_KEY, scheme);
+    localStorage.setItem(GLOBAL_APPLY_KEY, apply ? '1' : '0');
+  } catch { /* in-session only */ }
+}
 
 // ── colour normalisation (mirror of engine/orderflow/normalize.py) ─────────
 
@@ -94,8 +135,11 @@ function interpStops(t: number): [number, number, number] {
   return HEAT_STOPS[HEAT_STOPS.length - 1][1];
 }
 
-/** Build the 256-entry RGBA LUT for one settings combination. */
-export function buildLut(s: DepthHeatSettings): Uint8ClampedArray {
+/** Build the 256-entry RGBA LUT for one settings combination.
+ * `smoothingOverride` supplies the resolved shade count (the renderer
+ * computes Auto mode from zoom — S4); defaults to the stored value. */
+export function buildLut(s: DepthHeatSettings, smoothingOverride?: number): Uint8ClampedArray {
+  const shades = smoothingOverride !== undefined ? smoothingOverride : s.smoothing;
   const lut = new Uint8ClampedArray(256 * 4);
   for (let i = 0; i < 256; i++) {
     const t = i / 255;
@@ -123,8 +167,8 @@ export function buildLut(s: DepthHeatSettings): Uint8ClampedArray {
     r += br; g += br; b += br;
     // vertical smoothing: quantize the shade index before storing
     let idx = i;
-    if (s.smoothing >= 2) {
-      const step = Math.ceil(256 / Math.min(s.smoothing, 256));
+    if (shades >= 2) {
+      const step = Math.ceil(256 / Math.min(shades, 256));
       idx = Math.min(Math.floor(i / step) * step + Math.floor(step / 2), 255);
     }
     // re-evaluate the gradient at the quantized index so bands are flat

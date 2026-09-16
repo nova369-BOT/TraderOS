@@ -462,6 +462,33 @@ def test_depth_endpoint_and_book(client):
     assert "depth" in r.json()["detail"]
 
 
+def test_book_active_range_and_depth_reset(client):
+    """H6 wiring: the pane's S6 active-range override and S11 depth-reset
+    policy are honoured by /api/orderflow/book."""
+    full = client.get("/api/orderflow/book",
+                      params={"symbol": "DEMO:BTC"}).json()
+    act = client.get("/api/orderflow/book",
+                     params={"symbol": "DEMO:BTC",
+                             "active_levels": 2}).json()
+    # S6: the UI-facing ladder is clipped to the window...
+    assert len(act["bids"]) <= 2 and len(act["asks"]) <= 2
+    assert len(full["bids"]) >= len(act["bids"])
+    # ...but the BBO survives the override untouched.
+    assert act["best_bid"] == full["best_bid"]
+    assert act["best_ask"] == full["best_ask"]
+
+    # S11: an interval reset rebuilds only from the last epoch-aligned
+    # boundary — never MORE state than the session view, still a valid book.
+    sess = client.get("/api/orderflow/book",
+                      params={"symbol": "DEMO:BTC",
+                              "reset": "session"}).json()
+    iv = client.get("/api/orderflow/book",
+                    params={"symbol": "DEMO:BTC", "reset": "interval",
+                            "reset_interval_min": 1}).json()
+    assert iv["events_applied"] <= sess["events_applied"]
+    assert iv["best_bid"] < iv["best_ask"]
+
+
 def test_orderflow_ws_snapshot_on_subscribe(client):
     # TestClient hardcodes host "testserver" on WS scopes; the engine's
     # local-only guard rightfully rejects anything but a loopback Host.

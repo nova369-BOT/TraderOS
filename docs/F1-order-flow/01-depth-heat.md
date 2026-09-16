@@ -88,6 +88,30 @@ Footprints come in Phase 2; nothing in this document depends on them.
     types), **H8 UI half** (record/list wiring in the pane), **H9** (vault
     MBO + broker L2), **H10** (perf + golden + e2e + guide). On-screen paint
     check of the pane still owed (no browser in sandbox).
+- **2026-09-16 — H6 landed (full settings window + apply-globally).**
+  - `DepthHeatSettingsWindow.tsx` + `depthHeatSettings.css`: studies-style
+    dark panel opened by ⚙ or **right-click on the heatmap** (§5.2). Every
+    control applies LIVE (the running pane is the preview), persists per
+    instrument, Esc/backdrop closes.
+  - Full §5.3 surface: colour scheme cards with gradient strips rendered
+    from the REAL LUT (not illustrations) · intensity · dimming ·
+    **apply-scheme-globally** (terminal-wide store + live broadcast to open
+    panes) · cut-off percentile/exact with resolved-size readout · vertical
+    smoothing Auto/Manual 0–20/None · contrast & brightness · dots
+    enable/min-size/size/transparency/**drawing type gradient–solid–pie** ·
+    active-range override (N levels) · auto-recenter BBO/trades/off with
+    tolerance % · depth reset session/interval.
+  - Renderer upgrades: zoom-adaptive Auto smoothing (S4), radial-gradient +
+    solid dots, **pie dots aggregated per price-time cell and split by
+    aggressor-side volume** (S7), eased auto-recentering inside the
+    tolerance band with manual-navigation override (S9).
+  - Engine: `/api/orderflow/book` honours `active_levels` (S6) and the S11
+    reset policy (`reset=interval` rebuilds from the last epoch-aligned
+    boundary). Tested.
+  - Full suite 147 passed / 1 skipped. Frontend type-clean + bundle rebuilt.
+  - Gates still open: **H7** (COB column + boundary lines), **H8 UI half**
+    (record/list wiring in the pane), **H9** (vault MBO + broker L2),
+    **H10** (perf + golden + e2e + guide). On-screen paint check still owed.
 
 ---
 
@@ -315,7 +339,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H3 | Demo provider L2 extension + deterministic fixtures | engine | Heatmap works end-to-end **in-process** on DEMO symbols, no key; fixtures committed for golden images | ✅ 2026-09-16 (golden PNGs land with H10) |
 | H4 | API + WS (depth/book/record/sessions + `depth:{symbol}` topic) | engine/API | Integration tests: history fill, snapshot-on-subscribe, coalescing bound, degradation reasons | ✅ 2026-09-16 |
 | H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | ✅ core 2026-09-16 — pane + renderer + grid wiring shipped & built; **on-screen paint check pending** (built headless; confirm in the app next session), perf budget at H10 |
-| H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | open |
+| H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | ✅ 2026-09-16 (window + global scheme broadcast; pie dots, auto smoothing, eased recenter shipped in the renderer) |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | open |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
 | H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |

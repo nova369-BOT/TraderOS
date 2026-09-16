@@ -13,11 +13,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEFAULT_DEPTH_SETTINGS,
+  GLOBAL_SCHEME_EVENT,
+  loadGlobalScheme,
+  saveGlobalScheme,
   type DepthEventMsg,
   type DepthHeatSettings,
   type DepthWsFrame,
 } from './depthHeatTypes';
 import { DepthHeatRenderer } from './DepthHeatRenderer';
+import DepthHeatSettingsWindow from './DepthHeatSettingsWindow';
 
 const HISTORY_SECONDS = 4 * 3600;   // pane-open history fill (S1)
 
@@ -26,11 +30,15 @@ function settingsKey(symbol: string) {
 }
 
 function loadSettings(symbol: string): DepthHeatSettings {
+  let base = { ...DEFAULT_DEPTH_SETTINGS };
   try {
     const raw = localStorage.getItem(settingsKey(symbol));
-    if (raw) return { ...DEFAULT_DEPTH_SETTINGS, ...JSON.parse(raw) };
+    if (raw) base = { ...base, ...JSON.parse(raw) };
   } catch { /* fall through to defaults */ }
-  return { ...DEFAULT_DEPTH_SETTINGS };
+  // "Apply scheme globally" (S2): the terminal-wide scheme wins on load.
+  const g = loadGlobalScheme();
+  if (g.apply) base = { ...base, scheme: g.scheme, applySchemeGlobally: true };
+  return base;
 }
 
 function saveSettings(symbol: string, s: DepthHeatSettings) {
@@ -58,16 +66,41 @@ export default function DepthHeatPane({
   const [settings, setSettings] = useState<DepthHeatSettings>(
     () => loadSettings(symbol));
   const [contrast, setContrast] = useState(50);   // S3 slider above the pane
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [cutoffRange, setCutoffRange] = useState<[number, number] | null>(null);
 
-  // Settings persistence (per instrument, H6-lite).
+  // Settings persistence (per instrument — H6) with live renderer apply.
   const updateSettings = useCallback((patch: Partial<DepthHeatSettings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
+      // Scheme changes broadcast terminal-wide when "apply globally" is on.
+      if (next.applySchemeGlobally && patch.scheme && patch.scheme !== prev.scheme) {
+        saveGlobalScheme(patch.scheme, true);
+        window.dispatchEvent(new CustomEvent(GLOBAL_SCHEME_EVENT,
+          { detail: { scheme: patch.scheme, source: symbol } }));
+      }
       saveSettings(symbol, next);
       rendererRef.current?.setSettings(next);
       rendererRef.current?.refreshCutoffs();
       return next;
     });
+  }, [symbol]);
+
+  // Follow terminal-wide scheme changes made from sibling panes.
+  useEffect(() => {
+    const onGlobal = (e: Event) => {
+      const d = (e as CustomEvent).detail as { scheme: 'heat' | 'greyscale'; source: string };
+      if (d.source === symbol) return;   // own broadcast already applied
+      setSettings((prev) => {
+        if (!prev.applySchemeGlobally || prev.scheme === d.scheme) return prev;
+        const next = { ...prev, scheme: d.scheme };
+        saveSettings(symbol, next);
+        rendererRef.current?.setSettings(next);
+        return next;
+      });
+    };
+    window.addEventListener(GLOBAL_SCHEME_EVENT, onGlobal);
+    return () => window.removeEventListener(GLOBAL_SCHEME_EVENT, onGlobal);
   }, [symbol]);
 
   // Renderer lifecycle.
@@ -133,10 +166,17 @@ export default function DepthHeatPane({
         }
         return;
       }
-      // 2. current book for the BBO lines / COB context
+      // 2. current book for the BBO lines / COB context (honours the
+      //    pane's active-range override + depth-reset policy — S6/S11)
       try {
-        const res = await fetch(
-          `/api/orderflow/book?symbol=${encodeURIComponent(symbol)}`);
+        const st = loadSettings(symbol);
+        const q = new URLSearchParams({ symbol });
+        if (st.activeRange > 0) q.set('active_levels', String(st.activeRange));
+        q.set('reset', st.resetPolicy);
+        if (st.resetPolicy === 'interval') {
+          q.set('reset_interval_min', String(st.resetIntervalMin));
+        }
+        const res = await fetch(`/api/orderflow/book?${q.toString()}`);
         if (res.ok) {
           const b = await res.json();
           r.setBook(b.best_bid ?? null, b.best_ask ?? null);
@@ -250,32 +290,28 @@ export default function DepthHeatPane({
             color: state.kind === 'live' && state.demo ? '#ffb74d' : '#b0bec5',
           }}>{status}</span>
         )}
+        <span style={{
+          marginLeft: 'auto', fontSize: 9, letterSpacing: 0.6, opacity: 0.55,
+        }}>CUT-OFF</span>
         <input
           type="range" min={0} max={100} value={contrast}
           onChange={(e) => setContrast(Number(e.target.value))}
-          title="Contrast (cut-off window)"
-          style={{ width: 90, marginLeft: 'auto', accentColor: '#78909c' }}
+          title="Cut-off window — narrows/widens where the gradient saturates (S3)"
+          style={{ width: 90, accentColor: '#78909c' }}
         />
-        <select
-          value={settings.scheme}
-          onChange={(e) => updateSettings({ scheme: e.target.value as any })}
-          style={{
-            background: 'transparent', color: '#d1d4dc', border: '1px solid #2a2e39',
-            borderRadius: 3, fontSize: 10,
+        <button
+          onClick={() => {
+            setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
+            setSettingsOpen(true);
           }}
-          title="Colour scheme"
-        >
-          <option value="heat">heat</option>
-          <option value="greyscale">greyscale</option>
-        </select>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer' }}
-          title="Volume dots">
-          <input
-            type="checkbox" checked={settings.dots}
-            onChange={(e) => updateSettings({ dots: e.target.checked })}
-          />
-          dots
-        </label>
+          title="Depth Heat settings (or right-click the heatmap)"
+          style={{
+            background: settingsOpen ? '#1d232e' : 'transparent',
+            border: '1px solid #2a2e39', color: '#c8cfda',
+            borderRadius: 4, fontSize: 11, padding: '1px 7px', cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+          }}
+        >⚙<span style={{ fontSize: 10, opacity: 0.8 }}>settings</span></button>
         {onToggleKind && (
           <button
             onClick={onToggleKind}
@@ -288,7 +324,15 @@ export default function DepthHeatPane({
         )}
       </div>
 
-      <div style={{ position: 'relative', flex: 1, minHeight: 0 }}>
+      <div
+        style={{ position: 'relative', flex: 1, minHeight: 0 }}
+        onContextMenu={(e) => {
+          // Right-click = pane settings (matches chart conventions, §5.2).
+          e.preventDefault();
+          setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
+          setSettingsOpen(true);
+        }}
+      >
         <canvas
           ref={canvasRef}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
@@ -311,6 +355,19 @@ export default function DepthHeatPane({
               {state.reason}
             </div>
           </div>
+        )}
+        {settingsOpen && (
+          <DepthHeatSettingsWindow
+            symbol={symbol}
+            settings={settings}
+            cutoffRange={cutoffRange}
+            onChange={(patch) => {
+              updateSettings(patch);
+              // keep the resolved cut-off readout honest while editing
+              setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
+            }}
+            onClose={() => setSettingsOpen(false)}
+          />
         )}
       </div>
     </div>
