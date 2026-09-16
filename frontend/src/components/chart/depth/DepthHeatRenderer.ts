@@ -1,38 +1,59 @@
 // ============================================================================
-// depth/DepthHeatRenderer.ts — the Depth Heat canvas renderer (F1, H5).
+// depth/DepthHeatRenderer.ts — the Depth Heat canvas renderer (F1, H5, v2).
 //
 // Canvas 2D, DECOUPLED FROM REACT STATE, driven by its own rAF loop
 // (plan §5.2): finalized columns are bulk-blitted through an offscreen
-// ImageData + LUT; only the visible viewport renders; the live column is
-// patched in place. Frames never allocate when nothing changed (dirty flag).
+// intensity+side field + per-side LUTs; only the visible viewport renders.
+// Frames never allocate when nothing changed (dirty flag).
+//
+// v2 (02-visual-excellence.md V1+V2): side-aware ramp families (deepdom /
+// bookmap), perceptual γ, glow pass over the hottest levels, permanent
+// right price axis with BBO chips + last-price box, dotted time grid,
+// stepped bid/ask path, sphere bubbles with big-trade tags, trade-derived
+// candles and the split volume strip.
 // ============================================================================
 
 import {
-  buildLut, cutoffValues, sizeToIndex,
+  cutoffValues, sizeToIndex,
   type DepthEventMsg, type DepthHeatSettings, type TradeEventMsg,
 } from './depthHeatTypes';
+import { buildLuts } from './heatVisuals';
+import { paintPriceAxis, paintTimeGrid } from './priceAxis';
+import {
+  paintBubbles, paintCandles, paintPath, paintVolumeStrip,
+  type PrintDot,
+} from './pathBubbles';
 
 interface FinalColumn {
   tsMs: number;
   keys: Float64Array;     // sorted price keys
   sizes: Float64Array;    // size per key
+  sides: Uint8Array;      // 0 = bid side, 1 = ask side (per key)
+  bb: number | null;      // carried best bid / ask at finalize time (V2 path)
+  ba: number | null;
 }
-
-interface Dot { tsMs: number; price: number; size: number; buy: boolean }
 
 const MAX_COLUMNS = 14400;   // ring bound, matches the engine grid
 const TARGET_ROWS = 220;     // price resolution of the offscreen blit
+const AXIS_W = 58;           // permanent right price axis gutter (V1)
+const GLOW_INDEX = 228;      // LUT index above which levels bloom (V1)
 
 export class DepthHeatRenderer {
   // data
   private cols: FinalColumn[] = [];
   private state = new Map<number, number>();     // carried book field
+  private stateSide = new Map<number, number>(); // which side carries it
   private stateTs = new Map<number, number>();
   private cur = new Map<number, number>();       // live column overlay
+  private curSide = new Map<number, number>();
   private curTsMs: number | null = null;
-  private dots: Dot[] = [];
+  private dots: PrintDot[] = [];
   private bookBid: number | null = null;
   private bookAsk: number | null = null;
+  private lastTradePrice: number | null = null;
+  private lastTradeBuy = true;
+  private recentSizes: number[] = [];   // rolling window for the big-trade median
+  private bigMedian = 0;
   private lastEventTs = 0;
 
   // view
@@ -55,7 +76,7 @@ export class DepthHeatRenderer {
 
   // colour
   private settings: DepthHeatSettings;
-  private lut: Uint8ClampedArray;
+  private luts: { ask: Uint8ClampedArray; bid: Uint8ClampedArray };
   private lo = 0;
   private hi = 1;
   private sizeSample: number[] = [];
@@ -65,6 +86,8 @@ export class DepthHeatRenderer {
   private ctx: CanvasRenderingContext2D | null = null;
   private off: HTMLCanvasElement;
   private offCtx: CanvasRenderingContext2D;
+  private glow: HTMLCanvasElement;
+  private glowCtx: CanvasRenderingContext2D;
   private raf = 0;
   private dirty = true;
   private dpr = 1;
@@ -76,9 +99,11 @@ export class DepthHeatRenderer {
 
   constructor(settings: DepthHeatSettings) {
     this.settings = settings;
-    this.lut = buildLut(settings);
+    this.luts = buildLuts(settings);
     this.off = document.createElement('canvas');
     this.offCtx = this.off.getContext('2d')!;
+    this.glow = document.createElement('canvas');
+    this.glowCtx = this.glow.getContext('2d')!;
   }
 
   // ── public API ─────────────────────────────────────────────────────────
@@ -115,11 +140,16 @@ export class DepthHeatRenderer {
     this.dirty = true;
   }
 
+  /** The heat field's right edge: the price axis gutter is permanent. */
+  private fieldW(): number {
+    return Math.max(50, this.cssW - AXIS_W);
+  }
+
   setSettings(s: DepthHeatSettings) {
     this.settings = s;
     // LUT rebuild on change, never per frame (auto smoothing resolves the
     // shade count from the current zoom — S4).
-    this.lut = buildLut(s, this.effSmoothing());
+    this.luts = buildLuts(s, this.effSmoothing());
     this.dirty = true;
   }
 
@@ -149,11 +179,16 @@ export class DepthHeatRenderer {
   ingestHistory(events: DepthEventMsg[]) {
     this.cols = [];
     this.state.clear();
+    this.stateSide.clear();
     this.stateTs.clear();
     this.cur.clear();
+    this.curSide.clear();
     this.curTsMs = null;
     this.sizeSample = [];
     this.dots = [];
+    this.recentSizes = [];
+    this.bigMedian = 0;
+    this.lastTradePrice = null;
     for (const ev of events) this.foldEvent(ev, true);
     this.flushColumn();
     this.recalcCutoffs();
@@ -175,11 +210,20 @@ export class DepthHeatRenderer {
 
   addTrade(t: TradeEventMsg) {
     if (t.size <= (this.settings.dotMinSize || 0)) return;
-    this.dots.push({
-      tsMs: t.ts * 1000, price: t.price, size: t.size,
-      buy: t.side === 'BUY' || t.side === 'INFERRED-BUY',
-    });
+    const buy = t.side === 'BUY' || t.side === 'INFERRED-BUY';
+    this.dots.push({ tsMs: t.ts * 1000, price: t.price, size: t.size, buy });
     if (this.dots.length > 5000) this.dots.splice(0, this.dots.length - 4000);
+    // rolling median of print sizes — the big-trade calibration (V2)
+    this.recentSizes.push(t.size);
+    if (this.recentSizes.length > 1024) {
+      this.recentSizes.splice(0, this.recentSizes.length - 512);
+    }
+    if (this.recentSizes.length % 64 === 0 || this.bigMedian === 0) {
+      const s = [...this.recentSizes].sort((a, b) => a - b);
+      this.bigMedian = s[Math.floor(s.length / 2)] ?? 0;
+    }
+    this.lastTradePrice = t.price;
+    this.lastTradeBuy = buy;
     // S9: trade-following recentering tracks the last print.
     if (this.settings.recenterMode === 'trades') this.requestRecenter(t.price);
     this.dirty = true;
@@ -211,7 +255,7 @@ export class DepthHeatRenderer {
     }
   }
 
-  // ── interaction ────────────────────────────────────────────────────────
+  // ── interaction ───────────────────────────────────────────────────────
 
   wheel(dx: number, deltaY: number, shift: boolean) {
     this.recenterTarget = null;   // manual navigation wins over S9 easing
@@ -220,7 +264,7 @@ export class DepthHeatRenderer {
       const z = Math.exp(-deltaY * 0.001);
       this.pxPerUnit = (this.pxPerUnit ?? this.autoPxPerUnit()) * z;
       if (this.settings.smoothingMode === 'auto') {
-        this.lut = buildLut(this.settings, this.effSmoothing());
+        this.luts = buildLuts(this.settings, this.effSmoothing());
       }
     } else {
       const z = Math.exp(deltaY * 0.001);
@@ -267,14 +311,15 @@ export class DepthHeatRenderer {
     const cs = Math.floor(tsMs / this.columnMs()) * this.columnMs();
     if (this.curTsMs === null) this.curTsMs = cs;
     while (cs > this.curTsMs!) this.advanceColumn();
-    for (const [p, s] of ev.bids) this.patchLevel(p, s, sampling);
-    for (const [p, s] of ev.asks) this.patchLevel(p, s, sampling);
+    for (const [p, s] of ev.bids) this.patchLevel(p, s, 0, sampling);
+    for (const [p, s] of ev.asks) this.patchLevel(p, s, 1, sampling);
     this.lastEventTs = Math.max(this.lastEventTs, tsMs);
   }
 
-  private patchLevel(price: number, size: number, sampling: boolean) {
+  private patchLevel(price: number, size: number, side: number, sampling: boolean) {
     const key = Math.round(price * 1e6) / 1e6;
     this.cur.set(key, size);      // last value wins inside the column
+    if (size > 0) this.curSide.set(key, side);
     if (size > 0 && sampling && this.sizeSample.length < 60000) {
       this.sizeSample.push(size);
     }
@@ -290,13 +335,16 @@ export class DepthHeatRenderer {
     for (const [k, s] of this.cur) {
       if (s <= 0) {
         this.state.delete(k);
+        this.stateSide.delete(k);
         this.stateTs.delete(k);
       } else {
         this.state.set(k, s);
+        this.stateSide.set(k, this.curSide.get(k) ?? 0);
         this.stateTs.set(k, this.curTsMs);
       }
     }
     this.cur.clear();
+    this.curSide.clear();
     // bound carried state exactly like the engine (stalest dropped first)
     if (this.state.size > 4096) {
       const keep = [...this.stateTs.entries()]
@@ -306,16 +354,26 @@ export class DepthHeatRenderer {
       for (const k of [...this.state.keys()]) {
         if (!keepSet.has(k)) {
           this.state.delete(k);
+          this.stateSide.delete(k);
           this.stateTs.delete(k);
         }
       }
     }
     const keys = [...this.state.keys()].sort((a, b) => a - b);
     const sizes = keys.map((k) => this.state.get(k)!);
+    const sides = keys.map((k) => this.stateSide.get(k) ?? 0);
+    // V2 path lines: carried BBO at finalize time
+    let bb: number | null = null, ba: number | null = null;
+    for (let i = 0; i < keys.length; i++) {
+      if (sides[i] === 0) bb = keys[i];              // keys ascending → last bid is best
+      else { ba = ba === null ? keys[i] : ba; }      // first ask is best
+    }
     this.cols.push({
       tsMs: this.curTsMs,
       keys: Float64Array.from(keys),
       sizes: Float64Array.from(sizes),
+      sides: Uint8Array.from(sides),
+      bb, ba,
     });
     if (this.cols.length > MAX_COLUMNS) {
       this.cols.splice(0, this.cols.length - MAX_COLUMNS);
@@ -368,11 +426,11 @@ export class DepthHeatRenderer {
   }
 
   private tsToX(tsMs: number): number {
-    return this.cssW - (this.rightEdgeTs() - tsMs) / this.msPerPx;
+    return this.fieldW() - (this.rightEdgeTs() - tsMs) / this.msPerPx;
   }
 
   private xToTs(x: number): number {
-    return this.rightEdgeTs() - (this.cssW - x) * this.msPerPx;
+    return this.rightEdgeTs() - (this.fieldW() - x) * this.msPerPx;
   }
 
   private visiblePriceRange(): [number, number] {
@@ -382,7 +440,7 @@ export class DepthHeatRenderer {
     }
     // auto fit over the recent window's levels + BBO
     let lo = Infinity, hi = -Infinity;
-    const from = this.liveEdgeMs() - Math.min(this.cssW, 600) * this.msPerPx;
+    const from = this.liveEdgeMs() - Math.min(this.fieldW(), 600) * this.msPerPx;
     for (let i = this.cols.length - 1; i >= 0; i--) {
       const c = this.cols[i];
       if (c.tsMs < from) break;
@@ -407,10 +465,6 @@ export class DepthHeatRenderer {
   private autoPxPerUnit(): number {
     const [lo, hi] = this.visiblePriceRange();
     return this.cssH / Math.max(hi - lo, 1e-9);
-  }
-
-  private priceToY(p: number, lo: number, ppu: number): number {
-    return this.cssH / 2 - (p - (this.priceCenter ?? (lo + this.cssH / 2 / ppu))) * ppu;
   }
 
   // ── painting ───────────────────────────────────────────────────────────
@@ -449,9 +503,10 @@ export class DepthHeatRenderer {
     this.viewCentre = centre; this.viewPpu = ppu; this.viewH = this.cssH;
     this.viewVersion += 1;
 
+    const fw = this.fieldW();
     // visible columns
     const t0 = this.xToTs(0);
-    const t1 = this.xToTs(this.cssW);
+    const t1 = this.xToTs(fw);
     let i0 = this.lowerBound(t0), i1 = this.lowerBound(t1);
     i1 = Math.min(i1, this.cols.length);
     if (this.follow && this.rightOffsetPx <= 0) {
@@ -462,48 +517,10 @@ export class DepthHeatRenderer {
       // Classic order-flow footprint: bid×ask executed volume per price
       // zone per time bucket, imbalance-highlighted.
       this.paintFootprint(ctx, t0, t1, pLo, pHi, yOf);
+      paintTimeGrid(ctx, fw, this.cssH, (t) => this.tsToX(t), t0, t1,
+        this.niceTimeStep(fw * this.msPerPx));
     } else {
-      const nCols = Math.max(1, i1 - i0);
-      const rows = TARGET_ROWS;
-      const rowStep = (pHi - pLo) / rows;
-      if (this.off.width !== nCols || this.off.height !== rows) {
-        this.off.width = nCols;
-        this.off.height = rows;
-      }
-      const img = this.offCtx.createImageData(nCols, rows);
-      const data = img.data;
-      for (let c = 0; c < nCols; c++) {
-        const col = this.cols[i0 + c];
-        const { keys, sizes } = col;
-        for (let li = 0; li < keys.length; li++) {
-          const p = keys[li];
-          if (p < pLo || p > pHi) continue;
-          const s = sizes[li];
-          if (s <= 0) continue;
-          const r = Math.min(rows - 1,
-            Math.max(0, Math.floor((pHi - p) / rowStep)));
-          const idx = sizeToIndex(s, this.lo, this.hi);
-          const o = (r * nCols + c) * 4;
-          const l = idx * 4;
-          // max-brighten overlaps so dense rows never darken
-          if (this.lut[l] > data[o] || data[o + 3] === 0) {
-            data[o] = this.lut[l];
-            data[o + 1] = this.lut[l + 1];
-            data[o + 2] = this.lut[l + 2];
-            data[o + 3] = 255;
-          }
-        }
-      }
-      this.offCtx.putImageData(img, 0, 0);
-
-      const x0 = this.tsToX(this.cols[i0].tsMs);
-      const x1 = this.tsToX(this.cols[i0].tsMs + nCols * this.columnMs());
-      const y0 = yOf(pHi), y1 = yOf(pLo);
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(this.off, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
-
-      // volume dots (S7): gradient / solid / pie-by-aggressor-split
-      if (this.settings.dots) this.drawDots(ctx, t0, t1, pLo, pHi, yOf);
+      this.paintHeatField(ctx, i0, i1, t0, t1, pLo, pHi, yOf, fw);
     }
 
     // BBO lines (S9)
@@ -514,17 +531,17 @@ export class DepthHeatRenderer {
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(this.cssW, y);
+      ctx.lineTo(fw, y);
       ctx.stroke();
       ctx.setLineDash([]);
     };
-    bbo(this.bookBid, 'rgba(38, 166, 154, 0.8)');
-    bbo(this.bookAsk, 'rgba(239, 83, 80, 0.8)');
+    bbo(this.bookBid, 'rgba(38, 166, 154, 0.55)');
+    bbo(this.bookAsk, 'rgba(239, 83, 80, 0.55)');
 
     // synced crosshair from sibling panes (hard time sync, H5)
     if (this.syncedCrosshair !== null) {
       const x = this.tsToX(this.syncedCrosshair);
-      if (x >= 0 && x <= this.cssW) {
+      if (x >= 0 && x <= fw) {
         ctx.strokeStyle = 'rgba(150, 160, 175, 0.55)';
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
@@ -538,38 +555,159 @@ export class DepthHeatRenderer {
     // local crosshair + price/time labels
     if (this.hover) {
       const { x, y } = this.hover;
-      ctx.strokeStyle = 'rgba(150, 160, 175, 0.45)';
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(x, 0); ctx.lineTo(x, this.cssH);
-      ctx.moveTo(0, y); ctx.lineTo(this.cssW, y);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (x <= fw) {
+        ctx.strokeStyle = 'rgba(150, 160, 175, 0.45)';
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(x, 0); ctx.lineTo(x, this.cssH);
+        ctx.moveTo(0, y); ctx.lineTo(fw, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       const pAt = centre + (this.cssH / 2 - y) / ppu;
       ctx.fillStyle = 'rgba(30, 34, 41, 0.95)';
-      ctx.fillRect(this.cssW - 74, y - 9, 72, 18);
+      ctx.fillRect(fw - 74, y - 9, 72, 18);
       ctx.fillStyle = '#d1d4dc';
       ctx.font = '10px monospace';
       ctx.textAlign = 'right';
-      ctx.fillText(pAt.toPrecision(6), this.cssW - 6, y + 3);
+      ctx.fillText(pAt.toPrecision(6), fw - 6, y + 3);
       const t = new Date(this.xToTs(x));
       const label = t.toISOString().slice(11, 19);
-      ctx.fillRect(x - 28, this.cssH - 16, 56, 15);
+      ctx.fillRect(Math.min(x, fw - 30) - 28, this.cssH - 16, 56, 15);
       ctx.textAlign = 'center';
-      ctx.fillText(label, x, this.cssH - 5);
+      ctx.fillText(label, Math.min(x, fw - 30), this.cssH - 5);
     }
 
-    // time axis ticks
+    // time axis ticks (inside the field)
     ctx.fillStyle = 'rgba(150,160,175,0.7)';
     ctx.font = '9px monospace';
     ctx.textAlign = 'left';
-    const stepMs = this.niceTimeStep(this.cssW * this.msPerPx);
+    const stepMs = this.niceTimeStep(fw * this.msPerPx);
     const first = Math.ceil(t0 / stepMs) * stepMs;
     for (let t = first; t <= t1; t += stepMs) {
       const x = this.tsToX(t);
+      if (x > fw - 52) continue;
       const d = new Date(t);
       ctx.fillText(d.toISOString().slice(11, 19), x + 2, this.cssH - 4);
       ctx.fillRect(x, this.cssH - 14, 1, 4);
+    }
+
+    // permanent right price axis (V1) — ticks, grid, BBO chips, last price
+    paintPriceAxis(ctx, {
+      fieldW: fw, cssW: this.cssW, cssH: this.cssH,
+      centre, ppu, pLo, pHi,
+      bookBid: this.bookBid, bookAsk: this.bookAsk,
+      lastPrice: this.lastTradePrice, lastBuy: this.lastTradeBuy,
+    });
+  }
+
+  /** V1+V2 heat field: intensity+side offscreen fold → per-side LUT
+   * colourise → blit → glow → time grid → path → candles → bubbles →
+   * volume strip. */
+  private paintHeatField(
+    ctx: CanvasRenderingContext2D,
+    i0: number, i1: number, t0: number, t1: number,
+    pLo: number, pHi: number,
+    yOf: (p: number) => number,
+    fw: number,
+  ) {
+    const s = this.settings;
+    const nCols = Math.max(1, i1 - i0);
+    const rows = TARGET_ROWS;
+    const rowStep = (pHi - pLo) / rows;
+    if (this.off.width !== nCols || this.off.height !== rows) {
+      this.off.width = nCols;
+      this.off.height = rows;
+      this.glow.width = nCols;
+      this.glow.height = rows;
+    }
+    const gamma = Math.min(1, Math.max(0.25, s.gamma || 1));
+    const idxBuf = new Uint8ClampedArray(nCols * rows);
+    const sideBuf = new Uint8Array(nCols * rows).fill(255);
+    for (let c = 0; c < nCols; c++) {
+      const col = this.cols[i0 + c];
+      const { keys, sizes, sides } = col;
+      for (let li = 0; li < keys.length; li++) {
+        const p = keys[li];
+        if (p < pLo || p > pHi) continue;
+        const sz = sizes[li];
+        if (sz <= 0) continue;
+        const r = Math.min(rows - 1, Math.max(0, Math.floor((pHi - p) / rowStep)));
+        const o = r * nCols + c;
+        const idx = sizeToIndex(sz, this.lo, this.hi, gamma);
+        if (idx > idxBuf[o]) {          // densest level wins the pixel
+          idxBuf[o] = idx;
+          sideBuf[o] = sides[li];
+        }
+      }
+    }
+    // colourise through the per-side LUTs + a glow mask for hot levels
+    const img = this.offCtx.createImageData(nCols, rows);
+    const gImg = this.glowCtx.createImageData(nCols, rows);
+    const data = img.data, gd = gImg.data;
+    for (let o = 0; o < idxBuf.length; o++) {
+      const side = sideBuf[o];
+      if (side === 255) continue;
+      const lut = side === 1 ? this.luts.ask : this.luts.bid;
+      const l = idxBuf[o] * 4, p4 = o * 4;
+      data[p4] = lut[l]; data[p4 + 1] = lut[l + 1]; data[p4 + 2] = lut[l + 2];
+      data[p4 + 3] = 255;
+      if (idxBuf[o] >= GLOW_INDEX) {
+        gd[p4] = lut[l]; gd[p4 + 1] = lut[l + 1]; gd[p4 + 2] = lut[l + 2];
+        gd[p4 + 3] = 255;
+      }
+    }
+    this.offCtx.putImageData(img, 0, 0);
+    this.glowCtx.putImageData(gImg, 0, 0);
+
+    const x0 = this.tsToX(this.cols[i0].tsMs);
+    const x1 = this.tsToX(this.cols[i0].tsMs + nCols * this.columnMs());
+    const y0 = yOf(pHi), y1 = yOf(pLo);
+    ctx.imageSmoothingEnabled = s.smoothColumns;
+    ctx.drawImage(this.off, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+    ctx.imageSmoothingEnabled = false;
+
+    // V1 glow: blurred hot-level mask composited additively
+    if (s.glow) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.38;
+      const canFilter = 'filter' in ctx;
+      if (canFilter) ctx.filter = 'blur(6px)';
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(this.glow, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+      ctx.restore();
+    }
+
+    // dotted vertical time grid over the field (V1 quality 5)
+    paintTimeGrid(ctx, fw, this.cssH, (t) => this.tsToX(t), t0, t1,
+      this.niceTimeStep(fw * this.msPerPx));
+
+    // V2 stepped bid/ask path from the carried book
+    if (s.showPath) {
+      paintPath(ctx, this.cols, i0, i1, (t) => this.tsToX(t), yOf, pLo, pHi);
+    }
+    // V2 trade-derived candles (labelled as such in the settings UI)
+    if (s.showCandles) {
+      paintCandles(ctx, this.dots, t0, t1, pLo, pHi,
+        (t) => this.tsToX(t), yOf, this.msPerPx, fw);
+    }
+    // V2 sphere bubbles + big-trade tags (S7 drawing types upgraded)
+    if (s.dots) {
+      const mode = s.dotType === 'pie' ? 'pie'
+        : s.dotType === 'solid' ? 'solid' : 'sphere';
+      paintBubbles(ctx, this.dots, t0, t1, pLo, pHi,
+        (t) => this.tsToX(t), yOf, {
+          alpha: Math.min(1, Math.max(0, s.dotAlpha)),
+          scale: s.dotScale, mode,
+          bigK: s.bigTradeK, bigMedian: this.bigMedian,
+          fieldW: fw, cssH: this.cssH,
+        });
+    }
+    // V2 buy/sell-split volume histogram + CVD strip
+    if (s.showVolumeStrip) {
+      paintVolumeStrip(ctx, this.dots, t0, t1, (t) => this.tsToX(t),
+        this.msPerPx, this.cssH, fw);
     }
   }
 
@@ -623,12 +761,13 @@ export class DepthHeatRenderer {
 
     const fmtV = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k`
       : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(0) : v.toFixed(1));
+    const fw = this.fieldW();
     const rowH = Math.min(22, Math.max(9, zstep * this.viewPpu * 0.85));
 
     const first = Math.floor(t0 / bucket) * bucket;
     for (let b = first; b <= t1; b += bucket) {
       const x0 = this.tsToX(b), x1 = this.tsToX(b + bucket);
-      if (x1 < -4 || x0 > this.cssW + 4) continue;
+      if (x1 < -4 || x0 > fw + 4) continue;
       const w = x1 - x0;
       const bk = Math.floor(b / bucket);
       const showNums = w >= 92;
@@ -690,105 +829,6 @@ export class DepthHeatRenderer {
           x0 + w / 2, this.cssH - 18);
       }
     }
-  }
-
-  /** Volume dots (S7). Three honest drawing types:
-   *  - gradient: radial glow centred on the print (default)
-   *  - solid:    flat discs
-   *  - pie:      prints are aggregated per price-time cell and drawn as a
-   *              disc split by aggressor-side volume (buy arc vs sell arc). */
-  private drawDots(
-    ctx: CanvasRenderingContext2D,
-    t0: number, t1: number, pLo: number, pHi: number,
-    yOf: (p: number) => number,
-  ) {
-    const alpha = Math.min(1, Math.max(0, this.settings.dotAlpha));
-    if (alpha <= 0) return;
-    const scale = this.settings.dotScale;
-    const BUY = 'rgba(38, 166, 154, 0.95)';
-    const SELL = 'rgba(239, 83, 80, 0.95)';
-    ctx.globalAlpha = alpha;
-
-    if (this.settings.dotType === 'pie') {
-      // Aggregate visible prints into price-time cells (one disc per cell).
-      const cellH = Math.max(3, this.cssH / 90);
-      const cellW = Math.max(4, 1000 / this.msPerPx);   // one column wide
-      const cells = new Map<string, {
-        x: number; y: number; n: number; size: number; buy: number; sell: number;
-      }>();
-      for (const d of this.dots) {
-        if (d.tsMs < t0 || d.tsMs > t1 || d.price < pLo || d.price > pHi) continue;
-        const x = this.tsToX(d.tsMs), y = yOf(d.price);
-        const key = `${Math.round(x / cellW)}:${Math.round(y / cellH)}`;
-        let c = cells.get(key);
-        if (!c) { c = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }; cells.set(key, c); }
-        c.x += x; c.y += y; c.n += 1; c.size += d.size;
-        if (d.buy) c.buy += d.size; else c.sell += d.size;
-      }
-      for (const c of cells.values()) {
-        const cx = c.x / c.n, cy = c.y / c.n;
-        const r = Math.min(16, Math.max(2.5, Math.sqrt(c.size) * 0.9 * scale));
-        const total = c.buy + c.sell;
-        const buyFrac = total > 0 ? c.buy / total : 0.5;
-        const a0 = -Math.PI / 2;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, r, a0, a0 + buyFrac * Math.PI * 2);
-        ctx.closePath();
-        ctx.fillStyle = BUY;
-        ctx.fill();
-        if (buyFrac < 1) {
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.arc(cx, cy, r, a0 + buyFrac * Math.PI * 2, a0 + Math.PI * 2);
-          ctx.closePath();
-          ctx.fillStyle = SELL;
-          ctx.fill();
-        }
-        ctx.beginPath();
-        ctx.arc(cx, cy, r, 0, Math.PI * 2);
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      return;
-    }
-
-    const gradient = this.settings.dotType === 'gradient';
-    for (const d of this.dots) {
-      if (d.tsMs < t0 || d.tsMs > t1) continue;
-      if (d.price < pLo || d.price > pHi) continue;
-      const r = Math.min(14, Math.max(1.5, Math.sqrt(d.size) * 0.9 * scale));
-      const x = this.tsToX(d.tsMs), y = yOf(d.price);
-      if (gradient) {
-        const g = ctx.createRadialGradient(x, y, r * 0.15, x, y, r);
-        if (d.buy) {
-          g.addColorStop(0, 'rgba(178, 255, 244, 0.95)');
-          g.addColorStop(0.55, 'rgba(38, 166, 154, 0.85)');
-          g.addColorStop(1, 'rgba(38, 166, 154, 0.15)');
-        } else {
-          g.addColorStop(0, 'rgba(255, 205, 196, 0.95)');
-          g.addColorStop(0.55, 'rgba(239, 83, 80, 0.85)');
-          g.addColorStop(1, 'rgba(239, 83, 80, 0.15)');
-        }
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = d.buy ? BUY : SELL;
-        ctx.fill();
-      }
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)';
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
   }
 
   private lowerBound(tsMs: number): number {

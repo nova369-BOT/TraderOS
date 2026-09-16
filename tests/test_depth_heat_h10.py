@@ -22,13 +22,15 @@ import numpy as np
 import pytest
 
 from lse_terminal.contracts import DEPTH_DELTA, DEPTH_SNAPSHOT, DepthEvent
-from lse_terminal.engine.orderflow.book import DepthBook
+from lse_terminal.engine.orderflow.book import DepthBook, price_key
 from lse_terminal.engine.orderflow.grid import DepthGrid
 from lse_terminal.engine.orderflow.normalize import (
     build_lut, cutoff_values, size_to_index)
 from lse_terminal.providers.demo import DemoProvider
 
 GOLDEN_PATH = Path(__file__).parent / "data" / "depth_heat_golden.png"
+GOLDEN_DEEPDOM_PATH = Path(__file__).parent / "data" / \
+    "depth_heat_golden_deepdom.png"
 
 # Fixed inputs: the demo source is seeded per (symbol, start), so this
 # field is identical on every machine, every run.
@@ -89,6 +91,50 @@ def test_depth_heat_golden_image():
         "Depth Heat pipeline output changed. If intentional, regenerate "
         "the golden with UPDATE_GOLDEN=1; otherwise this is a regression "
         f"(got {got[:12]}…, golden {want[:12]}…).")
+
+
+def render_deepdom_field() -> np.ndarray:
+    """V1 side-aware pipeline: same field, per-side LUTs + γ=0.6. The side
+    of each price row is the side its level last arrived on in the event
+    stream (bids vs asks) — the pane knows this per level at fold time."""
+    events = DemoProvider().depth_history(
+        GOLD_SYMBOL, GOLD_START, GOLD_START + GOLD_SECONDS,
+        column_ms=1000, max_levels=50)
+    side_of: dict[float, int] = {}
+    for ev in events:
+        for p, _ in ev.bids:
+            side_of[price_key(p)] = 0
+        for p, _ in ev.asks:
+            side_of[price_key(p)] = 1
+    grid = DepthGrid(column_ms=1000)
+    grid.ingest(events)
+    grid.flush()
+    vp = grid.viewport()
+    cells = np.asarray(vp["cells"], dtype=np.float64)
+    positive = cells[cells > 0]
+    lo, hi = cutoff_values(positive.tolist(), "percentile", 5.0, 95.0)
+    idx = size_to_index(cells, lo, hi, gamma=0.6)
+    lutA = build_lut("deepdom-ask")[..., :3]
+    lutB = build_lut("deepdom-bid")[..., :3]
+    rgbA = lutA[idx]                      # cols × prices × 3
+    rgbB = lutB[idx]
+    sides = np.array([side_of.get(price_key(p), 1) for p in vp["prices"]])
+    rgb = np.where(sides[None, :, None] == 1, rgbA, rgbB)
+    return np.ascontiguousarray(
+        np.flipud(rgb.transpose(1, 0, 2))).astype(np.uint8)
+
+
+def test_depth_heat_golden_deepdom_image():
+    png = png_bytes(render_deepdom_field())
+    if os.environ.get("UPDATE_GOLDEN"):
+        GOLDEN_DEEPDOM_PATH.write_bytes(png)
+    assert GOLDEN_DEEPDOM_PATH.exists(), (
+        "deepdom golden missing — run once with UPDATE_GOLDEN=1")
+    got = hashlib.sha256(png).hexdigest()
+    want = hashlib.sha256(GOLDEN_DEEPDOM_PATH.read_bytes()).hexdigest()
+    assert got == want, (
+        "V1 deepdom pipeline changed. If intentional, regenerate with "
+        f"UPDATE_GOLDEN=1 (got {got[:12]}…, golden {want[:12]}…).")
 
 
 def test_golden_is_deterministic_across_runs():

@@ -194,6 +194,10 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Remaining (browser-bound): on-screen paint check of the pane; per-
     adapter broker L2 (H9 remainder) as feeds offer it.
 - **2026-09-16 — footprint view added to the pane (founder directive).**
+- **2026-09-16 — visual-excellence V1+V2 shipped** (deepdom/bookmap ramps,
+  γ, glow, permanent price axis with BBO chips, path + sphere bubbles +
+  big-trade tags, trade-derived candles, volume strip) — see
+  `02-visual-excellence.md` §6. Honesty invariants unchanged.
   - HEAT/FOOTPRINT toggle in the pane header (persisted per instrument).
     Footprint = executed volume split by aggressor side per price zone ×
     time bucket; zoom-adaptive buckets (5 s→1 h), nice-step price zones,

@@ -180,6 +180,28 @@ def test_lut_determinism_and_scheme_endpoints():
         build_lut("thermal")
 
 
+def test_v1_ramp_families_endpoints_and_determinism():
+    ask = build_lut("deepdom-ask")
+    bid = build_lut("deepdom-bid")
+    bm = build_lut("bookmap")
+    assert (ask == build_lut("deepdom-ask")).all()   # determinism
+    # calm near-black bases, hot tops (lockstep with heatVisuals.ts)
+    assert ask[0][:3].max() < 12 and bid[0][:3].max() < 12
+    assert tuple(ask[255][:3]) == (255, 214, 96)
+    assert tuple(bid[255][:3]) == (126, 255, 152)
+    assert tuple(bm[255][:3]) == (255, 92, 40)
+    # side-aware: the two deepdom families diverge strongly mid-ramp
+    assert abs(int(ask[128][0]) - int(bid[128][0])) > 40
+
+
+def test_gamma_lifts_mid_indices():
+    lin = size_to_index([5.0], 0.0, 10.0)
+    gam = size_to_index([5.0], 0.0, 10.0, gamma=0.6)
+    assert gam[0] > lin[0]                      # small liquidity lifted
+    assert size_to_index([0.0], 0.0, 10.0, gamma=0.6)[0] == 0
+    assert size_to_index([10.0], 0.0, 10.0, gamma=0.6)[0] == 255
+
+
 def test_size_to_index_monotonic_and_saturating():
     sizes = [0.0, 1.0, 2.0, 5.0, 10.0, 100.0]
     idx = size_to_index(sizes, lo=1.0, hi=10.0)

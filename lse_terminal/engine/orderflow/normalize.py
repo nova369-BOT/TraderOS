@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import numpy as np
 
-SCHEMES = ("heat", "greyscale")
+SCHEMES = ("heat", "greyscale", "deepdom-ask", "deepdom-bid", "bookmap")
 
 # Default scheme anchors (research §S2): black → blue → yellow → orange → red.
 _HEAT_STOPS = (
@@ -24,6 +24,41 @@ _HEAT_STOPS = (
     (1.00, (1.0, 0.0, 0.0)),
 )
 
+# V1 ramp families — lockstep mirror of frontend heatVisuals.ts (tuned
+# against docs/F1-order-flow/research/deepdom-heatmap-es.jpg).
+_DEEPDOM_ASK_STOPS = (
+    (0.00, (0.024, 0.008, 0.020)),
+    (0.30, (0.227, 0.039, 0.063)),
+    (0.55, (0.494, 0.102, 0.063)),
+    (0.75, (0.808, 0.251, 0.047)),
+    (0.90, (1.000, 0.549, 0.000)),
+    (1.00, (1.000, 0.839, 0.376)),
+)
+_DEEPDOM_BID_STOPS = (
+    (0.00, (0.008, 0.020, 0.043)),
+    (0.30, (0.024, 0.094, 0.196)),
+    (0.55, (0.039, 0.188, 0.369)),
+    (0.75, (0.051, 0.361, 0.439)),
+    (0.90, (0.102, 0.745, 0.361)),
+    (1.00, (0.494, 1.000, 0.596)),
+)
+_BOOKMAP_STOPS = (
+    (0.00, (0.000, 0.000, 0.000)),
+    (0.35, (0.031, 0.133, 0.239)),
+    (0.60, (0.055, 0.420, 0.659)),
+    (0.80, (0.431, 0.725, 0.894)),
+    (0.90, (0.886, 0.957, 1.000)),
+    (0.95, (1.000, 0.792, 0.243)),
+    (1.00, (1.000, 0.361, 0.157)),
+)
+
+_STOPS = {
+    "heat": _HEAT_STOPS,
+    "deepdom-ask": _DEEPDOM_ASK_STOPS,
+    "deepdom-bid": _DEEPDOM_BID_STOPS,
+    "bookmap": _BOOKMAP_STOPS,
+}
+
 
 def base_gradient(scheme: str = "heat") -> np.ndarray:
     """The scheme's raw 256×3 gradient in 0..1 (before user controls)."""
@@ -32,8 +67,9 @@ def base_gradient(scheme: str = "heat") -> np.ndarray:
     if scheme == "greyscale":
         t = np.linspace(0.0, 1.0, 256)
         return np.stack([t, t, t], axis=1)
-    xs = np.array([s[0] for s in _HEAT_STOPS])
-    rgb = np.array([s[1] for s in _HEAT_STOPS])
+    stops = _STOPS[scheme]
+    xs = np.array([s[0] for s in stops])
+    rgb = np.array([s[1] for s in stops])
     t = np.linspace(0.0, 1.0, 256)
     return np.stack([np.interp(t, xs, rgb[:, c]) for c in range(3)], axis=1)
 
@@ -99,11 +135,13 @@ def cutoff_values(sizes, mode: str = "percentile", lower: float = 5.0,
     return (lo, hi)
 
 
-def size_to_index(sizes, lo: float, hi: float) -> np.ndarray:
+def size_to_index(sizes, lo: float, hi: float, gamma: float = 1.0) -> np.ndarray:
     """Map sizes to LUT indices 0..255: ≤ lo saturates to the bottom colour,
-    ≥ hi to the solid top colour, linear between."""
+    ≥ hi to the solid top colour. ``gamma`` (V1, default 1 = linear) applies
+    the perceptual exponent f^γ — γ<1 lifts small liquidity and saturates
+    walls; lockstep with frontend depthHeatTypes.sizeToIndex."""
     arr = np.asarray(sizes, dtype=np.float64)
     if hi <= lo:
         hi = lo + max(abs(lo) * 1e-6, 1e-9)
-    idx = (arr - lo) / (hi - lo)
-    return np.rint(np.clip(idx, 0.0, 1.0) * 255.0).astype(np.uint8)
+    idx = np.clip((arr - lo) / (hi - lo), 0.0, 1.0) ** float(gamma)
+    return np.rint(idx * 255.0).astype(np.uint8)

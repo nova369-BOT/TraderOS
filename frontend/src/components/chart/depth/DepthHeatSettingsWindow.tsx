@@ -9,12 +9,12 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import {
-  buildLut,
   saveGlobalScheme,
   GLOBAL_SCHEME_EVENT,
   DEFAULT_DEPTH_SETTINGS,
   type DepthHeatSettings,
 } from './depthHeatTypes';
+import { buildLuts, rampLabel, RAMP_IDS } from './heatVisuals';
 import './depthHeatSettings.css';
 
 type Patch = Partial<DepthHeatSettings>;
@@ -111,7 +111,8 @@ function NumInput({ value, onCommit, min, max, disabled, suffix }: {
 }
 
 /** Live gradient strip rendered from the REAL LUT maths — the preview is
- * not an illustration, it is the exact colour pipeline. */
+ * not an illustration, it is the exact colour pipeline. Side-aware ramps
+ * show the ask ramp on top and the bid ramp below. */
 function GradientStrip({ settings }: { settings: DepthHeatSettings }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
@@ -119,10 +120,11 @@ function GradientStrip({ settings }: { settings: DepthHeatSettings }) {
     if (!c) return;
     c.width = 256; c.height = 14;
     const ctx = c.getContext('2d')!;
-    const lut = buildLut({ ...settings, smoothingMode: 'none' });
+    const { ask, bid } = buildLuts({ ...settings, smoothingMode: 'none' });
     const img = ctx.createImageData(256, 14);
     for (let x = 0; x < 256; x++) {
       for (let y = 0; y < 14; y++) {
+        const lut = y < 7 ? ask : bid;
         const o = (y * 256 + x) * 4;
         img.data[o] = lut[x * 4];
         img.data[o + 1] = lut[x * 4 + 1];
@@ -132,7 +134,7 @@ function GradientStrip({ settings }: { settings: DepthHeatSettings }) {
     }
     ctx.putImageData(img, 0, 0);
   }, [settings.scheme, settings.intensity, settings.dimming,
-    settings.contrast, settings.brightness]); // eslint-disable-line react-hooks/exhaustive-deps
+    settings.contrast, settings.brightness, settings.gamma]); // eslint-disable-line react-hooks/exhaustive-deps
   return <canvas ref={ref} />;
 }
 
@@ -176,10 +178,11 @@ export default function DepthHeatSettingsWindow({
           <div className="dh-section">
             <div className="dh-section-title">COLOUR</div>
             <div className="dh-schemes">
-              {(['heat', 'greyscale'] as const).map((id) => (
+              {RAMP_IDS.map((id) => (
                 <button
                   key={id}
                   className={`dh-scheme${s.scheme === id ? ' on' : ''}`}
+                  title={rampLabel(id)}
                   onClick={() => {
                     onChange({ scheme: id });
                     if (s.applySchemeGlobally) {
@@ -190,7 +193,8 @@ export default function DepthHeatSettingsWindow({
                   }}
                 >
                   <div className="dh-scheme-name">
-                    {id === 'heat' ? 'HEAT' : 'GREYSCALE'}
+                    {id === 'deepdom' ? 'DEEPDOM' : id === 'bookmap' ? 'BOOKMAP'
+                      : id === 'heat' ? 'HEAT' : 'GREYSCALE'}
                   </div>
                   <GradientStrip settings={{ ...s, scheme: id }} />
                 </button>
@@ -212,6 +216,42 @@ export default function DepthHeatSettingsWindow({
               }} />
               <span className="dh-hint">all symbols use this scheme</span>
             </Row>
+          </div>
+
+          {/* ── FIELD & OVERLAYS (V1 · V2) ──────────────────────────── */}
+          <div className="dh-section">
+            <div className="dh-section-title">FIELD &amp; OVERLAYS</div>
+            <SliderRow label="Intensity γ" value={s.gamma} min={0.25} max={1}
+              step={0.05} onChange={(v) => onChange({ gamma: v })}
+              hint="Perceptual exponent: <1 lifts small liquidity out of the dark and lets walls saturate (the reference feel). 1 = linear." />
+            <Row label="Wall glow"
+              hint="Bloom pass over the hottest levels — walls burn against a calm field.">
+              <Toggle on={s.glow} onChange={(v) => onChange({ glow: v })} />
+            </Row>
+            <Row label="Smooth columns"
+              hint="Bilinear blend between columns (watercolour feel). Off = crisp terminal columns.">
+              <Toggle on={s.smoothColumns}
+                onChange={(v) => onChange({ smoothColumns: v })} />
+            </Row>
+            <Row label="Price path"
+              hint="Stepped bid/ask lines from the carried book — the Bookmap/DeepDom signature overlay.">
+              <Toggle on={s.showPath} onChange={(v) => onChange({ showPath: v })} />
+            </Row>
+            <Row label="Candles over heat"
+              hint="OHLC candles derived from the executed print stream (trade-derived — no invented feed).">
+              <Toggle on={s.showCandles}
+                onChange={(v) => onChange({ showCandles: v })} />
+              <span className="dh-hint">trade-derived</span>
+            </Row>
+            <Row label="Volume strip"
+              hint="Bottom buy/sell-split volume histogram + CVD line sharing the time axis.">
+              <Toggle on={s.showVolumeStrip}
+                onChange={(v) => onChange({ showVolumeStrip: v })} />
+            </Row>
+            <SliderRow label="Big-trade ×" value={s.bigTradeK} min={2} max={12}
+              step={1} onChange={(v) => onChange({ bigTradeK: v })}
+              fmt={(v) => `${v.toFixed(0)}×med`}
+              hint="Prints at or above this multiple of the rolling median size get a ring + size tag." />
           </div>
 
           {/* ── CUT-OFF (S3) ────────────────────────────────────────── */}

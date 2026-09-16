@@ -199,6 +199,35 @@ agreement). Estimated order of visual impact per effort: **V1 ≫ V2 > V3 >
 V4 > V5**. If the founder wants the maximum *now*, V1+V2 alone close ~80%
 of the perceived gap.
 
+---
+
+## 6. Implementation log
+
+**2026-09-16 — V1+V2 SHIPPED (founder GO, with the attached DeepDom frame
+as the target: walls, bubbles, right ladder, bottom histogram).**
+
+- `heatVisuals.ts` — ramp library (`deepdom` side-aware ember/water tuned
+  against `research/deepdom-heatmap-es.jpg`, `bookmap` water+hot-top,
+  `heat`, `greyscale`) + LUT builder; γ moved into `sizeToIndex`
+  (lockstep mirror in `normalize.py`, unit-tested).
+- Renderer — per-level side tracking through the fold (`sides` per column),
+  intensity+side offscreen field, per-side LUT colourise, **glow pass**
+  (idx ≥ 228 mask, blurred additive composite), smooth-columns toggle,
+  dotted time grid, permanent **58 px price axis** (`priceAxis.ts`: nice
+  ticks, dotted horizontal grid, BBO chips, side-coloured last-price box).
+- `pathBubbles.ts` — stepped bid/ask path from carried per-column BBO;
+  pie-split **sphere bubbles** (specular + rim shading; sphere shading also
+  upgrades the old gradient dots); **big-trade engine** (rolling median,
+  ring + `+Nk` tag at k×median, k default 6); **trade-derived candles**
+  (default off, labelled); **volume strip** (buy/sell-split histogram +
+  quiet CVD line) pulled into V2 scope per the founder's annotated frame.
+- Defaults on first open: deepdom, γ 0.6, glow on, path on, bubbles pie,
+  strip on, candles off — the reference look without touching settings.
+- Gates: typecheck clean; bundle rebuilt; **new deterministic golden**
+  `tests/data/depth_heat_golden_deepdom.png` (side-aware + γ pipeline;
+  classic golden untouched); full suite **164 passed / 1 skipped**.
+- V3–V5 remain open (gauges, fused ladder, T&S drawer, overlay bar, VWAP).
+
 ## 5. Open questions for the founder
 
 1. Default scheme on first open: **deepdom** (side-aware purple/green) or

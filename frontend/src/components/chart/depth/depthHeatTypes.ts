@@ -7,6 +7,8 @@
 // heat agree. Keep the two in lockstep.
 // ============================================================================
 
+import { buildLuts } from './heatVisuals';
+
 export type DepthEventType = 'SNAPSHOT' | 'DELTA';
 
 /** Wire shape of one depth event (matches DepthEvent.to_dict() engine-side). */
@@ -37,12 +39,19 @@ export type DepthWsFrame =
 /** Pane colour/normalization settings (persisted per instrument — H6). */
 export interface DepthHeatSettings {
   view: 'heat' | 'footprint';   // liquidity heat vs bid×ask volume footprint
-  scheme: 'heat' | 'greyscale';
+  scheme: 'deepdom' | 'bookmap' | 'heat' | 'greyscale';   // V1 ramp family
   applySchemeGlobally: boolean;  // scheme writes to the terminal-wide store
   intensity: number;      // 0..2, 1 = scheme colours
   dimming: number;        // 0..1 toward all-black
   contrast: number;       // -1..1
   brightness: number;     // -1..1
+  gamma: number;          // V1 perceptual intensity exponent (0.25..1)
+  glow: boolean;          // V1 bloom pass over the hottest levels
+  smoothColumns: boolean; // V1 bilinear column blend (watercolour feel)
+  showPath: boolean;      // V2 stepped bid/ask lines over the field
+  showCandles: boolean;   // V2 trade-derived candle overlay
+  bigTradeK: number;      // V2 big-trade ring+tag threshold (× median size)
+  showVolumeStrip: boolean; // V2 buy/sell-split volume histogram strip
   cutoffMode: 'percentile' | 'exact';
   cutoffLower: number;    // percentile (0-100) or exact size
   cutoffUpper: number;
@@ -64,12 +73,21 @@ export interface DepthHeatSettings {
 
 export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   view: 'heat',
-  scheme: 'heat',
+  // First open should read like the reference class (02-visual-excellence §1):
+  // side-aware field + glow + path + bubbles, candles off (the heat is hero).
+  scheme: 'deepdom',
   applySchemeGlobally: false,
   intensity: 1.0,
   dimming: 0.0,
   contrast: 0.0,
   brightness: 0.0,
+  gamma: 0.6,
+  glow: true,
+  smoothColumns: false,
+  showPath: true,
+  showCandles: false,
+  bigTradeK: 6,
+  showVolumeStrip: true,
   // Auto-tuned defaults per research §3: session p5/p95 of observed sizes.
   cutoffMode: 'percentile',
   cutoffLower: 5,
@@ -77,7 +95,7 @@ export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   smoothingMode: 'auto',
   smoothing: 0,
   dots: true,
-  dotType: 'gradient',
+  dotType: 'pie',   // V2: pie-split sphere bubbles are the reference look
   dotMinSize: 0,
   dotScale: 1.0,
   dotAlpha: 0.85,
@@ -97,18 +115,20 @@ export const GLOBAL_SCHEME_KEY = 'lset-depth-global-scheme';
 export const GLOBAL_APPLY_KEY = 'lset-depth-global-apply';
 export const GLOBAL_SCHEME_EVENT = 'lse-depth-global-scheme';
 
-export function loadGlobalScheme(): { scheme: 'heat' | 'greyscale'; apply: boolean } {
-  let scheme: 'heat' | 'greyscale' = 'heat';
+export function loadGlobalScheme(): { scheme: DepthHeatSettings['scheme']; apply: boolean } {
+  let scheme: DepthHeatSettings['scheme'] = 'heat';
   let apply = false;
   try {
     const s = localStorage.getItem(GLOBAL_SCHEME_KEY);
-    if (s === 'heat' || s === 'greyscale') scheme = s;
+    if (s === 'heat' || s === 'greyscale' || s === 'deepdom' || s === 'bookmap') {
+      scheme = s;
+    }
     apply = localStorage.getItem(GLOBAL_APPLY_KEY) === '1';
   } catch { /* defaults */ }
   return { scheme, apply };
 }
 
-export function saveGlobalScheme(scheme: 'heat' | 'greyscale', apply: boolean) {
+export function saveGlobalScheme(scheme: DepthHeatSettings['scheme'], apply: boolean) {
   try {
     localStorage.setItem(GLOBAL_SCHEME_KEY, scheme);
     localStorage.setItem(GLOBAL_APPLY_KEY, apply ? '1' : '0');
@@ -117,92 +137,13 @@ export function saveGlobalScheme(scheme: 'heat' | 'greyscale', apply: boolean) {
 
 // ── colour normalisation (mirror of engine/orderflow/normalize.py) ─────────
 
-const HEAT_STOPS: [number, [number, number, number]][] = [
-  [0.00, [0, 0, 0]],
-  [0.25, [0, 0, 255]],
-  [0.55, [255, 255, 0]],
-  [0.78, [255, 140, 0]],
-  [1.00, [255, 0, 0]],
-];
-
-function interpStops(t: number): [number, number, number] {
-  for (let i = 1; i < HEAT_STOPS.length; i++) {
-    const [x1, c1] = HEAT_STOPS[i];
-    const [x0, c0] = HEAT_STOPS[i - 1];
-    if (t <= x1) {
-      const f = (t - x0) / (x1 - x0);
-      return [
-        c0[0] + (c1[0] - c0[0]) * f,
-        c0[1] + (c1[1] - c0[1]) * f,
-        c0[2] + (c1[2] - c0[2]) * f,
-      ];
-    }
-  }
-  return HEAT_STOPS[HEAT_STOPS.length - 1][1];
-}
-
 /** Build the 256-entry RGBA LUT for one settings combination.
- * `smoothingOverride` supplies the resolved shade count (the renderer
- * computes Auto mode from zoom — S4); defaults to the stored value. */
+ * Single-ramp view of the V1 ramp library (heatVisuals.ts): side-aware
+ * schemes return the ask ramp; the renderer itself fetches the ask/bid
+ * pair via buildLuts. `smoothingOverride` supplies the resolved shade
+ * count (the renderer computes Auto mode from zoom — S4). */
 export function buildLut(s: DepthHeatSettings, smoothingOverride?: number): Uint8ClampedArray {
-  const shades = smoothingOverride !== undefined ? smoothingOverride : s.smoothing;
-  const lut = new Uint8ClampedArray(256 * 4);
-  for (let i = 0; i < 256; i++) {
-    const t = i / 255;
-    let r: number, g: number, b: number;
-    if (s.scheme === 'greyscale') {
-      r = g = b = t * 255;
-    } else {
-      [r, g, b] = interpStops(t);
-    }
-    // intensity: chroma scaled around per-pixel luminance
-    const lum = (r + g + b) / 3;
-    r = lum + (r - lum) * s.intensity;
-    g = lum + (g - lum) * s.intensity;
-    b = lum + (b - lum) * s.intensity;
-    // dimming toward all-black
-    const dim = 1 - Math.min(1, Math.max(0, s.dimming));
-    r *= dim; g *= dim; b *= dim;
-    // contrast around mid
-    const ct = 1 + s.contrast;
-    r = (r / 255 - 0.5) * ct * 255 + 127.5;
-    g = (g / 255 - 0.5) * ct * 255 + 127.5;
-    b = (b / 255 - 0.5) * ct * 255 + 127.5;
-    // brightness
-    const br = s.brightness * 255;
-    r += br; g += br; b += br;
-    // vertical smoothing: quantize the shade index before storing
-    let idx = i;
-    if (shades >= 2) {
-      const step = Math.ceil(256 / Math.min(shades, 256));
-      idx = Math.min(Math.floor(i / step) * step + Math.floor(step / 2), 255);
-    }
-    // re-evaluate the gradient at the quantized index so bands are flat
-    let qr: number, qg: number, qb: number;
-    if (idx === i) {
-      qr = r; qg = g; qb = b;
-    } else {
-      const qt = idx / 255;
-      if (s.scheme === 'greyscale') {
-        qr = qg = qb = qt * 255;
-      } else {
-        [qr, qg, qb] = interpStops(qt);
-      }
-      const qlum = (qr + qg + qb) / 3;
-      qr = qlum + (qr - qlum) * s.intensity;
-      qg = qlum + (qg - qlum) * s.intensity;
-      qb = qlum + (qb - qlum) * s.intensity;
-      qr *= dim; qg *= dim; qb *= dim;
-      qr = (qr / 255 - 0.5) * ct * 255 + 127.5 + br;
-      qg = (qg / 255 - 0.5) * ct * 255 + 127.5 + br;
-      qb = (qb / 255 - 0.5) * ct * 255 + 127.5 + br;
-    }
-    lut[i * 4] = Math.min(255, Math.max(0, qr));
-    lut[i * 4 + 1] = Math.min(255, Math.max(0, qg));
-    lut[i * 4 + 2] = Math.min(255, Math.max(0, qb));
-    lut[i * 4 + 3] = 255;
-  }
-  return lut;
+  return buildLuts(s, smoothingOverride).ask;
 }
 
 /** Resolve cutoffs to concrete (lo, hi) sizes over observed session sizes. */
@@ -226,9 +167,13 @@ export function cutoffValues(
   return [lo, hi];
 }
 
-/** Map a size to a LUT index 0..255 (saturating both ends). */
-export function sizeToIndex(size: number, lo: number, hi: number): number {
+/** Map a size to a LUT index 0..255 (saturating both ends).
+ * `gamma` (V1, default 1 = linear) applies the perceptual exponent
+ * f^γ — γ<1 lifts small liquidity out of the dark and lets walls
+ * saturate, the sqrt-feel of the reference class. Mirrored in
+ * engine/orderflow/normalize.py:size_to_index. */
+export function sizeToIndex(size: number, lo: number, hi: number, gamma = 1): number {
   if (hi <= lo) hi = lo + Math.max(Math.abs(lo) * 1e-6, 1e-9);
-  const f = (size - lo) / (hi - lo);
-  return Math.round(Math.min(1, Math.max(0, f)) * 255);
+  const f = Math.min(1, Math.max(0, (size - lo) / (hi - lo)));
+  return Math.round(Math.pow(f, gamma) * 255);
 }
