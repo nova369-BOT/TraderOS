@@ -5,7 +5,7 @@
 **Scope:** the heatmap phase — build and ship first, per founder directive (2026-09-16).
 Footprints come in Phase 2; nothing in this document depends on them.
 
-> **Status: building — engine + pane live (H1–H8b, 2026-09-16).** This document is the
+> **Status: building — engine + pane + real-data sources live (H1–H9 core, 2026-09-16).** This document is the
 > contract for the build: every work item has an owner surface (engine / API /
 > frontend / demo / data), a done-criterion, and a gate. Per-gate status lives in
 > the §6 table and the progress log at the bottom of this file.
@@ -147,6 +147,28 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Full suite green; frontend type-clean; bundle rebuilt.
   - Gates still open: **H9** (vault MBO + broker L2), **H10** (perf +
     golden images + e2e + guide section). On-screen paint check still owed.
+- **2026-09-16 — H9 core landed (vault MBO wiring, engine-side).**
+  - `lse_terminal/providers/mbo.py`: the Level-3 rail's proven client logic
+    moved engine-side (plan §2.3 wiring order #1) — `depth_history` walks
+    the door's ≤60 s windows (bounded reach, honest live lag), `depth_stream`
+    polls at the rail cadence (4 s window / 2 s) with seq-gated dedupe and
+    recorder-restart detection.
+  - L3→L2 reconstruction with the rail's exact semantics: NEW adds, DELETE
+    pulls (explicit size-0 removal), CHANGE carries no order id on this door
+    and does not move level size; BUY→bids, SELL→asks.
+  - Entitlement honesty: no key / no plan access → NotSupported with the
+    reason; resolution falls through (verified end to end); `/api/providers`
+    lists the caps; search exposes the covered chart symbols (canonical +
+    `.F` forms).
+  - Tests (8, offline via the `_fetch` seam): contract mapping,
+    reconstruction + overlapping-window dedupe, restart reset, stream
+    snapshot-first, honest 404 with reason. Full suite 155 passed /
+    1 skipped.
+  - Broker L2 (H9 remainder) stays open: it lands per adapter as broker
+    feeds start carrying L2 — the contract path is already in place.
+  - Gates still open: **H9-broker** (per-adapter L2 as feeds offer it),
+    **H10** (perf + golden images + e2e + guide section). On-screen paint
+    check still owed (no browser in sandbox).
 
 ---
 
@@ -378,7 +400,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | ✅ 2026-09-16 (pixel-aligned ladder w/ ClientBook live feed; dots shipped with the H6 renderer pass) |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine + frontend | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof); pane records/lists/loads recordings | ✅ 2026-09-16 (engine slice 3f067fb; pane record/list/load wiring this slice) |
 | H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |
-| H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | open |
+| H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | ✅ core 2026-09-16 (MBO provider + tests); broker-L2 per adapter remains open |
 | H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | open |
 
 **Dependency order:** H1→H2→H3→{H4∥H5}→{H6∥H7}→H8→{H8b∥H9}→H10. H5 may start after H3

@@ -1,0 +1,31 @@
+{
+  "note": "Schema-representative vault MBO payloads for the H9 tests (the rail's documented shape: seq/ts/price/size/type/side). Two OVERLAPPING windows exercise seq-gated dedupe; the scripted scenario is asserted exactly in test_mbo.py.",
+  "contracts": {
+    "contracts": [
+      {"canonical_symbol": "ES", "root": "ES", "active_contract": "ESH26"},
+      {"canonical_symbol": "XAU/USD", "root": "GC", "active_contract": "GCZ26"}
+    ]
+  },
+  "window1": {
+    "start": "1970-01-01T00:16:40+00:00",
+    "end": "1970-01-01T00:16:41+00:00",
+    "events": [
+      {"seq": 1, "ts": 1000.05, "price": 5000.0, "size": 10, "type": "NEW", "side": "BUY"},
+      {"seq": 2, "ts": 1000.10, "price": 5000.0, "size": 5, "type": "NEW", "side": "BUY"},
+      {"seq": 3, "ts": 1000.15, "price": 5001.0, "size": 7, "type": "NEW", "side": "SELL"},
+      {"seq": 4, "ts": 1000.35, "price": 5000.0, "size": 99, "type": "CHANGE", "side": "BUY"},
+      {"seq": 5, "ts": 1000.40, "price": 5000.0, "size": 4, "type": "DELETE", "side": "BUY"}
+    ]
+  },
+  "window2": {
+    "start": "1970-01-01T00:16:40.500000+00:00",
+    "end": "1970-01-01T00:16:41.500000+00:00",
+    "events": [
+      {"seq": 4, "ts": 1000.35, "price": 5000.0, "size": 99, "type": "CHANGE", "side": "BUY"},
+      {"seq": 5, "ts": 1000.40, "price": 5000.0, "size": 4, "type": "DELETE", "side": "BUY"},
+      {"seq": 6, "ts": 1001.05, "price": 5001.5, "size": 3, "type": "NEW", "side": "SELL"},
+      {"seq": 7, "ts": 1001.10, "price": 5001.0, "size": 7, "type": "DELETE", "side": "SELL"},
+      {"seq": 8, "ts": 1001.20, "price": 4999.5, "size": 12, "type": "NEW", "side": "BUY"}
+    ]
+  }
+}

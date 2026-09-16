@@ -66,11 +66,16 @@ class Registry:
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
     from lse_terminal.providers import (CryptoL2Provider, DemoProvider,
-                                        LseProvider, UserDataProvider)
+                                        LseProvider, MboProvider,
+                                        UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
     reg.register(LseProvider())
+    # Vault MBO (F1 H9): real order-by-order futures depth, plan-gated per
+    # key; keys without entitlement get an honest NotSupported and
+    # resolution falls through. Depth-only.
+    reg.register(MboProvider())
     # Public crypto L2 (F1 H8b): keyless exchange feeds, depth-only. Fails
     # open like everything user-visible; registration costs nothing when
     # ccxt is absent (the provider reports itself unconfigured).
