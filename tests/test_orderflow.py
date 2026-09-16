@@ -540,3 +540,29 @@ def test_record_unknown_source_404(client):
     r = client.post("/api/orderflow/record",
                     json={"symbol": "EURUSD", "provider": "userdata"})
     assert r.status_code == 404
+
+
+def test_local_only_guard_and_trusted_suffix_optin(tmp_path, monkeypatch):
+    """The guard stays strict by default; LSE_TRUSTED_HOST_SUFFIXES is the
+    explicit operator opt-in for reverse-proxied deployments (preview)."""
+    from lse_terminal.engine.server import create_app
+    monkeypatch.setenv("LSE_TERMINAL_CONFIG_DIR", str(tmp_path))
+    monkeypatch.delenv("LSE_API_KEY", raising=False)
+
+    # Default: a remote / rebound Host gets the guard's 403.
+    monkeypatch.delenv("LSE_TRUSTED_HOST_SUFFIXES", raising=False)
+    with TestClient(create_app(), base_url="http://evil.example") as c:
+        r = c.get("/api/providers")
+        assert r.status_code == 403
+        assert "local requests only" in r.text
+
+    # Opt-in: declared proxy hosts pass with their true Origin; anything
+    # else stays rejected.
+    monkeypatch.setenv("LSE_TRUSTED_HOST_SUFFIXES", "*.e2b.app")
+    with TestClient(create_app(),
+                    base_url="http://8000-sbx.e2b.app") as c:
+        r = c.get("/api/providers",
+                  headers={"origin": "https://8000-sbx.e2b.app"})
+        assert r.status_code == 200
+        r = c.get("/api/providers", headers={"host": "evil.example"})
+        assert r.status_code == 403

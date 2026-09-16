@@ -400,36 +400,51 @@ class _LocalOnlyGuard:
     Raw ASGI (not BaseHTTPMiddleware) so websocket handshakes are covered.
     Hosted mode never installs this guard: there the public domain IS the
     legitimate Host/Origin and nginx fronts the app.
+
+    Operator opt-in for trusted reverse-proxy deployments (preview /
+    tunnelled sandboards): ``LSE_TRUSTED_HOST_SUFFIXES`` — a comma list of
+    domain suffixes (``*.e2b.app`` or ``e2b.app``) whose Host AND Origin are
+    accepted alongside loopback. Unset, the guard is exactly as strict as
+    before; setting it is a deliberate declaration that the named proxy
+    hosts front this engine.
     """
 
     _LOOPBACK = {"127.0.0.1", "localhost", "::1"}
 
     def __init__(self, app):
         self.app = app
+        raw = os.environ.get("LSE_TRUSTED_HOST_SUFFIXES", "")
+        self._trusted = tuple(
+            s.strip().lower().lstrip("*.").rstrip("/")
+            for s in raw.split(",") if s.strip())
 
-    @classmethod
-    def _hostname(cls, netloc: str) -> str:
+    @staticmethod
+    def _hostname(netloc: str) -> str:
         netloc = netloc.strip().lower()
         if netloc.startswith("["):          # [::1]:7799
             return netloc[1:].split("]", 1)[0]
         return netloc.rsplit(":", 1)[0] if ":" in netloc else netloc
 
-    @classmethod
-    def _allowed(cls, scope) -> bool:
+    def _trusted_host(self, host: str) -> bool:
+        return any(host == s or host.endswith("." + s)
+                   for s in self._trusted)
+
+    def _allowed(self, scope) -> bool:
         hdrs = {}
         for k, v in scope.get("headers") or []:
             hdrs.setdefault(k, v)
-        host = cls._hostname(hdrs.get(b"host", b"").decode("latin1"))
-        if host not in cls._LOOPBACK:
+        host = self._hostname(hdrs.get(b"host", b"").decode("latin1"))
+        if host not in self._LOOPBACK and not self._trusted_host(host):
             return False
         origin = hdrs.get(b"origin", b"").decode("latin1").strip().lower()
         if not origin:
             return True
         from urllib.parse import urlsplit
         try:
-            return cls._hostname(urlsplit(origin).netloc) in cls._LOOPBACK
+            ohost = self._hostname(urlsplit(origin).netloc)
         except ValueError:
             return False
+        return ohost in self._LOOPBACK or self._trusted_host(ohost)
 
     async def __call__(self, scope, receive, send):
         if scope["type"] not in ("http", "websocket") or self._allowed(scope):
