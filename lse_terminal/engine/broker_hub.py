@@ -177,6 +177,15 @@ def builtin_brokers(base: Path) -> dict:
             "cmd": [py, str(base / "adapters" / "paper" / "paper_adapter.py"),
                     "--tick-ms", "200", "--warmup-bars", "30"],
         },
+        # The accelerated-clock twin of paper (20ms ticks), for tests and
+        # conformance runs. It is a known profile: the UI hides it from the
+        # picker by name exactly like paper (app.js), and the API tests pin
+        # its handshake. Same adapter, faster clock, no other difference.
+        "paper-fast": {
+            "label": "Paper sim, 20ms ticks",
+            "cmd": [py, str(base / "adapters" / "paper" / "paper_adapter.py"),
+                    "--tick-ms", "20", "--warmup-bars", "30"],
+        },
         "novafx": {
             "label": "NovaFX (fictional demo broker)",
             "cmd": [py, str(base / "adapters" / "novafx" / "novafx_adapter.py"),

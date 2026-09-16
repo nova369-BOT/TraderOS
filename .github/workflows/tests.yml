@@ -1,0 +1,31 @@
+# The safety net: every change is checked automatically.
+#
+# Runs the full backend test suite on every push to main and on every pull
+# request, so a change that breaks something is caught the moment it is
+# pushed, not when a user finds it. The official baseline measured on
+# Python 3.11 is 111 passed / 1 skipped.
+#
+# Python 3.11 is the version the baseline was measured on. When 3.10/3.12
+# are actually supported, they belong here as a matrix - not before, so a
+# green badge never means "checked on a version nobody ships".
+name: tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: install
+        run: |
+          python -m pip install --upgrade pip
+          pip install ".[dev]"
+      - name: test
+        run: pytest tests/ -q
