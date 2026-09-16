@@ -130,9 +130,13 @@ Findings:
    engine-side so the pane, the rail, and recording share one MBO feed per symbol.
 2. **Crypto public L2 via ccxt (MIT, declared pinned dependency).** A thin adapter
    maps `watch_order_book` (snapshot + deltas) → `DepthEvent` and `watch_trades` →
-   `TradeEvent` with exchange-stamped side, on the public keyless channels of the major
-   exchanges covering the platform's ~58 crypto symbols (symbol map: platform
-   canonicals like `BTC/USD` → exchange pairs). **Live only** — exchanges expose no L2
+   `TradeEvent` with exchange-stamped side. **Venue scope (locked 2026-09-16):** one
+   venue per symbol — **Coinbase primary** (real USD books matching the platform's
+   USD-quoted symbols; public keyless channels; US-regulated reference venue),
+   **Kraken fallback**. No multi-venue aggregation (a paid add-on even at Bookmap;
+   out of scope). **L3 does not exist publicly in crypto** (any exchange) — the public
+   ceiling is L2 + side-stamped trades, which is exactly what the heatmap paints
+   (Bookmap's own crypto heat is L2-based too). **Live only** — exchanges expose no L2
    history — so history = what the terminal's own session recorder captures (S10,
    ships in Phase 1); the pane shows its honest range.
 3. **Broker adapters** — where a connected broker's feed carries L2, the adapter offers
