@@ -65,11 +65,16 @@ class Registry:
 
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
-    from lse_terminal.providers import DemoProvider, LseProvider, UserDataProvider
+    from lse_terminal.providers import (CryptoL2Provider, DemoProvider,
+                                        LseProvider, UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
     reg.register(LseProvider())
+    # Public crypto L2 (F1 H8b): keyless exchange feeds, depth-only. Fails
+    # open like everything user-visible; registration costs nothing when
+    # ccxt is absent (the provider reports itself unconfigured).
+    reg.register(CryptoL2Provider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous
     # Strategy-subclass engine went with it. Both are archived under

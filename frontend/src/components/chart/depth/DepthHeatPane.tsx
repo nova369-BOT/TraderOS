@@ -123,7 +123,10 @@ export default function DepthHeatPane({
         if (cancelled) return;
         demo = !!data.demo;
         provider = data.provider;
-        r.ingestHistory(data.events as DepthEventMsg[]);
+        // live_only sources (crypto public feeds) carry no history: the
+        // event list is empty and the pane paints from the live topic,
+        // showing its honest range (plan §2.3).
+        r.ingestHistory((data.events || []) as DepthEventMsg[]);
       } catch (e) {
         if (!cancelled) {
           setState({ kind: 'nodata', reason: `engine unreachable: ${e}` });
@@ -153,6 +156,20 @@ export default function DepthHeatPane({
         if (!rr) return;
         if (frame.type === 'depth') {
           rr.applyDepth(frame.event);
+          // The subscribe-time SNAPSHOT carries the full transmitted book:
+          // derive the BBO lines from it. (Live-only sources like the crypto
+          // public feeds have no /api/orderflow/book to seed them from; the
+          // proper live BBO tracking arrives with the COB column, H7.)
+          if (frame.event.type === 'SNAPSHOT') {
+            let bb: number | null = null, ba: number | null = null;
+            for (const [p] of frame.event.bids) {
+              if (bb === null || p > bb) bb = p;
+            }
+            for (const [p] of frame.event.asks) {
+              if (ba === null || p < ba) ba = p;
+            }
+            rr.setBook(bb, ba);
+          }
         } else if (frame.type === 'trade') {
           rr.addTrade(frame.event);
         } else if (frame.type === 'error') {

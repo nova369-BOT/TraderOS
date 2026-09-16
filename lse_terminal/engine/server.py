@@ -7158,14 +7158,18 @@ def create_app() -> FastAPI:
         return _SessionRecorder(userdata.data_dir() / "depth-sessions")
 
     @app.get("/api/orderflow/depth")
-    def of_depth(symbol: str,
-                 frm: float | None = Query(default=None, alias="from"),
-                 to: float | None = None,
-                 column_ms: int = 1000, max_levels: int = 50,
-                 provider: str = ""):
+    async def of_depth(symbol: str,
+                       frm: float | None = Query(default=None, alias="from"),
+                       to: float | None = None,
+                       column_ms: int = 1000, max_levels: int = 50,
+                       provider: str = ""):
         """History grid fill for pane open: SNAPSHOT then DELTAs, sourced per
         capability (404-with-reason when no source carries depth for the
-        symbol — the pane shows that reason, never silent synthesis)."""
+        symbol — the pane shows that reason, never silent synthesis).
+
+        Live-only sources (crypto public feeds: exchanges expose no L2
+        history) answer 200 with an empty event list and live_only=true; the
+        pane then paints from the WS topic and shows its honest range."""
         now = time.time()
         end = float(to) if to is not None else now
         start = float(frm) if frm is not None else end - 4 * 3600
@@ -7174,13 +7178,26 @@ def create_app() -> FastAPI:
         try:
             p, events = _of_service.resolve_history(
                 symbol, start, end, column_ms, max_levels, provider or None)
-        except _OrderflowUnavailable as e:
-            raise HTTPException(404, str(e))
+        except _OrderflowUnavailable as hist_err:
+            # No history source: is there a LIVE one? Live-only depth is a
+            # valid pane state, not an error (plan §2.3 crypto reality).
+            try:
+                p2, agen = _of_service.resolve_stream(symbol, provider or None)
+                await agen.aclose()
+            except _OrderflowUnavailable:
+                raise HTTPException(404, str(hist_err))
+            demo = p2.name == "demo"
+            return {"symbol": symbol, "provider": p2.name, "demo": demo,
+                    "source_label": ("DEMO (synthetic)" if demo
+                                     else p2.title),
+                    "column_ms": column_ms, "start": start, "end": end,
+                    "live_only": True, "events": []}
         # Data honesty (plan §1.3): the pane labels synthetic sources.
         demo = p.name == "demo"
         return {"symbol": symbol, "provider": p.name, "demo": demo,
                 "source_label": "DEMO (synthetic)" if demo else p.title,
                 "column_ms": column_ms, "start": start, "end": end,
+                "live_only": False,
                 "events": [ev.to_dict() for ev in events]}
 
     @app.get("/api/orderflow/book")

@@ -60,6 +60,34 @@ Footprints come in Phase 2; nothing in this document depends on them.
     (record/list wiring in the pane), **H8b** (ccxt crypto L2), **H9**
     (vault MBO wiring + broker L2), **H10** (perf + golden images + e2e +
     guide section).
+- **2026-09-16 — H8b landed (crypto public L2 via ccxt).**
+  - `lse_terminal/providers/crypto_l2.py`: `cryptol2` provider per the locked
+    §2.3 design — Coinbase **primary**, Kraken **fallback** (per-symbol
+    wrap-around failover, capped backoff), 8 USD pairs on a normalized symbol
+    map (`BTC/USD`, `btc-usd`, `BTCUSD` all resolve), keyless public feeds.
+  - Data honesty end to end: `depth_history` is an honest `NotSupported`
+    (exchanges expose no public L2 history), `capabilities()` excludes it,
+    `/api/orderflow/depth` answers `200 {live_only: true, events: []}` for
+    live-only symbols so the pane opens on the WS topic with its honest range
+    instead of "no depth data", and the pane derives BBO lines from the
+    subscribe-time SNAPSHOT (live sources have no `/book`).
+  - Trade sides are exchange-stamped (buy/sell → BUY/SELL, anything else
+    stays UNKNOWN); SNAPSHOT first per symbol, then DELTAs carrying the
+    transmitted book (persistent-book semantics absorb full-book pushes).
+  - ccxt pinned `==4.5.78` in `pyproject.toml`; MIT entry under a new
+    "Engine (Python dependencies)" section of THIRD-PARTY-NOTICES.md.
+  - Tests (9, offline): map/normalization, snapshot-first, side mapping,
+    coinbase→kraken failover via the `_watch_book`/`_watch_trades` seam,
+    live-only API contract, pinned-dependency guard. Fixture payloads in
+    `tests/data/crypto_l2_fixture.json` (schema-representative; live capture
+    wasn't possible in the sandbox). Full suite 146 passed / 1 skipped.
+  - One engine hardening found en route: pump starvation guard — bounded
+    merge queue (1024) + cooperative yield per event, so a watcher without
+    internal awaits can't starve the consumer or balloon memory.
+  - Gates still open: **H6** (settings window), **H7** (COB column + dot
+    types), **H8 UI half** (record/list wiring in the pane), **H9** (vault
+    MBO + broker L2), **H10** (perf + golden + e2e + guide). On-screen paint
+    check of the pane still owed (no browser in sandbox).
 
 ---
 
@@ -290,7 +318,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | open |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | open |
 | H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
-| H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | open |
+| H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |
 | H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | open |
 | H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | open |
 

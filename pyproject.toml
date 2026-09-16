@@ -37,6 +37,10 @@ dependencies = [
     # Windows ConPTY for the AI panel's terminal view (POSIX uses stdlib pty)
     "pywinpty>=2.0; sys_platform == 'win32'",
     "openpyxl>=3.1",
+    # Crypto L2 depth for the Depth Heat pane (F1 H8b): public keyless
+    # exchange feeds via the ccxt websocket layer. Pinned because the pane's
+    # failover logic is tested against this version's event shapes.
+    "ccxt==4.5.78",
 ]
 
 [project.optional-dependencies]

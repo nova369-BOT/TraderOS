@@ -55,3 +55,12 @@ Direct dependencies; each pulls its own MIT/BSD-style tree.
 - Electron - MIT License (bundles Chromium and Node.js under their own licenses;
   the installer carries the generated Chromium license file)
 - electron-updater - MIT License
+
+## Engine (Python dependencies)
+
+- ccxt 4.5.78 - MIT License
+  Copyright (c) 2017-2026 ccxt contributors
+  https://github.com/ccxt/ccxt
+  Used by the Depth Heat order-flow pane for public (keyless) crypto L2
+  order-book and trade websocket feeds; one venue per symbol, Coinbase
+  primary with Kraken fallback. No other component uses it.
