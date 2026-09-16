@@ -514,6 +514,20 @@ def test_record_sessions_delete_lifecycle(client):
     mine = next(s for s in sessions if s["id"] == sid)
     assert mine["rows"] > 0 and mine["stopped"] is not None
     assert mine["files"] and mine["bytes"] > 0
+
+    # The pane's load path (H8 UI half): events come back in write order,
+    # SNAPSHOT first, capped honestly.
+    ev = client.get(f"/api/orderflow/sessions/{sid}/events").json()
+    assert ev["sid"] == sid and ev["symbol"] == "DEMO:BTC"
+    assert ev["demo"] is True and ev["truncated"] is False
+    assert ev["events"] and ev["events"][0]["type"] == "SNAPSHOT"
+    assert len(ev["events"]) == mine["rows"]
+    tiny = client.get(f"/api/orderflow/sessions/{sid}/events",
+                      params={"max_events": 1000}).json()
+    if mine["rows"] > 1000:
+        assert tiny["truncated"] is True and len(tiny["events"]) == 1000
+    assert client.get("/api/orderflow/sessions/nope/events").status_code == 404
+
     assert client.delete(f"/api/orderflow/sessions/{sid}").json()["ok"] is True
     assert all(s["id"] != sid
                for s in client.get("/api/orderflow/sessions").json())

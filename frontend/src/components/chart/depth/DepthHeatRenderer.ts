@@ -144,7 +144,8 @@ export class DepthHeatRenderer {
     }
   }
 
-  /** Bulk history ingest (pane open). Deterministic fold over the events. */
+  /** Bulk history ingest (pane open, or a loaded recording). Deterministic
+   * fold over the events; the dot trail belongs to the new timeline. */
   ingestHistory(events: DepthEventMsg[]) {
     this.cols = [];
     this.state.clear();
@@ -152,6 +153,7 @@ export class DepthHeatRenderer {
     this.cur.clear();
     this.curTsMs = null;
     this.sizeSample = [];
+    this.dots = [];
     for (const ev of events) this.foldEvent(ev, true);
     this.flushColumn();
     this.recalcCutoffs();

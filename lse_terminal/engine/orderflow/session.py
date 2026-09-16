@@ -99,6 +99,12 @@ class SessionRecorder:
     def _part_path(self, sid: str, part: int) -> Path:
         return self.root / f"{sid}_part{part}.parquet"
 
+    def events_paths(self, sid: str) -> list[Path]:
+        """One session's parquet parts in write order (the read/replay side
+        of the recording contract). Callers reading a still-recording
+        session must drop the newest part — it is open for writing."""
+        return sorted(self.root.glob(f"{sid}_part*.parquet"))
+
     def _rotate(self, sid: str) -> None:
         st = self._open[sid]
         if st["writer"] is not None:

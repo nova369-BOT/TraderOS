@@ -23,6 +23,7 @@ import {
 import { DepthHeatRenderer } from './DepthHeatRenderer';
 import DepthHeatSettingsWindow from './DepthHeatSettingsWindow';
 import DepthHeatCob, { ClientBook } from './DepthHeatCob';
+import DepthHeatSessions, { type SessionMeta } from './DepthHeatSessions';
 
 const HISTORY_SECONDS = 4 * 3600;   // pane-open history fill (S1)
 
@@ -73,6 +74,12 @@ export default function DepthHeatPane({
   const [contrast, setContrast] = useState(50);   // S3 slider above the pane
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cutoffRange, setCutoffRange] = useState<[number, number] | null>(null);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [recording, setRecording] = useState<{ rid: string; since: number } | null>(null);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recElapsed, setRecElapsed] = useState(0);
+  const [loadedSession, setLoadedSession] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   // Settings persistence (per instrument — H6) with live renderer apply.
   const updateSettings = useCallback((patch: Partial<DepthHeatSettings>) => {
@@ -107,6 +114,62 @@ export default function DepthHeatPane({
     window.addEventListener(GLOBAL_SCHEME_EVENT, onGlobal);
     return () => window.removeEventListener(GLOBAL_SCHEME_EVENT, onGlobal);
   }, [symbol]);
+
+  // ── recording (S10): start/stop + elapsed ticker ─────────────────────
+  const startRecording = useCallback(async () => {
+    setRecError(null);
+    try {
+      const r = await fetch('/api/orderflow/record', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(String(body.detail || `HTTP ${r.status}`));
+      setRecording({ rid: body.id ?? body.sid ?? '', since: Date.now() });
+    } catch (e) {
+      setRecError(String(e));
+    }
+  }, [symbol]);
+
+  const stopRecording = useCallback(async () => {
+    try {
+      await fetch('/api/orderflow/record/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: recording?.rid ?? '' }),
+      });
+    } catch { /* the sessions list shows the true state regardless */ }
+    setRecording(null);
+    setRecElapsed(0);
+  }, [recording]);
+
+  useEffect(() => {
+    if (!recording) return;
+    const iv = setInterval(() => {
+      setRecElapsed(Math.floor((Date.now() - recording.since) / 1000));
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [recording]);
+
+  // ── session loading (S10): a recording becomes the pane's history ────
+  const loadSessionEvents = useCallback((events: any[], meta: SessionMeta) => {
+    const r = rendererRef.current;
+    if (!r || !events.length) return;
+    const depths = events.filter((e) =>
+      e.type === 'SNAPSHOT' || e.type === 'DELTA') as DepthEventMsg[];
+    const trades = events.filter((e) => typeof e.side === 'string');
+    r.ingestHistory(depths);              // resets columns, cutoffs, dots
+    cobBookRef.current?.seed([], []);
+    for (const ev of depths) cobBookRef.current?.apply(ev);
+    for (const t of trades) r.addTrade(t);
+    setLoadedSession(meta.id);
+  }, []);
+
+  const backToLive = useCallback(() => {
+    setLoadedSession(null);
+    setReloadToken((t) => t + 1);
+  }, []);
 
   // Renderer lifecycle.
   useEffect(() => {
@@ -232,7 +295,8 @@ export default function DepthHeatPane({
       cancelled = true;
       try { ws?.close(); } catch { /* already closed */ }
     };
-  }, [symbol]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, reloadToken]);
 
   // Contrast slider (S3): re-centres the cut-off window around the session
   // percentiles — left widens (more of the gradient in use), right narrows.
@@ -307,6 +371,64 @@ export default function DepthHeatPane({
           title="Cut-off window — narrows/widens where the gradient saturates (S3)"
           style={{ width: 90, accentColor: '#78909c' }}
         />
+        {/* recording controls (S10) */}
+        {recording ? (
+          <button
+            onClick={stopRecording}
+            title="Stop recording this symbol's depth to MY DATA"
+            style={{
+              background: 'rgba(239, 83, 80, 0.14)', border: '1px solid rgba(239, 83, 80, 0.6)',
+              color: '#ef9a9a', borderRadius: 4, fontSize: 10, padding: '1px 7px',
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}
+          >
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%', background: '#ef5350',
+              boxShadow: '0 0 6px rgba(239,83,80,0.9)', animation: 'dh-pulse 1.1s infinite',
+            }} />
+            REC {Math.floor(recElapsed / 60)}:{String(recElapsed % 60).padStart(2, '0')} — stop
+          </button>
+        ) : (
+          <button
+            onClick={startRecording}
+            title="Record live depth + trades to workspace/MY DATA (S10)"
+            style={{
+              background: 'transparent', border: '1px solid #2a2e39', color: '#9aa4b2',
+              borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
+            }}
+          >● REC</button>
+        )}
+        <button
+          onClick={() => setSessionsOpen(true)}
+          title="Recorded sessions (workspace/MY DATA)"
+          style={{
+            background: 'transparent', border: '1px solid #2a2e39', color: '#9aa4b2',
+            borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
+          }}
+        >🗂 sessions</button>
+        {loadedSession && (
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9,
+            padding: '1px 6px', borderRadius: 3, letterSpacing: 0.4,
+            background: 'rgba(120, 144, 156, 0.18)', color: '#a7b4c2',
+          }}>
+            SESSION LOADED
+            <button
+              onClick={backToLive}
+              title="Return to the live feed"
+              style={{
+                background: 'transparent', border: 'none', color: '#c8cfda',
+                cursor: 'pointer', fontSize: 10, padding: 0,
+              }}
+            >✕</button>
+          </span>
+        )}
+        {recError && (
+          <span title={recError} style={{
+            fontSize: 9, color: '#ef9a9a', maxWidth: 150,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>rec: {recError}</span>
+        )}
         <button
           onClick={() => {
             setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
@@ -388,6 +510,13 @@ export default function DepthHeatPane({
               setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
             }}
             onClose={() => setSettingsOpen(false)}
+          />
+        )}
+        {sessionsOpen && (
+          <DepthHeatSessions
+            symbol={symbol}
+            onLoad={loadSessionEvents}
+            onClose={() => setSessionsOpen(false)}
           />
         )}
       </div>

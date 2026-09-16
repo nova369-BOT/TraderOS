@@ -5,7 +5,7 @@
 **Scope:** the heatmap phase — build and ship first, per founder directive (2026-09-16).
 Footprints come in Phase 2; nothing in this document depends on them.
 
-> **Status: building — engine slice landed (2026-09-16).** This document is the
+> **Status: building — engine + pane live (H1–H8b, 2026-09-16).** This document is the
 > contract for the build: every work item has an owner surface (engine / API /
 > frontend / demo / data), a done-criterion, and a gate. Per-gate status lives in
 > the §6 table and the progress log at the bottom of this file.
@@ -131,6 +131,22 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Gates still open: **H8 UI half** (record/list wiring in the pane),
     **H9** (vault MBO + broker L2), **H10** (perf + golden + e2e + guide).
     On-screen paint check of the pane still owed (no browser in sandbox).
+- **2026-09-16 — H8 UI half landed (record/list wiring in the pane).**
+  - Pane header: `● REC` start/stop with pulsing elapsed-time badge (S10);
+    honest surface when recording is denied (hosted deploy → visible reason).
+  - `DepthHeatSessions.tsx`: MY DATA list for the pane's symbol — start
+    time/duration/size/rows, live-recording pulse, DEMO chip, two-click
+    delete, 4s auto-refresh; LOAD replays a recording into the pane
+    (columns + COB book + trade dots rebuilt from the file).
+  - New endpoint `GET /api/orderflow/sessions/{sid}/events`: write-ordered
+    events with an honest cap (`truncated`), closed-parts-only reads for
+    still-recording sessions. `SessionRecorder.events_paths()` added.
+  - Loaded-session chip with one-click return to the live feed; ingest of a
+    recording resets the dot trail (new timeline). Tested end to end
+    (record → stop → events → truncation → 404s).
+  - Full suite green; frontend type-clean; bundle rebuilt.
+  - Gates still open: **H9** (vault MBO + broker L2), **H10** (perf +
+    golden images + e2e + guide section). On-screen paint check still owed.
 
 ---
 
@@ -360,7 +376,7 @@ configurable; reuses the existing book-rendering primitives from the broker UI.
 | H5 | Pane layout integration + `HeatmapRenderer` (viewport, LUT, rAF loop) on demo feed + time/crosshair sync | frontend | Pane renders live demo depth; sync verified; no React-state frame dependency | ✅ core 2026-09-16 — pane + renderer + grid wiring shipped & built; **on-screen paint check pending** (built headless; confirm in the app next session), perf budget at H10 |
 | H6 | Controls: settings window + contrast slider + persistence + apply-globally | frontend | All §5.3 controls work and persist per instrument; scheme global apply verified | ✅ 2026-09-16 (window + global scheme broadcast; pie dots, auto smoothing, eased recenter shipped in the renderer) |
 | H7 | COB column + BBO lines + dots overlay (gradient/solid/pie) | frontend | Dots render from side-carrying streams (demo); COB live-updates; boundary lines with active-range override | ✅ 2026-09-16 (pixel-aligned ladder w/ ClientBook live feed; dots shipped with the H6 renderer pass) |
-| H8 | Session recording (parquet, MY DATA listing, limits) | engine | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof) | ✅ engine half 2026-09-16 (recorder + replay invariant tested; pane wiring open) |
+| H8 | Session recording (parquet, MY DATA listing, limits) | engine + frontend | 60 s recording → valid parquet, listed, deletable; bit-identical grid rebuild from the file (replay-readiness proof); pane records/lists/loads recordings | ✅ 2026-09-16 (engine slice 3f067fb; pane record/list/load wiring this slice) |
 | H8b | Crypto L2 adapter (ccxt, MIT — declared pinned dependency, THIRD-PARTY-NOTICES entry) | engine | Live `depth_stream` for platform crypto symbols via major-exchange public feeds (keyless); exchange-stamped trade side; unit tests against recorded fixtures; symbol map; dependency pinned | ✅ 2026-09-16 (Coinbase primary / Kraken fallback; live-only degradation + SNAPSHOT BBO shipped) |
 | H9 | MBO depth wiring (futures, plan-gated) + broker L2 | engine | Confirmed door: the L3 rail's MBO client logic moves engine-side and feeds `depth_stream` / `depth_history` for covered contracts — **real heat on MBO-entitled keys from day one**; broker L2 where adapters offer it. The §8 answers only widen this item's *history reach* — live heat does not depend on them | open |
 | H10 | Perf pass + golden-image visual regression + e2e + guide.md section + docs | all | §5.2 budget measured & green in CI; golden PNGs (deterministic demo fixture) in CI with tolerance; Playwright e2e: boot → demo → pane paints ≤ N s from first depth event; walkthrough section merged | open |

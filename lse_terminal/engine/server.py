@@ -7145,7 +7145,8 @@ def create_app() -> FastAPI:
         OrderflowService as _OrderflowService,
         OrderflowUnavailable as _OrderflowUnavailable)
     from lse_terminal.engine.orderflow.session import (
-        SessionRecorder as _SessionRecorder)
+        SessionRecorder as _SessionRecorder,
+        read_events as _of_read_events)
 
     _of_service = _OrderflowService(reg)
     of_records: dict[str, dict] = {}
@@ -7287,6 +7288,39 @@ def create_app() -> FastAPI:
     def of_sessions():
         """Recorded depth sessions (workspace/MY DATA), newest first."""
         return _of_recorder().sessions()
+
+    @app.get("/api/orderflow/sessions/{sid}/events")
+    def of_session_events(sid: str, max_events: int = 200000):
+        """One recorded session's events in write order — the pane loads a
+        recording through this (S10). A still-recording session serves its
+        closed parts only (the newest part stays open for writing, and the
+        list refreshes while recording). Oversized reads are capped and the
+        cap is reported honestly (`truncated`)."""
+        rec = _of_recorder()
+        meta = next((m for m in rec.sessions() if m.get("id") == sid), None)
+        if meta is None:
+            raise HTTPException(404, f"no such session: {sid}")
+        paths = rec.events_paths(sid)
+        if meta.get("recording") and paths:
+            # The newest part is still open for writing — serve the closed
+            # parts only rather than reading a footerless file.
+            paths = paths[:-1]
+        if not paths and not meta.get("recording"):
+            raise HTTPException(404, f"session {sid} has no data parts yet")
+        cap = max(1000, int(max_events))
+        events, truncated = [], False
+        for ev in _of_read_events(paths):
+            events.append(ev.to_dict())
+            if len(events) >= cap:
+                truncated = True
+                break
+        return {"sid": sid, "symbol": meta.get("symbol"),
+                "demo": bool(meta.get("demo")),
+                "source": meta.get("source", ""),
+                "started": meta.get("started"),
+                "stopped": meta.get("stopped"),
+                "recording": bool(meta.get("recording")),
+                "truncated": truncated, "events": events}
 
     @app.delete("/api/orderflow/sessions/{sid}")
     async def of_session_delete(sid: str):
