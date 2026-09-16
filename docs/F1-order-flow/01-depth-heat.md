@@ -191,6 +191,16 @@ Footprints come in Phase 2; nothing in this document depends on them.
   - Full suite green; bundle + guide ship together.
   - Remaining (browser-bound): on-screen paint check of the pane; per-
     adapter broker L2 (H9 remainder) as feeds offer it.
+- **2026-09-16 — footprint view added to the pane (founder directive).**
+  - HEAT/FOOTPRINT toggle in the pane header (persisted per instrument).
+    Footprint = executed volume split by aggressor side per price zone ×
+    time bucket; zoom-adaptive buckets (5 s→1 h), nice-step price zones,
+    sell-left/buy-right split bars, sell×buy figures at wide zoom, ≥3:1
+    imbalance tints, per-bucket Δ + volume footer.
+  - Data honesty kept: prints without a side never enter the aggregation;
+    side-less sources paint an honest blank explaining why.
+  - Guide bullet extended; frontend type-clean; bundle rebuilt; full suite
+    green.
 
 ---
 

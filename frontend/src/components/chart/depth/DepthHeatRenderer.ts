@@ -458,47 +458,53 @@ export class DepthHeatRenderer {
       this.rightOffsetPx = 0;    // stay pinned while following
     }
 
-    const nCols = Math.max(1, i1 - i0);
-    const rows = TARGET_ROWS;
-    const rowStep = (pHi - pLo) / rows;
-    if (this.off.width !== nCols || this.off.height !== rows) {
-      this.off.width = nCols;
-      this.off.height = rows;
-    }
-    const img = this.offCtx.createImageData(nCols, rows);
-    const data = img.data;
-    for (let c = 0; c < nCols; c++) {
-      const col = this.cols[i0 + c];
-      const { keys, sizes } = col;
-      for (let li = 0; li < keys.length; li++) {
-        const p = keys[li];
-        if (p < pLo || p > pHi) continue;
-        const s = sizes[li];
-        if (s <= 0) continue;
-        const r = Math.min(rows - 1,
-          Math.max(0, Math.floor((pHi - p) / rowStep)));
-        const idx = sizeToIndex(s, this.lo, this.hi);
-        const o = (r * nCols + c) * 4;
-        const l = idx * 4;
-        // max-brighten overlaps so dense rows never darken
-        if (this.lut[l] > data[o] || data[o + 3] === 0) {
-          data[o] = this.lut[l];
-          data[o + 1] = this.lut[l + 1];
-          data[o + 2] = this.lut[l + 2];
-          data[o + 3] = 255;
+    if (this.settings.view === 'footprint') {
+      // Classic order-flow footprint: bid×ask executed volume per price
+      // zone per time bucket, imbalance-highlighted.
+      this.paintFootprint(ctx, t0, t1, pLo, pHi, yOf);
+    } else {
+      const nCols = Math.max(1, i1 - i0);
+      const rows = TARGET_ROWS;
+      const rowStep = (pHi - pLo) / rows;
+      if (this.off.width !== nCols || this.off.height !== rows) {
+        this.off.width = nCols;
+        this.off.height = rows;
+      }
+      const img = this.offCtx.createImageData(nCols, rows);
+      const data = img.data;
+      for (let c = 0; c < nCols; c++) {
+        const col = this.cols[i0 + c];
+        const { keys, sizes } = col;
+        for (let li = 0; li < keys.length; li++) {
+          const p = keys[li];
+          if (p < pLo || p > pHi) continue;
+          const s = sizes[li];
+          if (s <= 0) continue;
+          const r = Math.min(rows - 1,
+            Math.max(0, Math.floor((pHi - p) / rowStep)));
+          const idx = sizeToIndex(s, this.lo, this.hi);
+          const o = (r * nCols + c) * 4;
+          const l = idx * 4;
+          // max-brighten overlaps so dense rows never darken
+          if (this.lut[l] > data[o] || data[o + 3] === 0) {
+            data[o] = this.lut[l];
+            data[o + 1] = this.lut[l + 1];
+            data[o + 2] = this.lut[l + 2];
+            data[o + 3] = 255;
+          }
         }
       }
+      this.offCtx.putImageData(img, 0, 0);
+
+      const x0 = this.tsToX(this.cols[i0].tsMs);
+      const x1 = this.tsToX(this.cols[i0].tsMs + nCols * this.columnMs());
+      const y0 = yOf(pHi), y1 = yOf(pLo);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(this.off, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
+
+      // volume dots (S7): gradient / solid / pie-by-aggressor-split
+      if (this.settings.dots) this.drawDots(ctx, t0, t1, pLo, pHi, yOf);
     }
-    this.offCtx.putImageData(img, 0, 0);
-
-    const x0 = this.tsToX(this.cols[i0].tsMs);
-    const x1 = this.tsToX(this.cols[i0].tsMs + nCols * this.columnMs());
-    const y0 = yOf(pHi), y1 = yOf(pLo);
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(this.off, x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
-
-    // volume dots (S7): gradient / solid / pie-by-aggressor-split
-    if (this.settings.dots) this.drawDots(ctx, t0, t1, pLo, pHi, yOf);
 
     // BBO lines (S9)
     const bbo = (p: number | null, color: string) => {
@@ -564,6 +570,125 @@ export class DepthHeatRenderer {
       const d = new Date(t);
       ctx.fillText(d.toISOString().slice(11, 19), x + 2, this.cssH - 4);
       ctx.fillRect(x, this.cssH - 14, 1, 4);
+    }
+  }
+
+  /** Classic order-flow footprint: executed volume split by aggressor side
+   * per price zone (rows) and time bucket (columns). Bucket width adapts to
+   * the time zoom; zones snap to nice price steps. Imbalanced zones (≥3:1)
+   * get a tinted backdrop; wide buckets print sell×buy figures. Prints
+   * without a side never enter — the view stays honest about its data. */
+  private paintFootprint(
+    ctx: CanvasRenderingContext2D,
+    t0: number, t1: number, pLo: number, pHi: number,
+    yOf: (p: number) => number,
+  ) {
+    const BUCKETS = [5000, 15000, 30000, 60000, 300000, 900000, 3600000];
+    const bucket = BUCKETS.find((b) => b / this.msPerPx >= 72) ?? 3600000;
+    const span = pHi - pLo;
+    const NICE = [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.25, 0.5,
+      1, 2, 2.5, 5, 10, 20, 25, 50, 100, 250, 500, 1000];
+    const zstep = NICE.find((n) => span / n <= 20) ?? span / 20;
+
+    // aggregate prints into (bucket × zone) cells
+    const cells = new Map<string, { b: number; s: number }>();
+    const bucketTotals = new Map<number, { b: number; s: number }>();
+    let maxV = 0, prints = 0;
+    for (const d of this.dots) {
+      if (d.tsMs < t0 || d.tsMs > t1 || d.price < pLo || d.price > pHi) continue;
+      prints += 1;
+      const bk = Math.floor(d.tsMs / bucket);
+      const zk = Math.floor(d.price / zstep);
+      const key = bk + ':' + zk;
+      let c = cells.get(key);
+      if (!c) { c = { b: 0, s: 0 }; cells.set(key, c); }
+      if (d.buy) c.b += d.size; else c.s += d.size;
+      maxV = Math.max(maxV, c.b, c.s);
+      let bt = bucketTotals.get(bk);
+      if (!bt) { bt = { b: 0, s: 0 }; bucketTotals.set(bk, bt); }
+      if (d.buy) bt.b += d.size; else bt.s += d.size;
+    }
+
+    if (!prints) {
+      // Honest empty state: a footprint IS executed prints with sides.
+      ctx.fillStyle = '#5c6672';
+      ctx.font = '11px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('no side-stamped prints in view', this.cssW / 2, this.cssH / 2 - 8);
+      ctx.font = '10px ui-monospace, Menlo, monospace';
+      ctx.fillText('the footprint builds from executed trades (demo and', this.cssW / 2, this.cssH / 2 + 10);
+      ctx.fillText('crypto feeds carry sides; sources without prints stay blank)', this.cssW / 2, this.cssH / 2 + 24);
+      return;
+    }
+
+    const fmtV = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k`
+      : v >= 100 ? v.toFixed(0) : v >= 10 ? v.toFixed(0) : v.toFixed(1));
+    const rowH = Math.min(22, Math.max(9, zstep * this.viewPpu * 0.85));
+
+    const first = Math.floor(t0 / bucket) * bucket;
+    for (let b = first; b <= t1; b += bucket) {
+      const x0 = this.tsToX(b), x1 = this.tsToX(b + bucket);
+      if (x1 < -4 || x0 > this.cssW + 4) continue;
+      const w = x1 - x0;
+      const bk = Math.floor(b / bucket);
+      const showNums = w >= 92;
+      const half = w / 2 - 4;
+
+      // column frame
+      ctx.strokeStyle = 'rgba(30, 36, 47, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(Math.round(x1) + 0.5, 0);
+      ctx.lineTo(Math.round(x1) + 0.5, this.cssH);
+      ctx.stroke();
+
+      for (const [key, c] of cells) {
+        const [kb, kz] = key.split(':');
+        if (Number(kb) !== bk) continue;
+        const zk = Number(kz);
+        const y = yOf((zk + 0.5) * zstep);
+        if (y < -rowH || y > this.cssH + rowH) continue;
+        const yTop = y - (rowH - 2) / 2;
+
+        // imbalance backdrop (≥ 3:1 one way)
+        const imb = c.b >= c.s * 3 && c.b > 0 ? 1
+          : c.s >= c.b * 3 && c.s > 0 ? -1 : 0;
+        if (imb !== 0) {
+          ctx.fillStyle = imb > 0
+            ? 'rgba(38, 166, 154, 0.13)' : 'rgba(239, 83, 80, 0.13)';
+          ctx.fillRect(x0 + 2, yTop, w - 4, rowH - 2);
+        }
+
+        // split bars: sells left (red), buys right (green)
+        const midX = x0 + w / 2;
+        const sW = maxV > 0 ? (c.s / maxV) * half : 0;
+        const bW = maxV > 0 ? (c.b / maxV) * half : 0;
+        ctx.fillStyle = 'rgba(239, 83, 80, 0.75)';
+        ctx.fillRect(midX - 1 - sW, yTop, sW, rowH - 2);
+        ctx.fillStyle = 'rgba(38, 166, 154, 0.75)';
+        ctx.fillRect(midX + 1, yTop, bW, rowH - 2);
+
+        if (showNums) {
+          ctx.font = '9px ui-monospace, Menlo, monospace';
+          ctx.textAlign = 'right';
+          ctx.fillStyle = imb < 0 ? '#ffc9c5' : '#b2807d';
+          ctx.fillText(fmtV(c.s), midX - 4, y + 3);
+          ctx.textAlign = 'left';
+          ctx.fillStyle = imb > 0 ? '#b8f2e9' : '#7fa8a1';
+          ctx.fillText(fmtV(c.b), midX + 4, y + 3);
+        }
+      }
+
+      // per-bucket delta + volume footer
+      const bt = bucketTotals.get(bk);
+      if (bt) {
+        const delta = bt.b - bt.s;
+        ctx.font = '9px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = delta > 0 ? '#26a69a' : delta < 0 ? '#ef5350' : '#8b96a5';
+        ctx.fillText(
+          `Δ${delta >= 0 ? '+' : '−'}${fmtV(Math.abs(delta))} · ${fmtV(bt.b + bt.s)}`,
+          x0 + w / 2, this.cssH - 18);
+      }
     }
   }
 

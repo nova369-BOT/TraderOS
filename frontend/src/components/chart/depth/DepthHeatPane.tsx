@@ -354,6 +354,27 @@ export default function DepthHeatPane({
       }}>
         <span style={{ opacity: 0.75 }}>DEPTH HEAT</span>
         <span style={{ fontWeight: 600 }}>{symbol}</span>
+        {/* view mode: liquidity heat vs classic footprint */}
+        <span style={{
+          display: 'inline-flex', border: '1px solid #2a2e39', borderRadius: 4,
+          overflow: 'hidden',
+        }}>
+          {(['heat', 'footprint'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => updateSettings({ view: v })}
+              title={v === 'heat'
+                ? 'Resting liquidity heat field'
+                : 'Footprint: bid×ask executed volume per price and time bucket'}
+              style={{
+                background: settings.view === v ? '#2b3547' : 'transparent',
+                color: settings.view === v ? '#eef1f6' : '#93a0b1',
+                border: 'none', fontSize: 9, letterSpacing: 0.5,
+                padding: '2px 7px', cursor: 'pointer',
+              }}
+            >{v === 'heat' ? 'HEAT' : 'FOOTPRINT'}</button>
+          ))}
+        </span>
         {status && (
           <span style={{
             padding: '0 6px', borderRadius: 3, fontSize: 9, letterSpacing: 0.5,

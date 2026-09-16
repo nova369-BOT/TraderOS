@@ -36,6 +36,7 @@ export type DepthWsFrame =
 
 /** Pane colour/normalization settings (persisted per instrument — H6). */
 export interface DepthHeatSettings {
+  view: 'heat' | 'footprint';   // liquidity heat vs bid×ask volume footprint
   scheme: 'heat' | 'greyscale';
   applySchemeGlobally: boolean;  // scheme writes to the terminal-wide store
   intensity: number;      // 0..2, 1 = scheme colours
@@ -62,6 +63,7 @@ export interface DepthHeatSettings {
 }
 
 export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
+  view: 'heat',
   scheme: 'heat',
   applySchemeGlobally: false,
   intensity: 1.0,
