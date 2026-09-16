@@ -1,19 +1,42 @@
-# Python
 __pycache__/
-*.py[cod]
+*.pyc
+dist/
+build/
+# desktop/build holds electron-builder RESOURCES (app icons), not artefacts;
+# builder output goes to desktop/dist. Without this negation a fresh clone
+# would ship no icon.
+!desktop/build/
+*.egg-info/
 .venv/
 venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-*.egg-info/
-
-# Node
+desktop/node_modules/
+desktop/sidecar/
+desktop/dist/
+# PyInstaller scratch from desktop/build-mac.sh (workpath + distpath);
+# the runnable copy it produces lives in desktop/sidecar (also ignored).
+desktop/pyi-work/
+desktop/pyi-dist/
+worktrees/
+frontend/node_modules/
 node_modules/
-dist/
-build/
 .vite/
 *.local
+# Sourcemaps are build artefacts; the shipped chart.js/chart.css ARE committed
+# so a clone runs without a node toolchain.
+lse_terminal/ui/static/chart/*.map
+# 4 MB regenerable artefact: the TS chart library's dump for the indicator
+# parity test. Rebuild with tests/gen_ts_truth.mjs; the test skips if absent.
+tests/data/ts_truth.json
+
+# Generated news + research wire content and cached images. Not source.
+lse_terminal/ui/static/assets/news/
+lse_terminal/ui/static/assets/research/
+.wvenv/
+desktop/build-*.log
+desktop/*.log
 
 # Environment & secrets — never commit
 .env
@@ -24,7 +47,6 @@ build/
 *.db
 *.db-journal
 *.sqlite3
-data/
 
 # OS / editor
 .DS_Store

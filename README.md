@@ -1,37 +1,91 @@
-# LSE Terminal — Planning Home
+# LSE Terminal
 
-> **London Strategic Edge** · "The IDE for systematic trading"
-> **Status: 📋 M0 — Planning (v0.0.13 baseline).** No implementation until the plan is signed off.
+The IDE for systematic trading. Windows and Mac.
+Download: https://londonstrategicedge.com/terminal
 
-This repository currently holds the **M0 planning documents** for the LSE Terminal
-product. The product's codebase lives in
-[`londonstrategicedge/lse-terminal`](https://github.com/londonstrategicedge/lse-terminal),
-which was studied in full (architecture, contracts, API surface, test suite, packaging)
-before this plan was written. **Repo wiring for the implementation phase is open
-decision D3 in the plan.**
+You write the strategy in Python. The terminal backtests it on the full
+history, fits the models, and routes the orders. The model you talk to sees
+the same screen you do and works the same engine: it reads the chart, runs
+the backtest, edits the file, runs it again. The engine is a local Python
+process and nothing you write leaves your machine.
 
-## Read in this order
+**Workspace.** A Python editor where your strategy lives. `strategy.py` is
+the file the backtester and the live runner both use. Lookbacks are written
+in days and the engine converts them to bars for whatever timeframe the
+dataset has, so the same file works on hourly and daily data.
 
-| Doc | What it answers |
-|---|---|
-| [PLAN.md](PLAN.md) | Current state (measured), gap register, product strategy (the strategic fork A/B/C), the 6 pillars, engineering program E1–E10, roadmap M1–M5 with exit criteria, risks, **open decisions D1–D4** |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | **Part 1 — As built:** runtime topology, module map, extension contracts, 12-domain API surface, 8 WS channels, state, security model, release pipeline. **Part 2 — Target:** invariants, per-milestone architectural changes, debt trajectory |
+**Backtester.** Runs the strategy over the whole dataset. There is no bar
+limit on local files. You can set a date range, run walk-forward folds or
+Monte Carlo resamples, and add commission and slippage. You get the trade
+list, the equity curve, drawdown, Sharpe, Sortino, VaR and time in market.
 
-## The product in one paragraph
+**Assistant.** A model with access to the engine. It can pull candles and
+economic series, run backtests, build ML datasets and train models, read
+your positions and fills, open research papers, run Python and edit files in
+the workspace. It also sees the chart you have open. By default it uses the
+model we host, through your key. If you have Claude, Codex, Gemini, Kimi,
+Qwen, Copilot or OpenCode installed, the app connects them to the same tools
+over MCP and you use your own subscription.
 
-A local-first desktop terminal (Windows/macOS, MIT): a Python engine on your machine
-runs your plain-Python strategies against full market history, fits ML models, executes
-live through your own broker adapters (with arm/approval/killswitch), and hosts an AI
-co-pilot with in-chat approvals. Data: the LSE vault (one free key), your own files,
-ten bundled samples, and connected brokers. Desktop installers are signed/notarized with
-auto-update and public + demo channels.
+**Models.** GARCH(1,1), Kalman filter, hidden Markov regimes, LSTM forecasts
+and an autoencoder for anomaly detection. They fit on the dataset in view
+and plot next to the chart.
 
-## Baseline health (measured 2026-09-15)
+**Data.** Over 500 TB. Tick and candle history across stocks, FX, crypto,
+ETFs, commodities, futures, indices, rates and volatility; options chains
+and options flow; economic series and release calendars; the US Treasury
+curve; papers from NBER, BIS, the Fed and the ECB. Other sources come in
+through the same adapter layer: a connected broker's prices can be charted
+and traded, and a strategy can attach any series as alternative data with
+`use NAME`, from economic releases to your own imports.
 
-Clean venv · Python 3.11 · pandas 3.0.5 · PyPI deps: **pytest → 109 passed, 2 failed,
-1 skipped (~110 s)**. Both failures are the brue-connect execution surface (gap G2).
-Full reading: PLAN.md §2.3 and the gap register §2.5.
+**Execution.** Orders go through
+[Brue Connect](https://github.com/londonstrategicedge/brue-connect). Each
+broker has an adapter and your broker login never leaves your computer. The
+LSE demo account is the first adapter. Positions, fills and P&L show in the
+ticket and the assistant can read them.
 
----
-*Trading involves risk. LSE Terminal is research and self-directed trading through the
-user's own broker; it does not custody funds. Nothing here is financial advice.*
+**Brue.** You can also write indicators and entry rules in
+[Brue](https://github.com/londonstrategicedge/brue), a small language that
+runs on a Python engine.
+
+## Key
+
+One free key from https://londonstrategicedge.com/data. It unlocks the data
+feed and the demo account. It is saved in
+`~/.config/lse-terminal/config.json` and only ever sent to
+api.londonstrategicedge.com. Sign out deletes it and disconnects the demo
+account.
+
+## Install
+
+Get the installer from https://londonstrategicedge.com/terminal. The app
+checks for updates when it starts and every four hours, downloads them in
+the background and installs them the next time it opens.
+
+## From source
+
+You need Python 3.10 or newer and Node 20 or newer.
+
+```
+git clone https://github.com/londonstrategicedge/lse-terminal.git
+git clone https://github.com/londonstrategicedge/brue.git
+git clone https://github.com/londonstrategicedge/brue-connect.git
+cd lse-terminal
+python -m venv .venv
+.venv/bin/pip install -e ../brue -e ../brue-connect -e .
+.venv/bin/lset
+```
+
+`lset` starts the engine and opens the terminal in a browser tab. The
+installers are built with `desktop/build-mac.sh` and
+`desktop/build-win.ps1`. Tests: `.venv/bin/python -m pytest tests/`
+
+## Files
+
+`~/.config/lse-terminal/` has the key, imported data, workspace, indicators,
+notebooks and assistant chats.
+
+## Licence
+
+MIT.
