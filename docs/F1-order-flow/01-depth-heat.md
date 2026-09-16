@@ -9,6 +9,8 @@ Footprints come in Phase 2; nothing in this document depends on them.
 > contract for the build: every work item has an owner surface (engine / API /
 > frontend / demo / data), a done-criterion, and a gate. Per-gate status lives in
 > the §6 table and the progress log at the bottom of this file.
+> Visual-quality rebuild (DeepCharts/DeepDom research, founder directive
+> 2026-09-16) is contracted in **02-visual-excellence.md** (V1–V5).
 
 ### Progress log
 
