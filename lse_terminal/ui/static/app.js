@@ -11448,14 +11448,14 @@ function setupRail() {
     // cleared explicitly: a visit to MY DATA/BACKTEST leaves the user's
     // library rendered there.
     if (!state.lseConfigured && !isLiveSource(state.provider)) {
+      // No key yet: land on the labelled DEMO source so the terminal is
+      // alive immediately (candles + Depth Heat) instead of a blank wall
+      // behind the connect form. The key manager in the top conn bar still
+      // offers "Add key" and flips straight to live data once saved.
       renderConnBar();
-      const wl = $("watchlist");
-      wl.innerHTML =
-        '<div class="empty-actions"><div class="md-empty">' +
-        'Live pairs appear here once your LSE API key is connected.</div></div>';
-      $("charts").classList.add("hidden");
-      $("lse-connect").classList.remove("hidden");
-      $("lse-key").focus();
+      $("lse-connect").classList.add("hidden");
+      $("charts").classList.remove("hidden");
+      switchProvider("demo");
       return;
     }
     $("lse-connect").classList.add("hidden");
