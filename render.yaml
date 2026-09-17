@@ -8,3 +8,8 @@ services:
     runtime: docker
     plan: free
     healthCheckPath: /api/health
+    envVars:
+      # The engine's host guard trusts loopback only by default; public
+      # hosting must whitelist its own host suffix or browsers are rejected.
+      - key: LSE_TRUSTED_HOST_SUFFIXES
+        value: onrender.com
