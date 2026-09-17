@@ -24,6 +24,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import ProChart from '@/components/chart/ProChart';
+import DepthHeatPane from '@/components/chart/depth/DepthHeatPane';
 import { ChartDrawingOverlay, type Drawing, type DrawingTool } from '@/components/chart/ChartDrawingOverlay';
 import DrawingToolsPanel from '@/components/chart/sidebar/DrawingToolsPanel';
 import { DEFAULT_INDICATOR_CONFIG, type IndicatorConfig } from '@/components/chart/IndicatorSettings';
@@ -536,6 +537,14 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             colors={colors}
             quote={quote}
           />
+        ) : (layoutState.panelKinds[0] === 'depth' ? (
+          // F1: the single-pane view flips to Depth Heat exactly like the
+          // multi-grid panels do — the 🔥 corner button is on both now.
+          <DepthHeatPane
+            symbol={symbol}
+            colors={colors}
+            onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
+          />
         ) : (<>
         <ProChart
           candles={candles}
@@ -610,7 +619,22 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           currentPrice={livePrice ?? undefined}
           candles={candles}
         />
-        </>)}
+        {((layoutState.panelKinds as (string | undefined)[])[0] !== 'depth') && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              layoutStore.setPanelKind(0, 'depth');
+            }}
+            title="Open the Depth Heat (order-flow liquidity heatmap) pane"
+            style={{
+              position: 'absolute', top: 4, right: 4, zIndex: 5,
+              background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
+              border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
+              fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
+            }}
+          >🔥 depth</button>
+        )}
+        </>))}
       </div>
 
       {/* The built-in indicator dialog is retired: the indicator library is
