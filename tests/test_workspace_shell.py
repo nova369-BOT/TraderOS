@@ -31,3 +31,13 @@ def test_edgedepth_provider_listed(client):
     caps = provs["edgedepth"]["capabilities"]
     assert "depth_stream" in caps
     assert "depth_history" not in caps  # honest live-only source
+
+
+def test_chart_pane_timeframes_served(client):
+    # Phase 2's chart pane polls exactly these; the demo source must serve them.
+    for tf in ("1m", "5m", "15m", "1h"):
+        r = client.get("/api/candles", params={
+            "provider": "demo", "symbol": "DEMO:BTC", "timeframe": tf,
+            "limit": 50}).json()
+        assert len(r["candles"]) == 50
+        assert all(len(c) == 6 for c in r["candles"])

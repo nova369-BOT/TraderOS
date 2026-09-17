@@ -8,11 +8,12 @@ interface Props {
   onClose: (id: string) => void;
   onHeaderDown: (id: string, e: React.PointerEvent) => void;
   onHandleDown: (id: string, e: React.PointerEvent) => void;
+  children?: React.ReactNode;
 }
 
 /** One pane: chrome now, canvas engines in later phases. */
 export default function Pane({ pane, onGroupCycle, onClose, onHeaderDown,
-                              onHandleDown }: Props) {
+                              onHandleDown, children }: Props) {
   const groupColor = pane.group > 0
     ? GROUP_COLORS[(pane.group - 1) % GROUP_COLORS.length]
     : null;
@@ -49,7 +50,9 @@ export default function Pane({ pane, onGroupCycle, onClose, onHeaderDown,
         >×</button>
       </div>
       <div className="ws-pane-body">
-        <span className="ws-pane-ghost">{PANE_TITLES[pane.kind]}</span>
+        {children ?? (
+          <span className="ws-pane-ghost">{PANE_TITLES[pane.kind]}</span>
+        )}
       </div>
       <div
         className="ws-resize"

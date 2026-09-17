@@ -79,11 +79,16 @@ grid: magnetic edges, shift-drag, resize, link groups, 1/2/4/9 presets,
 workspace save/load (local). *Expect:* an empty terminal you can tear apart
 and rebuild with the mouse; layouts survive refresh.
 
-**Phase 2 — Candle·Footprint pane (P1).**
-Live candles + volume; zoom-morph into footprint with imbalance outlines and
-per-candle delta/volume; smooth morph animation (the addictive part: the
-chart *unfolds*). *Expect:* zooming BTCUSDT from candles into a clean
-footprint and back, no flicker, 60fps.
+**Phase 2 — Candle·Footprint pane (P1).** SHIPPED 2026-09-18.
+Modules: `workspace/panes/chart/{types,data,footprint,render,ChartPane}` —
+types/math pure, data path isolated (source switch + honest fallback),
+footprint cell model deterministic and badged MODELLED, renderer pure canvas,
+React shell owns only lifecycle/input. Candles + volume + nice-stepped axes +
+crosshair + last-price tag; wheel = anchored zoom, **zoom-in unfolds the
+footprint** (bid×ask halves, 3:1 imbalance outlines, POC marker, numerics at
+≥48px), drag = pan, dbl-click reset; 5s poll; DEMO now, BINANCE via the
+gateway with "GATEWAY OFFLINE → DEMO" fallback badge. Perf: refs + rAF only,
+no React state in the paint path.
 
 **Phase 3 — RT Depth Heat pane (P2), the centrepiece.**
 The EdgeDepth semantics implemented in our engine+canvas: field, bubbles,

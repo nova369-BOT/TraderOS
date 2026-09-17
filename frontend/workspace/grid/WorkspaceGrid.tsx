@@ -1,4 +1,6 @@
 import React, { useRef, useState } from 'react';
+import ChartPane from '../panes/chart/ChartPane';
+import { THEMES } from '../tokens';
 import { hCandidates, snappedMove, snappedResize, vCandidates } from './snap';
 import { MIN_H, MIN_W, PaneSpec, SNAP_TOL, WorkspaceState } from './types';
 import Pane from './Pane';
@@ -89,7 +91,9 @@ export default function WorkspaceGrid({ state, onChange }: Props) {
             onChange({ ...state, panes: state.panes.filter((q) => q.id !== id) })}
           onHeaderDown={(id, e) => beginDrag(id, 'move', e)}
           onHandleDown={(id, e) => beginDrag(id, 'resize', e)}
-        />
+        >
+          {p.kind === 'chart' && <ChartPane theme={THEMES[state.theme]} />}
+        </Pane>
       ))}
       {guides.gx !== null && (
         <div className="ws-guide-v" style={{ left: `${guides.gx * 100}%` }} />
