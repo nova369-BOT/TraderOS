@@ -11,7 +11,9 @@ the footprint — cleaner, faster, smoother and more addictive**, laid out on a
 **unique free-form grid** whose UX mechanics we take from XF Charts
 (shift-drag panes, hot buttons, workspaces/templates, replay transport,
 right-edge profile rail as furniture), on **real Binance USD-M futures data**
-via the self-hosted edgedepth-gateway (MIT). Candles are the default price
+via the self-hosted edgedepth-gateway. Both EdgeDepth repos are owned by the
+user's company (2026-09-17), so exact-code integration is sanctioned; the
+terminal's published rendering semantics are ported faithfully. Candles are the default price
 view; zooming into a candle reveals its footprint + volume. The liquidity
 heatmap is a **separate pane**, not an overlay. Two design languages ship as
 first-class themes: **Charcoal** (EdgeDepth cool→warm on near-black, the

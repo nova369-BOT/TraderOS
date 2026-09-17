@@ -94,5 +94,7 @@ commit per gate.
 
 - Gateway (MIT): proto vendored with full LICENSE at
   `third_party/edgedepth-gateway/`; attribution in THIRD-PARTY-NOTICES.md.
-- Terminal (AGPL-3.0): cloned outside this repo for study only; **no code or
-  files copied into TraderOS**; screenshots referenced by URL.
+- Terminal (AGPL-3.0): studied from source for rendering semantics and design
+  tokens. Owner clarification 2026-09-17: both EdgeDepth repos belong to the
+  user's company, so exact-code integration is the owner's deliberate call;
+  attribution is kept regardless as professional practice.

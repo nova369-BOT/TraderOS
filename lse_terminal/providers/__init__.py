@@ -7,7 +7,8 @@ from lse_terminal.providers.demo import DemoProvider
 from lse_terminal.providers.lse import LseProvider
 from lse_terminal.providers.userdata import UserDataProvider
 from lse_terminal.providers.crypto_l2 import CryptoL2Provider
+from lse_terminal.providers.edgedepth.provider import EdgeDepthProvider
 from lse_terminal.providers.mbo import MboProvider
 
-__all__ = ["CryptoL2Provider", "DemoProvider", "LseProvider",
-           "MboProvider", "UserDataProvider"]
+__all__ = ["CryptoL2Provider", "DemoProvider", "EdgeDepthProvider",
+           "LseProvider", "MboProvider", "UserDataProvider"]

@@ -66,8 +66,8 @@ class Registry:
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
     from lse_terminal.providers import (CryptoL2Provider, DemoProvider,
-                                        LseProvider, MboProvider,
-                                        UserDataProvider)
+                                        EdgeDepthProvider, LseProvider,
+                                        MboProvider, UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
@@ -80,6 +80,9 @@ def load_builtins(reg: Registry) -> None:
     # open like everything user-visible; registration costs nothing when
     # ccxt is absent (the provider reports itself unconfigured).
     reg.register(CryptoL2Provider())
+    # EdgeDepth gateway (F1/E0): the user's own Binance USD-M futures bridge —
+    # candles AND depth from one keyless wire. Fails open at connect time.
+    reg.register(EdgeDepthProvider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous
     # Strategy-subclass engine went with it. Both are archived under
