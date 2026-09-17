@@ -243,10 +243,10 @@ export default function DepthHeatSettingsWindow({
                 onChange={(v) => onChange({ showCandles: v })} />
               <span className="dh-hint">trade-derived</span>
             </Row>
-            <Row label="Volume strip"
-              hint="Bottom buy/sell-split volume histogram + CVD line sharing the time axis.">
-              <Toggle on={s.showVolumeStrip}
-                onChange={(v) => onChange({ showVolumeStrip: v })} />
+            <Row label="Context strips"
+              hint="V3 bottom stack sharing the time axis: buy/sell-split volume histogram + CVD line, and the Imb/Cvd gauges top-left.">
+              <Toggle on={s.subpanes}
+                onChange={(v) => onChange({ subpanes: v })} />
             </Row>
             <SliderRow label="Big-trade ×" value={s.bigTradeK} min={2} max={12}
               step={1} onChange={(v) => onChange({ bigTradeK: v })}

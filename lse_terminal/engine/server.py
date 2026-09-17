@@ -7207,14 +7207,24 @@ def create_app() -> FastAPI:
                     "source_label": ("DEMO (synthetic)" if demo
                                      else p2.title),
                     "column_ms": column_ms, "start": start, "end": end,
-                    "live_only": True, "events": []}
+                    "live_only": True, "events": [], "trades": []}
         # Data honesty (plan §1.3): the pane labels synthetic sources.
         demo = p.name == "demo"
+        # V3: deterministic print history so bubbles/path/strips render on
+        # pane open (providers without trade history answer empty).
+        trades: list = []
+        if hasattr(p, "trade_history"):
+            try:
+                trades = [tr.to_dict() for tr in
+                          p.trade_history(symbol, start, end, column_ms)]
+            except Exception:
+                trades = []
         return {"symbol": symbol, "provider": p.name, "demo": demo,
                 "source_label": "DEMO (synthetic)" if demo else p.title,
                 "column_ms": column_ms, "start": start, "end": end,
                 "live_only": False,
-                "events": [ev.to_dict() for ev in events]}
+                "events": [ev.to_dict() for ev in events],
+                "trades": trades}
 
     @app.get("/api/orderflow/book")
     def of_book(symbol: str, provider: str = "", active_levels: int = 0,

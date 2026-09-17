@@ -226,7 +226,26 @@ as the target: walls, bubbles, right ladder, bottom histogram).**
 - Gates: typecheck clean; bundle rebuilt; **new deterministic golden**
   `tests/data/depth_heat_golden_deepdom.png` (side-aware + γ pipeline;
   classic golden untouched); full suite **164 passed / 1 skipped**.
-- V3–V5 remain open (gauges, fused ladder, T&S drawer, overlay bar, VWAP).
+- V3–V5 were open at that point (see V3 entry below); V4–V5 remain
+  (fused ladder, T&S drawer, overlay bar, VWAP).
+
+**2026-09-16 — V3 SHIPPED (founder GO).**
+
+- `subpanes.ts` — dedicated bottom context stack (reserved 78 px, collapsible
+  via `subpanes`, persisted; V2's overlay strip retired, off-state migrated):
+  buy/sell-split volume histogram + CVD line with terminal-value chip,
+  sharing the heat's time axis (same tsToX; dotted time grid runs through
+  the stack). DeepDom **Imb/Cvd gauge motif** top-left with honest "—"
+  empty state when no side-stamped prints are in view.
+- Field height now first-class (`fieldH`): price fit, recentering, COB
+  alignment, footprint and hover all respect the reserved stack.
+- Engine: `DemoProvider.trade_history` exposes the deterministic prints the
+  replay was already generating; `/api/orderflow/depth` rides them along, so
+  demo panes open with bubbles/path/strips/gauges already painted (live-only
+  crypto stays honest: empty until the topic warms up).
+- Gates: new deterministic golden `depth_heat_golden_subpanes.png`;
+  trade-history determinism + endpoint tests; suite 166 passed / 1 skipped.
+- V4–V5 remain open (fused ladder, T&S drawer, overlay bar, VWAP).
 
 ## 5. Open questions for the founder
 

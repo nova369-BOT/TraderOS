@@ -51,7 +51,7 @@ export interface DepthHeatSettings {
   showPath: boolean;      // V2 stepped bid/ask lines over the field
   showCandles: boolean;   // V2 trade-derived candle overlay
   bigTradeK: number;      // V2 big-trade ring+tag threshold (× median size)
-  showVolumeStrip: boolean; // V2 buy/sell-split volume histogram strip
+  subpanes: boolean;      // V3 bottom context stack (volume + CVD) & gauges
   cutoffMode: 'percentile' | 'exact';
   cutoffLower: number;    // percentile (0-100) or exact size
   cutoffUpper: number;
@@ -87,7 +87,7 @@ export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   showPath: true,
   showCandles: false,
   bigTradeK: 6,
-  showVolumeStrip: true,
+  subpanes: true,
   // Auto-tuned defaults per research §3: session p5/p95 of observed sizes.
   cutoffMode: 'percentile',
   cutoffLower: 5,

@@ -137,6 +137,87 @@ def test_depth_heat_golden_deepdom_image():
         f"UPDATE_GOLDEN=1 (got {got[:12]}…, golden {want[:12]}…).")
 
 
+SUBPANES_GOLDEN_PATH = Path(__file__).parent / "data" / \
+    "depth_heat_golden_subpanes.png"
+
+
+def render_subpanes_field() -> np.ndarray:
+    """V3 regression: the deepdom field on top + the deterministic context
+    strip (buy/sell-split volume + CVD line) below, mirroring subpanes.ts
+    bucket maths at a fixed golden geometry (1 px per second)."""
+    field = render_deepdom_field()
+    Hf, W, _ = field.shape
+    H = Hf + 64                      # strip body 48 + shared label band 16
+    img = np.zeros((H, W, 3), dtype=np.uint8)
+    img[:Hf] = field
+    img[Hf:] = (10, 13, 18)
+    trades = DemoProvider().trade_history(
+        GOLD_SYMBOL, GOLD_START, GOLD_START + GOLD_SECONDS, column_ms=1000)
+    bucket = 5000
+    col0 = int(GOLD_START * 1000)
+    agg: dict[int, list[float]] = {}
+    for t in trades:
+        bk = int(t.ts * 1000) // bucket
+        a = agg.setdefault(bk, [0.0, 0.0])
+        if t.side == "BUY":
+            a[0] += t.size
+        else:
+            a[1] += t.size
+    if not agg:
+        return img
+    max_tot = max(max(a[0], a[1]) for a in agg.values())
+    base = H - 16 - 2
+    max_bar_h = base - Hf - 14
+    cvd = 0.0
+    pts: list[tuple[float, float]] = []
+    for bk in sorted(agg):
+        b, s = agg[bk]
+        cvd += b - s
+        x0 = (bk * bucket - col0) / 1000.0
+        slot = 5.0
+        cx = x0 + slot / 2
+        bar_w = max(1.0, slot * 0.36)
+        h_s = int(round((s / max_tot) * max_bar_h))
+        h_b = int(round((b / max_tot) * max_bar_h))
+        xs = int(round(cx - bar_w - 0.5))
+        xb = int(round(cx + 0.5))
+        w = max(1, int(round(bar_w)))
+        if 0 <= xs < W and h_s > 0:
+            img[base - h_s:base, xs:xs + w] = (239, 83, 80)
+        if 0 <= xb < W and h_b > 0:
+            img[base - h_b:base, xb:xb + w] = (100, 165, 240)
+        pts.append((cx, cvd))
+    cmin = min(0.0, min(p[1] for p in pts))
+    cmax = max(0.0, max(p[1] for p in pts))
+    if cmax > cmin:
+        prev: tuple[float, float] | None = None
+        for x, v in pts:
+            y = base - 2 - ((v - cmin) / (cmax - cmin)) * (max_bar_h - 4)
+            if prev is not None:
+                px, py = prev
+                n = max(2, int(abs(x - px)) + 1)
+                for i in range(n + 1):
+                    xi = int(round(px + (x - px) * i / n))
+                    yi = int(round(py + (y - py) * i / n))
+                    if 0 <= xi < W and 0 <= yi < H:
+                        img[yi, xi] = (226, 238, 255)
+            prev = (x, y)
+    return img
+
+
+def test_depth_heat_golden_subpanes_image():
+    png = png_bytes(render_subpanes_field())
+    if os.environ.get("UPDATE_GOLDEN"):
+        SUBPANES_GOLDEN_PATH.write_bytes(png)
+    assert SUBPANES_GOLDEN_PATH.exists(), (
+        "subpanes golden missing — run once with UPDATE_GOLDEN=1")
+    got = hashlib.sha256(png).hexdigest()
+    want = hashlib.sha256(SUBPANES_GOLDEN_PATH.read_bytes()).hexdigest()
+    assert got == want, (
+        "V3 subpanes pipeline changed. If intentional, regenerate with "
+        f"UPDATE_GOLDEN=1 (got {got[:12]}…, golden {want[:12]}…).")
+
+
 def test_golden_is_deterministic_across_runs():
     # Two independent renders of the same window hash identically.
     a = png_bytes(render_heat_field())

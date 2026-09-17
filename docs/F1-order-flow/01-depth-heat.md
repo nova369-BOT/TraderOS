@@ -198,6 +198,8 @@ Footprints come in Phase 2; nothing in this document depends on them.
   γ, glow, permanent price axis with BBO chips, path + sphere bubbles +
   big-trade tags, trade-derived candles, volume strip) — see
   `02-visual-excellence.md` §6. Honesty invariants unchanged.
+- **2026-09-16 — V3 context strips shipped**: bottom volume+CVD stack
+  sharing the time axis + Imb/Cvd gauges; demo print history on pane open.
   - HEAT/FOOTPRINT toggle in the pane header (persisted per instrument).
     Footprint = executed volume split by aggressor side per price zone ×
     time bucket; zoom-adaptive buckets (5 s→1 h), nice-step price zones,

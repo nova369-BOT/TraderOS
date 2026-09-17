@@ -198,6 +198,33 @@ class DemoProvider(Provider):
             t += step_s
         return out
 
+    def trade_history(self, symbol: str, start: float, end: float,
+                      column_ms: int = 1000) -> list:
+        """Deterministic executed-print history for the SAME replay
+        depth_history runs (V3: bubbles/path/context strips on pane open
+        instead of only after the live topic warms up). Same (symbol,
+        start, end, params) ⇒ bit-identical prints on any machine."""
+        if symbol not in DEPTH_CFG:
+            raise ValueError(f"unknown demo symbol: {symbol}")
+        start_i, end_i = int(start), int(end)
+        if end_i <= start_i:
+            return []
+        step_s = max(1, int(round(column_ms / 1000)))
+        if (end_i - start_i) // step_s > MAX_HISTORY_STEPS:
+            step_s = -(-(end_i - start_i) // MAX_HISTORY_STEPS)
+        sim = DepthSim(self, symbol, start_i,
+                       vol_scale=_UNIVERSE[symbol][3],
+                       anchor_price=self._close_at(symbol, start_i),
+                       live=False,
+                       window_override=DEPTH_CFG[symbol][1])
+        out: list = []
+        t = start_i + step_s
+        while t <= end_i:
+            _ev, trades = sim.step(float(t))
+            out.extend(trades)
+            t += step_s
+        return out
+
     def depth_stream(self, symbols: list[str]):
         """Live synthetic depth: SNAPSHOT per symbol, then ~1 Hz DELTAs with
         side-stamped trade prints interleaved (consumers dispatch on type —

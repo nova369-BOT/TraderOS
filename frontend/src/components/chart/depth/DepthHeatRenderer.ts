@@ -20,9 +20,10 @@ import {
 import { buildLuts } from './heatVisuals';
 import { paintPriceAxis, paintTimeGrid } from './priceAxis';
 import {
-  paintBubbles, paintCandles, paintPath, paintVolumeStrip,
+  paintBubbles, paintCandles, paintPath,
   type PrintDot,
 } from './pathBubbles';
+import { paintGauges, paintSubpanes, SUB_H } from './subpanes';
 
 interface FinalColumn {
   tsMs: number;
@@ -145,6 +146,17 @@ export class DepthHeatRenderer {
     return Math.max(50, this.cssW - AXIS_W);
   }
 
+  /** V3: the bottom context stack (volume + CVD) reserves real height so
+   * the field and the strips never fight for pixels. */
+  private subH(): number {
+    return this.settings.subpanes ? SUB_H : 0;
+  }
+
+  /** The field's drawable height (full canvas minus the context stack). */
+  private fieldH(): number {
+    return Math.max(40, this.cssH - this.subH());
+  }
+
   setSettings(s: DepthHeatSettings) {
     this.settings = s;
     // LUT rebuild on change, never per frame (auto smoothing resolves the
@@ -247,7 +259,7 @@ export class DepthHeatRenderer {
    * actual motion is eased in the paint loop; manual interaction cancels. */
   private requestRecenter(anchorPrice: number) {
     if (this.priceCenter === null || this.pxPerUnit === null) return;
-    const half = this.cssH / 2 / this.pxPerUnit;
+    const half = this.fieldH() / 2 / this.pxPerUnit;
     const tol = half * Math.min(90, Math.max(1, this.settings.recenterTolerance)) / 100;
     if (Math.abs(anchorPrice - this.priceCenter) > tol) {
       this.recenterTarget = anchorPrice;
@@ -435,7 +447,7 @@ export class DepthHeatRenderer {
 
   private visiblePriceRange(): [number, number] {
     if (this.priceCenter !== null && this.pxPerUnit !== null) {
-      const half = this.cssH / 2 / this.pxPerUnit;
+      const half = this.fieldH() / 2 / this.pxPerUnit;
       return [this.priceCenter - half, this.priceCenter + half];
     }
     // auto fit over the recent window's levels + BBO
@@ -464,7 +476,7 @@ export class DepthHeatRenderer {
 
   private autoPxPerUnit(): number {
     const [lo, hi] = this.visiblePriceRange();
-    return this.cssH / Math.max(hi - lo, 1e-9);
+    return this.fieldH() / Math.max(hi - lo, 1e-9);
   }
 
   // ── painting ───────────────────────────────────────────────────────────
@@ -483,7 +495,7 @@ export class DepthHeatRenderer {
     if (this.recenterTarget !== null && this.priceCenter !== null) {
       const d = this.recenterTarget - this.priceCenter;
       const snap = Math.max(
-        1e-9, (this.cssH / 2 / (this.pxPerUnit ?? 1)) / 240);
+        1e-9, (this.fieldH() / 2 / (this.pxPerUnit ?? 1)) / 240);
       if (Math.abs(d) <= snap) {
         this.priceCenter = this.recenterTarget;
         this.recenterTarget = null;
@@ -494,16 +506,19 @@ export class DepthHeatRenderer {
     }
 
     const [pLo, pHi] = this.visiblePriceRange();
-    const ppu = this.pxPerUnit ?? this.cssH / Math.max(pHi - pLo, 1e-9);
+    const fH = this.fieldH();
+    const ppu = this.pxPerUnit ?? fH / Math.max(pHi - pLo, 1e-9);
     if (this.basePpu === null) this.basePpu = ppu;   // S4 zoom reference
     const centre = this.priceCenter ?? (pLo + pHi) / 2;
-    const yOf = (p: number) => this.cssH / 2 - (p - centre) * ppu;
-    // Publish the viewport for the COB column (S8).
+    const yOf = (p: number) => fH / 2 - (p - centre) * ppu;
+    // Publish the viewport for the COB column (S8) — rows align with the
+    // FIELD region, so the ladder stops where the context stack begins.
     this.viewLo = pLo; this.viewHi = pHi;
-    this.viewCentre = centre; this.viewPpu = ppu; this.viewH = this.cssH;
+    this.viewCentre = centre; this.viewPpu = ppu; this.viewH = fH;
     this.viewVersion += 1;
 
     const fw = this.fieldW();
+    const subOn = this.settings.subpanes;
     // visible columns
     const t0 = this.xToTs(0);
     const t1 = this.xToTs(fw);
@@ -513,14 +528,26 @@ export class DepthHeatRenderer {
       this.rightOffsetPx = 0;    // stay pinned while following
     }
 
+    // dotted time verticals run through the context stack (shared axis)
+    const gridH = subOn ? this.cssH - 14 : fH;
     if (this.settings.view === 'footprint') {
       // Classic order-flow footprint: bid×ask executed volume per price
       // zone per time bucket, imbalance-highlighted.
-      this.paintFootprint(ctx, t0, t1, pLo, pHi, yOf);
-      paintTimeGrid(ctx, fw, this.cssH, (t) => this.tsToX(t), t0, t1,
+      this.paintFootprint(ctx, t0, t1, pLo, pHi, yOf, fH);
+      paintTimeGrid(ctx, fw, gridH, (t) => this.tsToX(t), t0, t1,
         this.niceTimeStep(fw * this.msPerPx));
     } else {
-      this.paintHeatField(ctx, i0, i1, t0, t1, pLo, pHi, yOf, fw);
+      this.paintHeatField(ctx, i0, i1, t0, t1, pLo, pHi, yOf, fw, fH, gridH);
+    }
+
+    // V3 context stack shared by both views: volume + CVD strip in the
+    // reserved bottom band; DeepDom gauges overlay the heat top-left.
+    if (subOn) {
+      paintSubpanes(ctx, this.dots, t0, t1, (t) => this.tsToX(t),
+        this.msPerPx, fH, this.cssH, fw);
+      if (this.settings.view === 'heat') {
+        paintGauges(ctx, this.dots, t0, t1);
+      }
     }
 
     // BBO lines (S9)
@@ -546,7 +573,7 @@ export class DepthHeatRenderer {
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, this.cssH);
+        ctx.lineTo(x, fH);
         ctx.stroke();
         ctx.setLineDash([]);
       }
@@ -555,16 +582,16 @@ export class DepthHeatRenderer {
     // local crosshair + price/time labels
     if (this.hover) {
       const { x, y } = this.hover;
-      if (x <= fw) {
+      if (x <= fw && y <= fH) {
         ctx.strokeStyle = 'rgba(150, 160, 175, 0.45)';
         ctx.setLineDash([3, 3]);
         ctx.beginPath();
-        ctx.moveTo(x, 0); ctx.lineTo(x, this.cssH);
+        ctx.moveTo(x, 0); ctx.lineTo(x, fH);
         ctx.moveTo(0, y); ctx.lineTo(fw, y);
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      const pAt = centre + (this.cssH / 2 - y) / ppu;
+      const pAt = centre + (fH / 2 - y) / ppu;
       ctx.fillStyle = 'rgba(30, 34, 41, 0.95)';
       ctx.fillRect(fw - 74, y - 9, 72, 18);
       ctx.fillStyle = '#d1d4dc';
@@ -609,7 +636,7 @@ export class DepthHeatRenderer {
     i0: number, i1: number, t0: number, t1: number,
     pLo: number, pHi: number,
     yOf: (p: number) => number,
-    fw: number,
+    fw: number, fH: number, gridH: number,
   ) {
     const s = this.settings;
     const nCols = Math.max(1, i1 - i0);
@@ -680,7 +707,7 @@ export class DepthHeatRenderer {
     }
 
     // dotted vertical time grid over the field (V1 quality 5)
-    paintTimeGrid(ctx, fw, this.cssH, (t) => this.tsToX(t), t0, t1,
+    paintTimeGrid(ctx, fw, gridH, (t) => this.tsToX(t), t0, t1,
       this.niceTimeStep(fw * this.msPerPx));
 
     // V2 stepped bid/ask path from the carried book
@@ -701,13 +728,8 @@ export class DepthHeatRenderer {
           alpha: Math.min(1, Math.max(0, s.dotAlpha)),
           scale: s.dotScale, mode,
           bigK: s.bigTradeK, bigMedian: this.bigMedian,
-          fieldW: fw, cssH: this.cssH,
+          fieldW: fw, cssH: fH,
         });
-    }
-    // V2 buy/sell-split volume histogram + CVD strip
-    if (s.showVolumeStrip) {
-      paintVolumeStrip(ctx, this.dots, t0, t1, (t) => this.tsToX(t),
-        this.msPerPx, this.cssH, fw);
     }
   }
 
@@ -720,6 +742,7 @@ export class DepthHeatRenderer {
     ctx: CanvasRenderingContext2D,
     t0: number, t1: number, pLo: number, pHi: number,
     yOf: (p: number) => number,
+    h: number,
   ) {
     const BUCKETS = [5000, 15000, 30000, 60000, 300000, 900000, 3600000];
     const bucket = BUCKETS.find((b) => b / this.msPerPx >= 72) ?? 3600000;
@@ -752,10 +775,10 @@ export class DepthHeatRenderer {
       ctx.fillStyle = '#5c6672';
       ctx.font = '11px ui-monospace, Menlo, monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('no side-stamped prints in view', this.cssW / 2, this.cssH / 2 - 8);
+      ctx.fillText('no side-stamped prints in view', this.cssW / 2, h / 2 - 8);
       ctx.font = '10px ui-monospace, Menlo, monospace';
-      ctx.fillText('the footprint builds from executed trades (demo and', this.cssW / 2, this.cssH / 2 + 10);
-      ctx.fillText('crypto feeds carry sides; sources without prints stay blank)', this.cssW / 2, this.cssH / 2 + 24);
+      ctx.fillText('the footprint builds from executed trades (demo and', this.cssW / 2, h / 2 + 10);
+      ctx.fillText('crypto feeds carry sides; sources without prints stay blank)', this.cssW / 2, h / 2 + 24);
       return;
     }
 
@@ -777,7 +800,7 @@ export class DepthHeatRenderer {
       ctx.strokeStyle = 'rgba(30, 36, 47, 0.95)';
       ctx.beginPath();
       ctx.moveTo(Math.round(x1) + 0.5, 0);
-      ctx.lineTo(Math.round(x1) + 0.5, this.cssH);
+      ctx.lineTo(Math.round(x1) + 0.5, h);
       ctx.stroke();
 
       for (const [key, c] of cells) {
@@ -785,7 +808,7 @@ export class DepthHeatRenderer {
         if (Number(kb) !== bk) continue;
         const zk = Number(kz);
         const y = yOf((zk + 0.5) * zstep);
-        if (y < -rowH || y > this.cssH + rowH) continue;
+        if (y < -rowH || y > h + rowH) continue;
         const yTop = y - (rowH - 2) / 2;
 
         // imbalance backdrop (≥ 3:1 one way)
@@ -826,7 +849,7 @@ export class DepthHeatRenderer {
         ctx.fillStyle = delta > 0 ? '#26a69a' : delta < 0 ? '#ef5350' : '#8b96a5';
         ctx.fillText(
           `Δ${delta >= 0 ? '+' : '−'}${fmtV(Math.abs(delta))} · ${fmtV(bt.b + bt.s)}`,
-          x0 + w / 2, this.cssH - 18);
+          x0 + w / 2, h - 6);
       }
     }
   }

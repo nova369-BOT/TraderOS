@@ -19,6 +19,7 @@ import {
   type DepthEventMsg,
   type DepthHeatSettings,
   type DepthWsFrame,
+  type TradeEventMsg,
 } from './depthHeatTypes';
 import { DepthHeatRenderer } from './DepthHeatRenderer';
 import DepthHeatSettingsWindow from './DepthHeatSettingsWindow';
@@ -33,10 +34,20 @@ function settingsKey(symbol: string) {
 
 function loadSettings(symbol: string): DepthHeatSettings {
   let base = { ...DEFAULT_DEPTH_SETTINGS };
+  let parsed: Partial<DepthHeatSettings> | null = null;
   try {
     const raw = localStorage.getItem(settingsKey(symbol));
-    if (raw) base = { ...base, ...JSON.parse(raw) };
+    if (raw) {
+      parsed = JSON.parse(raw);
+      base = { ...base, ...parsed };
+    }
   } catch { /* fall through to defaults */ }
+  // V3 migration: the V2 overlay strip's off-state carries over to the
+  // context-stack toggle.
+  if (parsed && parsed.subpanes === undefined
+    && (parsed as any).showVolumeStrip === false) {
+    base.subpanes = false;
+  }
   // "Apply scheme globally" (S2): the terminal-wide scheme wins on load.
   const g = loadGlobalScheme();
   if (g.apply) base = { ...base, scheme: g.scheme, applySchemeGlobally: true };
@@ -229,6 +240,11 @@ export default function DepthHeatPane({
         // event list is empty and the pane paints from the live topic,
         // showing its honest range (plan §2.3).
         r.ingestHistory((data.events || []) as DepthEventMsg[]);
+        // V3: deterministic print history — bubbles, path and the context
+        // strips render on open instead of waiting for live warm-up.
+        for (const t of (data.trades || []) as TradeEventMsg[]) {
+          r.addTrade(t);
+        }
       } catch (e) {
         if (!cancelled) {
           setState({ kind: 'nodata', reason: `engine unreachable: ${e}` });

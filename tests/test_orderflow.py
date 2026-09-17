@@ -272,6 +272,23 @@ def test_demo_depth_history_params():
     assert len(evs[0].bids) == 10 and len(evs[0].asks) == 10
 
 
+def test_demo_trade_history_deterministic_and_side_stamped():
+    """V3: the print history is a deterministic fold of the same replay
+    depth_history runs — side-stamped, in-window, positive sizes."""
+    p = DemoProvider()
+    a = p.trade_history("DEMO:BTC", START, START + 600)
+    b = p.trade_history("DEMO:BTC", START, START + 600)
+    assert len(a) == len(b) > 20
+    assert all(x.to_dict() == y.to_dict() for x, y in zip(a, b))
+    for t in a:
+        assert START <= t.ts <= START + 600
+        assert t.size > 0
+        assert t.side in ("BUY", "SELL")
+    assert p.trade_history("DEMO:BTC", START, START) == []
+    with pytest.raises(ValueError):
+        p.trade_history("NOPE", START, START + 10)
+
+
 def test_demo_depth_stream_emits_depth_and_trades():
     async def run():
         p = DemoProvider()
@@ -471,6 +488,9 @@ def test_depth_endpoint_and_book(client):
     assert body["demo"] is True and body["provider"] == "demo"
     assert body["events"][0]["type"] == "SNAPSHOT"
     assert len(body["events"]) > 100
+    # V3: deterministic print history rides along for the context strips.
+    assert len(body["trades"]) > 10
+    assert all(t["side"] in ("BUY", "SELL") for t in body["trades"][:50])
 
     b = client.get("/api/orderflow/book", params={"symbol": "DEMO:BTC"}).json()
     assert b["demo"] is True
