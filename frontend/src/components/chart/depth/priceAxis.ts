@@ -21,6 +21,7 @@ export interface AxisView {
   bookAsk: number | null;
   lastPrice: number | null;   // last executed print
   lastBuy: boolean;
+  fused?: boolean;   // V4: ladder figures occupy the gutter; hide tick labels
 }
 
 const MONO = '9px ui-monospace, Menlo, Consolas, monospace';
@@ -96,8 +97,10 @@ export function paintPriceAxis(ctx: CanvasRenderingContext2D, v: AxisView) {
     ctx.moveTo(fieldW, y);
     ctx.lineTo(fieldW + 4, y);
     ctx.stroke();
-    ctx.fillStyle = '#8b96a5';
-    ctx.fillText(fmtPrice(p, step), cssW - 5, y + 3);
+    if (!v.fused) {   // fused mode: per-level ladder figures replace ticks
+      ctx.fillStyle = '#8b96a5';
+      ctx.fillText(fmtPrice(p, step), cssW - 5, y + 3);
+    }
   }
   ctx.restore();
 

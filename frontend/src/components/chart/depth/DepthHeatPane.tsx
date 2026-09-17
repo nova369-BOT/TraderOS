@@ -25,6 +25,7 @@ import { DepthHeatRenderer } from './DepthHeatRenderer';
 import DepthHeatSettingsWindow from './DepthHeatSettingsWindow';
 import DepthHeatCob, { ClientBook } from './DepthHeatCob';
 import DepthHeatSessions, { type SessionMeta } from './DepthHeatSessions';
+import DepthHeatTsPanel from './DepthHeatTsPanel';
 
 const HISTORY_SECONDS = 4 * 3600;   // pane-open history fill (S1)
 
@@ -189,6 +190,7 @@ export default function DepthHeatPane({
     const r = new DepthHeatRenderer(loadSettings(symbol));
     rendererRef.current = r;
     r.attach(canvas);
+    r.setBookSource(cobBookRef.current);   // V4 fused ladder reads the book
     if (onCrosshairMove) {
       r.onHoverTime = (t) => onCrosshairMove(t);
     }
@@ -443,6 +445,15 @@ export default function DepthHeatPane({
             borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
           }}
         >🗂 sessions</button>
+        <button
+          onClick={() => updateSettings({ showTsPanel: !settings.showTsPanel })}
+          title="Time & sales drawer: every executed print with min-size and side filters (V4)"
+          style={{
+            background: settings.showTsPanel ? '#1d232e' : 'transparent',
+            border: '1px solid #2a2e39', color: '#9aa4b2',
+            borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
+          }}
+        >T&amp;S</button>
         {loadedSession && (
           <span style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9,
@@ -528,8 +539,10 @@ export default function DepthHeatPane({
             </div>
           )}
         </div>
-        {/* COB column (S8): numeric ladder, pixel-aligned with the heat */}
-        {settings.cob && state.kind === 'live' && (
+        {/* COB column (S8): numeric ladder, pixel-aligned with the heat.
+            In fused ladder mode (V4) the figures live in the axis gutter
+            instead, so the panel stays hidden. */}
+        {settings.cob && settings.ladderMode === 'panel' && state.kind === 'live' && (
           <DepthHeatCob
             rendererRef={rendererRef}
             book={cobBookRef.current!}

@@ -24,6 +24,12 @@ import {
   type PrintDot,
 } from './pathBubbles';
 import { paintGauges, paintSubpanes, SUB_H } from './subpanes';
+import { paintFusedLadder } from './ladderFusion';
+
+/** Minimal structural view of the pane's ClientBook (V4 fused ladder). */
+interface BookSource {
+  sorted(): { bids: [number, number][]; asks: [number, number][] };
+}
 
 interface FinalColumn {
   tsMs: number;
@@ -37,6 +43,7 @@ interface FinalColumn {
 const MAX_COLUMNS = 14400;   // ring bound, matches the engine grid
 const TARGET_ROWS = 220;     // price resolution of the offscreen blit
 const AXIS_W = 58;           // permanent right price axis gutter (V1)
+const AXIS_W_FUSED = 96;     // V4: gutter carries the ladder figures too
 const GLOW_INDEX = 228;      // LUT index above which levels bloom (V1)
 
 export class DepthHeatRenderer {
@@ -53,6 +60,9 @@ export class DepthHeatRenderer {
   private bookAsk: number | null = null;
   private lastTradePrice: number | null = null;
   private lastTradeBuy = true;
+  private bookSource: BookSource | null = null;   // V4 fused ladder
+  private tsLog: { ts: number; price: number; size: number; buy: boolean }[] = [];
+  private tsVersion = 0;
   private recentSizes: number[] = [];   // rolling window for the big-trade median
   private bigMedian = 0;
   private lastEventTs = 0;
@@ -141,9 +151,23 @@ export class DepthHeatRenderer {
     this.dirty = true;
   }
 
-  /** The heat field's right edge: the price axis gutter is permanent. */
+  /** The heat field's right edge: the price axis gutter is permanent; in
+   * fused ladder mode (V4) it widens to carry the ladder figures. */
   private fieldW(): number {
-    return Math.max(50, this.cssW - AXIS_W);
+    const ax = this.settings.ladderMode === 'fused' ? AXIS_W_FUSED : AXIS_W;
+    return Math.max(50, this.cssW - ax);
+  }
+
+  /** V4: the pane's ClientBook feeds the fused ladder (same data as the
+   * panel mode, so both modes always agree). */
+  setBookSource(book: BookSource | null) {
+    this.bookSource = book;
+    this.dirty = true;
+  }
+
+  /** V4: unfiltered print log for the time & sales drawer. */
+  getTsLog(): { version: number; rows: { ts: number; price: number; size: number; buy: boolean }[] } {
+    return { version: this.tsVersion, rows: this.tsLog };
   }
 
   /** V3: the bottom context stack (volume + CVD) reserves real height so
@@ -198,6 +222,8 @@ export class DepthHeatRenderer {
     this.curTsMs = null;
     this.sizeSample = [];
     this.dots = [];
+    this.tsLog = [];
+    this.tsVersion = 0;
     this.recentSizes = [];
     this.bigMedian = 0;
     this.lastTradePrice = null;
@@ -221,8 +247,14 @@ export class DepthHeatRenderer {
   }
 
   addTrade(t: TradeEventMsg) {
-    if (t.size <= (this.settings.dotMinSize || 0)) return;
     const buy = t.side === 'BUY' || t.side === 'INFERRED-BUY';
+    // V4: the T&S drawer sees EVERY print, before the dot filter.
+    this.tsLog.push({ ts: t.ts, price: t.price, size: t.size, buy });
+    if (this.tsLog.length > 2000) {
+      this.tsLog.splice(0, this.tsLog.length - 1500);
+    }
+    this.tsVersion += 1;
+    if (t.size <= (this.settings.dotMinSize || 0)) return;
     this.dots.push({ tsMs: t.ts * 1000, price: t.price, size: t.size, buy });
     if (this.dots.length > 5000) this.dots.splice(0, this.dots.length - 4000);
     // rolling median of print sizes — the big-trade calibration (V2)
@@ -620,12 +652,20 @@ export class DepthHeatRenderer {
     }
 
     // permanent right price axis (V1) — ticks, grid, BBO chips, last price
+    const fused = this.settings.ladderMode === 'fused';
     paintPriceAxis(ctx, {
       fieldW: fw, cssW: this.cssW, cssH: this.cssH,
       centre, ppu, pLo, pHi,
       bookBid: this.bookBid, bookAsk: this.bookAsk,
       lastPrice: this.lastTradePrice, lastBuy: this.lastTradeBuy,
+      fused,
     });
+    // V4 fused ladder: size figures + bars live in the axis gutter
+    if (fused && this.bookSource) {
+      paintFusedLadder(ctx, {
+        fieldW: fw, cssW: this.cssW, fH, centre, ppu, lo: pLo, hi: pHi,
+      }, this.bookSource, { activeRange: this.settings.activeRange });
+    }
   }
 
   /** V1+V2 heat field: intensity+side offscreen fold → per-side LUT

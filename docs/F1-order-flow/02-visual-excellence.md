@@ -245,7 +245,22 @@ as the target: walls, bubbles, right ladder, bottom histogram).**
   crypto stays honest: empty until the topic warms up).
 - Gates: new deterministic golden `depth_heat_golden_subpanes.png`;
   trade-history determinism + endpoint tests; suite 166 passed / 1 skipped.
-- V4–V5 remain open (fused ladder, T&S drawer, overlay bar, VWAP).
+- V4–V5 remained open at that point (see V4 entry below); V5 remains
+  (overlay bar, ramp legend, VWAP).
+
+**2026-09-17 — V4 SHIPPED (founder "continue").**
+
+- `ladderFusion.ts` — **fused ladder** (default): per-level price + size bar
+  + size figures inside a widened 96 px axis gutter, BBO rows bold, S6
+  amber boundary lines and out-of-window dimming in fused mode too; the
+  gutter reads the SAME ClientBook as the panel mode (`fused | panel`
+  persisted per instrument).
+- `DepthHeatTsPanel.tsx` — **T&S drawer** over the right edge: newest-first
+  time/price/size rows from the renderer's UNFILTERED print log (the dot
+  min-size never hides prints from T&S), min-size filter + ALL/BUY/SELL,
+  honest empty state; header T&S toggle, Esc closes, persisted.
+- Gates: typecheck clean; bundle rebuilt; suite 166 passed / 1 skipped
+  (client-side chrome; engine contracts untouched).
 
 ## 5. Open questions for the founder
 

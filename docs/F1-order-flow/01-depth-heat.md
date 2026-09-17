@@ -200,6 +200,8 @@ Footprints come in Phase 2; nothing in this document depends on them.
   `02-visual-excellence.md` §6. Honesty invariants unchanged.
 - **2026-09-16 — V3 context strips shipped**: bottom volume+CVD stack
   sharing the time axis + Imb/Cvd gauges; demo print history on pane open.
+- **2026-09-17 — V4 shipped**: fused ladder in the axis gutter (panel kept
+  as option) + time & sales drawer with filters.
   - HEAT/FOOTPRINT toggle in the pane header (persisted per instrument).
     Footprint = executed volume split by aggressor side per price zone ×
     time bucket; zoom-adaptive buckets (5 s→1 h), nice-step price zones,

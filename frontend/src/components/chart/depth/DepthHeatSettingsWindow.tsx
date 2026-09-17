@@ -381,6 +381,22 @@ export default function DepthHeatSettingsWindow({
           {/* ── BOOK & MOTION (S6 · S9 · S11) ───────────────────────── */}
           <div className="dh-section">
             <div className="dh-section-title">BOOK &amp; MOTION</div>
+            <Row label="Ladder"
+              hint="V4: fused puts the size figures + bars inside the price-axis gutter (Bookmap layout); panel keeps the separate COB column.">
+              <Segmented
+                value={s.ladderMode}
+                onChange={(v) => onChange({ ladderMode: v })}
+                options={[
+                  { id: 'fused', label: 'Fused', title: 'Ladder in the axis gutter' },
+                  { id: 'panel', label: 'Panel', title: 'Separate COB column' },
+                ]}
+              />
+            </Row>
+            <Row label="Time & sales"
+              hint="V4 drawer: every executed print with min-size and ALL/BUY/SELL filters.">
+              <Toggle on={s.showTsPanel}
+                onChange={(v) => onChange({ showTsPanel: v })} />
+            </Row>
             <Row label="COB column"
               hint="S8: the numeric DOM ladder beside the heatmap — per-level size + cumulative, spread and BBO rows.">
               <Toggle on={s.cob} onChange={(v) => onChange({ cob: v })} />

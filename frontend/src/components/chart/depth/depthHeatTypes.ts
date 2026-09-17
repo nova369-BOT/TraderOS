@@ -52,6 +52,10 @@ export interface DepthHeatSettings {
   showCandles: boolean;   // V2 trade-derived candle overlay
   bigTradeK: number;      // V2 big-trade ring+tag threshold (× median size)
   subpanes: boolean;      // V3 bottom context stack (volume + CVD) & gauges
+  ladderMode: 'fused' | 'panel';  // V4 ladder in the axis gutter vs panel
+  showTsPanel: boolean;   // V4 time & sales drawer
+  tsSide: 'all' | 'buy' | 'sell'; // V4 T&S filter
+  tsMinSize: number;      // V4 T&S min-size filter
   cutoffMode: 'percentile' | 'exact';
   cutoffLower: number;    // percentile (0-100) or exact size
   cutoffUpper: number;
@@ -88,6 +92,10 @@ export const DEFAULT_DEPTH_SETTINGS: DepthHeatSettings = {
   showCandles: false,
   bigTradeK: 6,
   subpanes: true,
+  ladderMode: 'fused',   // the reference look: ladder lives in the axis gutter
+  showTsPanel: false,
+  tsSide: 'all',
+  tsMinSize: 0,
   // Auto-tuned defaults per research §3: session p5/p95 of observed sizes.
   cutoffMode: 'percentile',
   cutoffLower: 5,
