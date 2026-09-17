@@ -6,7 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite build --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build:workspace": "vite build --config vite.workspace.config.ts"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.0.4",

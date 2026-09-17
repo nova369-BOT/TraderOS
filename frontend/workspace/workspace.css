@@ -1,0 +1,102 @@
+/* F2 workspace chrome. All colour comes from the token vars set on .ws-root
+   (charcoal / sonar themes in tokens.ts). No hardcoded palette here. */
+
+* { box-sizing: border-box; }
+html, body, #ws-root { height: 100%; margin: 0; }
+
+.ws-root {
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--tx1);
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  font-size: 11px;
+  overflow: hidden;
+}
+
+/* ── top bar ─────────────────────────────────────────────────────────── */
+.ws-topbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: var(--elev);
+  border-bottom: 1px solid var(--bd);
+  position: relative; z-index: 30;
+}
+.ws-brand { font-weight: 700; letter-spacing: .12em; color: var(--tx1); }
+.ws-brand em { color: var(--brand); font-style: normal; }
+.ws-sep { width: 1px; height: 14px; background: var(--bd); }
+.ws-topbar button {
+  background: var(--input); color: var(--tx2);
+  border: 1px solid var(--bd); border-radius: 3px;
+  font: inherit; letter-spacing: .06em;
+  padding: 2px 8px; cursor: pointer;
+}
+.ws-topbar button:hover { color: var(--tx1); border-color: var(--bd2); }
+.ws-hint { margin-left: auto; color: var(--tx3); letter-spacing: .04em; }
+
+.ws-menu {
+  position: absolute; top: 32px; left: 220px;
+  background: var(--panel); border: 1px solid var(--bd);
+  border-radius: 3px; padding: 4px; min-width: 180px;
+  box-shadow: 0 10px 32px rgba(0,0,0,.5);
+}
+.ws-menu-empty { color: var(--tx3); padding: 4px 8px; }
+.ws-menu-row { display: flex; gap: 4px; }
+.ws-menu-row button { flex: 1; text-align: left; }
+.ws-menu-del { flex: 0 0 22px !important; color: var(--down) !important; }
+
+/* ── canvas ──────────────────────────────────────────────────────────── */
+.ws-canvas {
+  position: relative; flex: 1; min-height: 0;
+  background:
+    linear-gradient(var(--hair) 1px, transparent 1px) 0 0 / 100% 56px,
+    linear-gradient(90deg, var(--hair) 1px, transparent 1px) 0 0 / 56px 100%,
+    var(--bg);
+}
+
+.ws-pane {
+  position: absolute;
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--bd);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ws-pane-head {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 6px;
+  background: var(--elev);
+  border-bottom: 1px solid var(--hair);
+  cursor: grab; user-select: none;
+  touch-action: none;
+}
+.ws-pane-head:active { cursor: grabbing; }
+.ws-pane-title { letter-spacing: .1em; color: var(--tx2); font-weight: 700; }
+.ws-pane-phase { color: var(--tx3); margin-right: auto; }
+.ws-chip, .ws-close {
+  background: transparent; color: var(--tx3);
+  border: 1px solid var(--bd); border-radius: 3px;
+  font: inherit; cursor: pointer; padding: 0 5px;
+  touch-action: none;
+}
+.ws-chip:hover, .ws-close:hover { color: var(--tx1); border-color: var(--bd2); }
+
+.ws-pane-body {
+  flex: 1; position: relative; min-height: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.ws-pane-ghost {
+  color: var(--tx3); opacity: .35; letter-spacing: .3em; font-weight: 700;
+  font-size: 13px;
+}
+
+.ws-resize {
+  position: absolute; right: 0; bottom: 0; width: 14px; height: 14px;
+  cursor: nwse-resize; touch-action: none;
+  background:
+    linear-gradient(135deg, transparent 0 50%, var(--bd2) 50% 60%,
+      transparent 60% 70%, var(--bd2) 70% 80%, transparent 80%);
+}
+
+.ws-guide-v, .ws-guide-h { position: absolute; z-index: 20; pointer-events: none; }
+.ws-guide-v { top: 0; bottom: 0; width: 1px; background: var(--guide); }
+.ws-guide-h { left: 0; right: 0; height: 1px; background: var(--guide); }
