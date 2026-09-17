@@ -1209,6 +1209,43 @@ def my_ind(df, length=20):
 </main>
 <!-- The old #ai-panel Assistant slide-over is gone: the hosted assistant is
      now the "LSE Assistant" provider inside the permanent right rail. -->
+<script>
+/* The browser's autofill / save-password / address autocomplete popups drop
+   ON TOP of the terminal's text fields and swallow keystrokes, so nothing can
+   be typed. Every terminal input is data entry, never a saved-credential
+   target: stamp autocomplete=off (+ spellcheck off) on all of them, including
+   the ones app.js and the chart bundle create later. */
+(function () {
+  function disarm(el) {
+    var t = (el.type || "text").toLowerCase();
+    if (t === "password") {
+      if (!el.getAttribute("autocomplete")) el.setAttribute("autocomplete", "new-password");
+    } else if (t === "text" || t === "" || t === "number" || t === "search" || t === "tel" || t === "url" || t === "email") {
+      if (!el.getAttribute("autocomplete")) el.setAttribute("autocomplete", "off");
+    }
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") el.setAttribute("spellcheck", "false");
+  }
+  function sweep(root) {
+    (root.querySelectorAll ? root : document)
+      .querySelectorAll("input, textarea")
+      .forEach(disarm);
+  }
+  var pending = false;
+  function scheduleSweep() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function () { pending = false; sweep(document); });
+  }
+  sweep(document);
+  new MutationObserver(scheduleSweep).observe(document.documentElement, {
+    childList: true, subtree: true,
+  });
+  /* Second line of defence: some browsers only surface their popup on focus. */
+  document.addEventListener("focusin", function (e) {
+    if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA")) disarm(e.target);
+  });
+})();
+</script>
 <script src="./app.js"></script>
 </body>
 </html>
