@@ -1,0 +1,10 @@
+# Render blueprint: New → Blueprint → pick this repo/branch → Deploy.
+# You get a public https URL (e.g. https://traderos.onrender.com).
+# Add your LSE key later in the app's top conn bar ("Add key"), or set
+# LSE_API_KEY here as an env var if you prefer.
+services:
+  - type: web
+    name: traderos
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
