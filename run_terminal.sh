@@ -3,6 +3,8 @@
 # Serves the terminal on http://localhost:8000 — Ctrl+C stops it.
 set -e
 cd "$(dirname "$0")"
+# If this is a git clone, fast-forward to the latest pushed build first.
+[ -d .git ] && git pull --ff-only 2>/dev/null || true
 if [ ! -x .venv/bin/python ]; then
   echo "[boot] creating .venv and installing dependencies (first run only)..."
   python3 -m venv .venv
