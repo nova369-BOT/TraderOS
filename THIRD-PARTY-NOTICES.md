@@ -64,3 +64,16 @@ Direct dependencies; each pulls its own MIT/BSD-style tree.
   Used by the Depth Heat order-flow pane for public (keyless) crypto L2
   order-book and trade websocket feeds; one venue per symbol, Coinbase
   primary with Kraken fallback. No other component uses it.
+
+## Vendored protocol contract (third_party/edgedepth-gateway/)
+
+- edgedepth-gateway wire contract (edgedepth.proto) - MIT License
+  Copyright (c) 2026 EdgeDepth
+  https://github.com/edgedepthhq/edgedepth-gateway
+  The protobuf field contract (vendored verbatim with its LICENSE) that
+  lse_terminal/providers/edgedepth/wire.py implements in pure Python, so the
+  terminal can consume Binance USD-M futures depth/trades/candles from a
+  self-hosted edgedepth-gateway with no API key. No gateway code is bundled;
+  the gateway runs as a separate process (Render service or local docker).
+  The companion edgedepth-terminal repo (AGPL-3.0) is used as a DESIGN
+  REFERENCE only; none of its code or assets are distributed with TraderOS.
