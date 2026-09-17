@@ -1,9 +1,15 @@
 // F2 · chart pane renderer. Pure canvas: no React, no DOM lookups, no state.
 // Given a context, a size, candles, a camera and tokens it draws the whole
-// pane — candles, volume, the zoom-morph footprint, axes, crosshair, badges.
+// pane — candles, volume + delta, the zoom-morph footprint with diagonal
+// imbalances and POC, axes, crosshair, badges.
+//
+// Footprint grid discipline (mirrors the reference terminals): all visible
+// candles share ONE row count for the current zoom, exactly like a tick
+// grouping — that shared grid is what makes diagonal imbalance reads and
+// row-to-row comparison meaningful.
 
 import { Tokens } from '../../tokens';
-import { computeFootprint, imbalance } from './footprint';
+import { Footprint, computeFootprint } from './footprint';
 import {
   Candle, ViewState, decimalsFor, fmtPrice, fmtTime, niceStep,
 } from './types';
@@ -86,17 +92,78 @@ export function paintChart(a: PaintArgs): void {
     ctx.fillText(fmtTime(candles[i].ts), x + 3, H - 5);
   }
 
-  // ── volume histogram ──────────────────────────────────────────────────
+  // ── per-candle delta (modelled share of volume) ───────────────────────
+  const deltas: number[] = [];
+  let cum = 0, maxAbsD = 0, maxAbsCum = 0;
+  const cums: number[] = [];
+  for (const c of vis) {
+    const bull = c.close >= c.open;
+    const d = (bull ? 0.2 : -0.2) * c.volume;   // refined by fp below
+    deltas.push(d); cum += d; cums.push(cum);
+    maxAbsD = Math.max(maxAbsD, Math.abs(d));
+    maxAbsCum = Math.max(maxAbsCum, Math.abs(cum));
+  }
+
+  // ── volume histogram + delta bars + cumulative delta line ─────────────
   for (let i = first; i <= last; i++) {
     const c = candles[i];
     const vh = maxV ? (c.volume / maxV) * (volH - 4) : 0;
     ctx.fillStyle = c.close >= c.open
-      ? hexA(theme.up, 0.35) : hexA(theme.down, 0.35);
-    ctx.fillRect(xOf(i) + 1, H - TIME_H - vh,
-      Math.max(1, view.pxPer - 2), vh);
+      ? hexA(theme.up, 0.30) : hexA(theme.down, 0.30);
+    ctx.fillRect(xOf(i) + 1, H - TIME_H - vh, Math.max(1, view.pxPer - 2), vh);
   }
 
   const m = view.morph;
+
+  // shared footprint grid for the visible window
+  let fps: Footprint[] = [];
+  let rows = 0;
+  if (m > 0.02) {
+    const spans = vis
+      .map((c) => yOf(c.low) - yOf(c.high))
+      .filter((s) => s >= 8)
+      .sort((x, y) => x - y);
+    const median = spans.length
+      ? spans[Math.floor(spans.length / 2)] : 120;
+    rows = Math.max(6, Math.min(24, Math.round(median / 13)));
+    fps = vis.map((c) => computeFootprint(c, rows));
+    // refine deltas from the footprint split
+    for (let k = 0; k < vis.length; k++) {
+      const fp = fps[k];
+      let b = 0, s = 0;
+      for (const cell of fp.cells) { b += cell.b; s += cell.s; }
+      deltas[k] = ((b - s) / (b + s)) * vis[k].volume;
+      maxAbsD = Math.max(maxAbsD, Math.abs(deltas[k]));
+    }
+    cum = 0;
+    for (let k = 0; k < vis.length; k++) {
+      cum += deltas[k]; cums[k] = cum;
+      maxAbsCum = Math.max(maxAbsCum, Math.abs(cum));
+    }
+  }
+
+  if (m > 0.02) {
+    // delta bars in the lower half of the volume pane
+    for (let k = 0; k < vis.length; k++) {
+      const d = deltas[k];
+      const dh = maxAbsD ? (Math.abs(d) / maxAbsD) * (volH * 0.42) : 0;
+      ctx.fillStyle = d >= 0 ? hexA(theme.up, 0.85) : hexA(theme.down, 0.85);
+      ctx.fillRect(xOf(first + k) + 1, H - TIME_H - dh,
+        Math.max(1, view.pxPer - 2), dh);
+    }
+    // cumulative delta polyline across the volume pane
+    if (maxAbsCum > 0) {
+      ctx.strokeStyle = hexA(theme.brand, 0.9);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let k = 0; k < vis.length; k++) {
+        const x = xOf(first + k) + view.pxPer / 2;
+        const y = H - TIME_H - ((cums[k] / maxAbsCum + 1) / 2) * (volH - 6) - 3;
+        if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
 
   // ── candles ───────────────────────────────────────────────────────────
   if (m < 0.98) {
@@ -115,43 +182,57 @@ export function paintChart(a: PaintArgs): void {
     ctx.globalAlpha = 1;
   }
 
-  // ── footprint (the unfold) ────────────────────────────────────────────
-  if (m > 0.02) {
+  // ── footprint (the unfold) on the shared grid ─────────────────────────
+  if (m > 0.02 && rows) {
     ctx.globalAlpha = m;
-    for (let i = first; i <= last; i++) {
-      const c = candles[i];
+    for (let k = 0; k < vis.length; k++) {
+      const c = vis[k];
+      const fp = fps[k];
       const top = yOf(c.high), bot = yOf(c.low);
       const span = bot - top;
       if (span < 8) continue;
-      const rows = Math.max(6, Math.min(24, Math.round(span / 13)));
       const rowH = span / rows;
-      const fp = computeFootprint(c, rows);
       const bw = Math.max(1, view.pxPer - 2);
-      const x = xOf(i) + 1;
+      const x = xOf(first + k) + 1;
 
       for (let r = 0; r < rows; r++) {
         const cell = fp.cells[r];
         const y = top + r * rowH;
         const h = Math.max(1, rowH - 1);
         const inten = (cell.b + cell.s) / fp.max;
-        // resting-intensity backing (the heatmap echo inside the footprint)
         ctx.fillStyle = hexA(theme.tx1, 0.05 + inten * 0.28);
         ctx.fillRect(x, y, bw, h);
-        // buy half (left) / sell half (right), width ∝ share
         const bShare = cell.b / (cell.b + cell.s);
         ctx.fillStyle = hexA(theme.up, 0.25 + (cell.b / fp.max) * 0.75);
         ctx.fillRect(x, y, bw * 0.5 * bShare, h);
         const sW = bw * 0.5 * (1 - bShare);
         ctx.fillStyle = hexA(theme.down, 0.25 + (cell.s / fp.max) * 0.75);
         ctx.fillRect(x + bw - sW, y, sW, h);
+      }
 
-        const imb = imbalance(cell);
-        if (imb) {
-          ctx.strokeStyle = imb === 'buy' ? theme.up : theme.down;
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 0.5, y + 0.5, bw - 1, h - 1);
+      // diagonal 3:1 imbalances on the shared grid:
+      // buy pressure = this row's buys vs the NEXT candle's upper-right sells;
+      // sell pressure = this row's sells vs the NEXT candle's lower-right buys.
+      const next = fps[k + 1];
+      if (next && next.cells.length === rows) {
+        ctx.lineWidth = 1;
+        for (let r = 0; r < rows; r++) {
+          const cell = fp.cells[r];
+          const upR = next.cells[r - 1];
+          const dnR = next.cells[r + 1];
+          if (upR && cell.b > upR.s * 3) {
+            ctx.strokeStyle = theme.up;
+            ctx.strokeRect(x + 0.5, top + r * rowH + 0.5, bw - 1,
+              Math.max(1, rowH - 1) - 1);
+          }
+          if (dnR && cell.s > dnR.b * 3) {
+            ctx.strokeStyle = theme.down;
+            ctx.strokeRect(x + 0.5, top + r * rowH + 0.5, bw - 1,
+              Math.max(1, rowH - 1) - 1);
+          }
         }
       }
+
       // POC row marker
       ctx.strokeStyle = hexA(theme.warn, 0.9);
       ctx.strokeRect(x + 0.5, top + fp.poc * rowH + 0.5, bw - 1,
@@ -171,6 +252,13 @@ export function paintChart(a: PaintArgs): void {
           ctx.fillText(String(sv), x + bw - 2, y);
           ctx.textAlign = 'left';
         }
+        // per-candle delta under the candle
+        const d = deltas[k];
+        ctx.fillStyle = d >= 0 ? theme.up : theme.down;
+        ctx.textAlign = 'center';
+        ctx.fillText(`${d >= 0 ? '+' : ''}${Math.round(d)}`,
+          x + bw / 2, bot + 10);
+        ctx.textAlign = 'left';
         ctx.font = '10px "JetBrains Mono", ui-monospace, monospace';
       }
     }
@@ -205,11 +293,10 @@ export function paintChart(a: PaintArgs): void {
     ctx.fillText(p.toFixed(dec), plotW + 6, y + 3);
     const i = first + Math.floor(x / view.pxPer);
     if (candles[i]) {
-      const t = fmtTime(candles[i].ts);
       ctx.fillStyle = theme.elev;
       ctx.fillRect(x - 20, H - TIME_H, 44, TIME_H);
       ctx.fillStyle = theme.tx1;
-      ctx.fillText(t, x - 16, H - 5);
+      ctx.fillText(fmtTime(candles[i].ts), x - 16, H - 5);
     }
   }
 
@@ -221,7 +308,8 @@ export function paintChart(a: PaintArgs): void {
   let readout = `${a.badge} · ${a.tf} · ${vis.length} bars · ` +
     `${view.pxPer.toFixed(1)}px/candle`;
   if (m > 0.5) {
-    readout += ' · FOOTPRINT' + (a.modelled ? ' (MODELLED)' : '');
+    readout += ` · FOOTPRINT ${rows}R` +
+      (a.modelled ? ' (MODELLED)' : '') + ' · diag 3:1';
   } else if (m > 0.05) {
     readout += ' · unfolding…';
   }

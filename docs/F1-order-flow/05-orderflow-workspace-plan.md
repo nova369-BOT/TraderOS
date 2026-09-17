@@ -85,10 +85,15 @@ types/math pure, data path isolated (source switch + honest fallback),
 footprint cell model deterministic and badged MODELLED, renderer pure canvas,
 React shell owns only lifecycle/input. Candles + volume + nice-stepped axes +
 crosshair + last-price tag; wheel = anchored zoom, **zoom-in unfolds the
-footprint** (bid×ask halves, 3:1 imbalance outlines, POC marker, numerics at
-≥48px), drag = pan, dbl-click reset; 5s poll; DEMO now, BINANCE via the
-gateway with "GATEWAY OFFLINE → DEMO" fallback badge. Perf: refs + rAF only,
-no React state in the paint path.
+footprint** (bid×ask halves, DIAGONAL 3:1 imbalance outlines on a shared
+row grid across the visible window, POC marker, per-candle delta + numerics
+at ≥48px), delta bars + cumulative-delta curve in the volume pane, drag =
+pan, dbl-click reset; 5s poll; DEMO now, BINANCE via the gateway with
+"GATEWAY OFFLINE → DEMO" fallback badge. Perf/correctness: refs + rAF only,
+no React state in the paint path; paint inputs flow through refs (no stale
+closures from intervals/observers). Professional hardening pass 2026-09-18:
+shared-grid footprints, diagonal imbalances, delta strip, stale-closure fix,
+pure-layer unit gate `tests/test_chart_pure.py` (esbuild+node, ≥20 checks).
 
 **Phase 3 — RT Depth Heat pane (P2), the centrepiece.**
 The EdgeDepth semantics implemented in our engine+canvas: field, bubbles,
