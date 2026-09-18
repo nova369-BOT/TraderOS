@@ -67,3 +67,18 @@ Binance/Coinbase are unreachable from this sandbox. Everything is built so
 the same code path works against real venues with zero changes; the
 real-network checklist (`99-real-network-checklist.md`) lists the exact
 re-runs. We do not claim real-data verification where it was impossible.
+
+## D6 — symbol casing at the protocol boundary (2026-09-18)
+
+Running the actual binary showed the hub whitelists *lowercase* symbols
+(built from exchangeInfo) and silently ignores any other casing — no error
+frame, no close. Echo casing on frames is the wire casing.
+
+**Decision.** The terminal keeps its canonical ids (`BTCUSDT`) everywhere;
+`providers/edgedepth/client._norm()` lowercases on subscribe/request and
+events are re-keyed to the canonical id as they leave the pump. Casing
+therefore can never leak into the chart, the book, or recordings, and the
+silent-gateway behavior is pinned by
+`tests/test_gateway_e2e.py` invalid-symbol assertions.
+Reverse: if upstream starts normalizing (or erroring visibly), remove
+`_norm` and its doc comment; the e2e will tell immediately.
