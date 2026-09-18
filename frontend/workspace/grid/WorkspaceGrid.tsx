@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import ChartPane from '../panes/chart/ChartPane';
 import { THEMES } from '../tokens';
+import { presetPanes } from './store';
 import { hCandidates, snappedMove, snappedResize, vCandidates } from './snap';
 import { MIN_H, MIN_W, PaneSpec, SNAP_TOL, WorkspaceState } from './types';
 import Pane from './Pane';
@@ -25,11 +26,17 @@ export default function WorkspaceGrid({ state, onChange }: Props) {
   const [guides, setGuides] = useState<{ gx: number | null; gy: number | null }>(
     { gx: null, gy: null });
 
-  const patch = (id: string, p: Partial<PaneSpec>) =>
+  const patch = (id: string, p: Partial<PaneSpec>) => {
+    // geometry patches must never carry non-finite values into state
+    const geo = ['x', 'y', 'w', 'h'] as const;
+    for (const k of geo) {
+      if (k in p && !Number.isFinite(p[k])) return;
+    }
     onChange({
       ...state,
       panes: state.panes.map((q) => (q.id === id ? { ...q, ...p } : q)),
     });
+  };
 
   const beginDrag = (id: string, mode: 'move' | 'resize',
                      e: React.PointerEvent) => {
@@ -44,6 +51,7 @@ export default function WorkspaceGrid({ state, onChange }: Props) {
   const onMove = (e: React.PointerEvent) => {
     if (!drag || !ref.current) return;
     const r = ref.current.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) return;  // never divide by a zero canvas
     const dx = (e.clientX - drag.startX) / r.width;
     const dy = (e.clientY - drag.startY) / r.height;
     const others = state.panes.filter((p) => p.id !== drag.id);
@@ -95,6 +103,14 @@ export default function WorkspaceGrid({ state, onChange }: Props) {
           {p.kind === 'chart' && <ChartPane theme={THEMES[state.theme]} />}
         </Pane>
       ))}
+      {state.panes.length === 0 && (
+        <div className="ws-empty">
+          <div className="ws-empty-title">EMPTY WORKSPACE</div>
+          <button
+            onClick={() => onChange({ ...state, panes: presetPanes(4) })}
+          >RESTORE DEFAULT LAYOUT</button>
+        </div>
+      )}
       {guides.gx !== null && (
         <div className="ws-guide-v" style={{ left: `${guides.gx * 100}%` }} />
       )}

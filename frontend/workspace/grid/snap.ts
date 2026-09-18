@@ -65,5 +65,6 @@ export function snappedResize(orig: Rect, dw: number, dh: number,
 }
 
 export function clamp01(v: number, lo: number, hi: number): number {
+  if (!Number.isFinite(v)) return lo;   // zero-size canvas divides must not poison
   return Math.min(hi, Math.max(lo, v));
 }

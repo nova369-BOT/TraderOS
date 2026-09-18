@@ -2,6 +2,7 @@
 // localStorage only in v1; shareable JSON export lands with phase 6.
 
 import { PANE_KINDS, PaneKind, PaneSpec, WorkspaceState, paneId } from './types';
+import { sanitizeState } from './sanitize';
 
 const LAYOUT_KEY = 'f2.layout.v1';
 const WS_PREFIX = 'f2.workspace.';
@@ -33,10 +34,7 @@ export function presetPanes(n: 1 | 2 | 4 | 9): PaneSpec[] {
 export function loadState(): WorkspaceState {
   try {
     const raw = localStorage.getItem(LAYOUT_KEY);
-    if (raw) {
-      const s = JSON.parse(raw) as WorkspaceState;
-      if (Array.isArray(s.panes) && s.panes.length) return s;
-    }
+    if (raw) return sanitizeState(JSON.parse(raw) as WorkspaceState, defaultState);
   } catch { /* private mode etc: fall through to defaults */ }
   return defaultState();
 }
@@ -79,8 +77,12 @@ export function loadWorkspace(name: string): WorkspaceState | null {
   try {
     const raw = localStorage.getItem(WS_PREFIX + name);
     if (!raw) return null;
-    const s = JSON.parse(raw) as WorkspaceState;
-    return Array.isArray(s.panes) && s.panes.length ? s : null;
+    const parsed = JSON.parse(raw) as WorkspaceState;
+    if (!parsed || !Array.isArray(parsed.panes) || !parsed.panes.length) {
+      return null;
+    }
+    // panes non-empty, so the fallback is unreachable; sanitize repairs NaNs
+    return sanitizeState(parsed, () => parsed);
   } catch { return null; }
 }
 

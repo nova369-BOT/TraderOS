@@ -97,6 +97,19 @@ html, body, #ws-root { height: 100%; margin: 0; }
       transparent 60% 70%, var(--bd2) 70% 80%, transparent 80%);
 }
 
+.ws-empty {
+  position: absolute; inset: 0; z-index: 25;
+  display: flex; flex-direction: column; gap: 10px;
+  align-items: center; justify-content: center;
+}
+.ws-empty-title { color: var(--tx3); letter-spacing: .3em; font-weight: 700; }
+.ws-empty button {
+  background: var(--input); color: var(--brand);
+  border: 1px solid var(--bd2); border-radius: 3px;
+  font: inherit; letter-spacing: .08em; padding: 6px 14px; cursor: pointer;
+}
+.ws-empty button:hover { border-color: var(--brand); }
+
 .ws-guide-v, .ws-guide-h { position: absolute; z-index: 20; pointer-events: none; }
 .ws-guide-v { top: 0; bottom: 0; width: 1px; background: var(--guide); }
 .ws-guide-h { left: 0; right: 0; height: 1px; background: var(--guide); }

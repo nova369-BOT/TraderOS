@@ -56,4 +56,17 @@ ok(r1() === r2() && r1() === r2(), 'prng deterministic');
 ok(fmtPrice(64000.123) === '64000.1', 'big price 1dp');
 ok(fmtPrice(0.0012) === '0.0012', 'small price 4dp');
 
+// layout sanitation: NaN rects are repaired, never propagated or loaded
+import { repairPane, sanitizeState } from '../frontend/workspace/grid/sanitize';
+const bad = { id: 'p1', kind: 'chart', x: NaN, y: NaN, w: NaN, h: NaN, group: 1 };
+const fixed = repairPane(bad as any, 0);
+ok([fixed.x, fixed.y, fixed.w, fixed.h].every(Number.isFinite), 'NaN rect repaired');
+ok(fixed.w >= 0.12 && fixed.h >= 0.12, 'repaired respects minimums');
+const out = { id: 'p2', kind: 'heat', x: -4, y: 9, w: 40, h: 40, group: 0 };
+const clamped = repairPane(out as any, 0);
+ok(clamped.x >= 0 && clamped.y <= 0.98 && clamped.w <= 1, 'out-of-bounds clamped');
+const san = sanitizeState({ panes: [bad as any], theme: 'charcoal' },
+  () => { throw new Error('fallback must not run'); });
+ok(san.panes.length === 1 && Number.isFinite(san.panes[0].x), 'sanitize repairs in place');
+
 console.log(JSON.stringify({ ok: true, checks }));
