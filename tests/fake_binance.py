@@ -1,0 +1,254 @@
+"""Protocol-faithful fake Binance USD-M futures endpoint (test double).
+
+Purpose: the E2E for the EdgeDepth gateway integration must drive the REAL
+Go binary end to end without touching the actual Binance network (which this
+sandbox cannot reach). The gateway ships mirror/testnet overrides for
+exactly this (`-binance-rest`, `-binance-ws`; README "Configuration"), so the
+double only has to implement what the ACTUAL gateway consumes — read from
+the source, not reinvented:
+
+- REST (internal/binance/rest.go): /fapi/v1/exchangeInfo, /fapi/v1/depth,
+  /fapi/v1/klines, /fapi/v1/premiumIndex, /fapi/v1/openInterest,
+  /fapi/v1/ticker/24hr
+- WS (internal/binance/stream.go): <base>/market/stream and
+  <base>/public/stream with ?streams=a/b/c, combined envelopes
+  {"stream": <name>, "data": <payload>}
+- Payloads (internal/binance/feed.go): depthUpdate (U/u/pu straddle rules),
+  aggTrade (a dedupe, m=buyer-maker), markPrice (p/r/T), forceOrder (o.S/p/ap/q),
+  !ticker@arr array entries (e/E/s/c/P/q)
+
+The double is intentionally a *scriptable mirror*, not an exchange: the test
+schedules exact frames and swaps snapshot contents, so gateway behaviour
+synced -> gap -> resync -> reconnect is deterministic.
+
+Threading: stdlib REST server in one thread, websockets.sync server in
+another. Every mutator is safe to call from the test thread.
+"""
+
+from __future__ import annotations
+
+import json
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+from websockets.sync.server import ServerConnection, serve
+
+
+def _ms() -> int:
+    return int(time.time() * 1000)
+
+
+class FakeBinance:
+    def __init__(self, rest_port: int, ws_port: int):
+        self.rest_url = f"http://127.0.0.1:{rest_port}"
+        self.ws_url = f"ws://127.0.0.1:{ws_port}"
+        self._rest_port = rest_port
+        self._ws_port = ws_port
+        self._lock = threading.Lock()
+        # ── scriptable upstream state ────────────────────────────────────
+        self.depth_snapshot = {
+            "lastUpdateId": 1000,
+            "bids": [["99850.0", "1.5"], ["99800.0", "2.0"]],
+            "asks": [["100150.0", "1.2"], ["100200.0", "2.2"]],
+        }
+        self.klines: list = []
+        self.premium = {"markPrice": "100500.0", "lastFundingRate": "0.00010",
+                        "nextFundingTime": _ms() + 28_800_000}
+        self.open_interest = "25000.0"
+        self.tickers_24h = [{
+            "symbol": "BTCUSDT", "priceChangePercent": "1.50",
+            "lastPrice": "100000.0", "quoteVolume": "100000000.0",
+            "closeTime": _ms(),
+        }]
+        self.exchange_symbols = [{"symbol": "BTCUSDT", "status": "TRADING"}]
+        # ── observability for assertions ─────────────────────────────────
+        self.depth_rest_hits = 0
+        self.connects: list[str] = []     # "route?streams=..." per WS connect
+        self._depth_clients: list[ServerConnection] = []
+        self._market_clients: list[ServerConnection] = []
+        self._stop = threading.Event()
+        self._threads: list[threading.Thread] = []
+
+    # ── lifecycle ────────────────────────────────────────────────────────
+
+    def start(self) -> None:
+        t_rest = threading.Thread(target=self._run_rest, daemon=True,
+                                  name="fakebinance-rest")
+        t_ws = threading.Thread(target=self._run_ws, daemon=True,
+                                name="fakebinance-ws")
+        self._threads = [t_rest, t_ws]
+        t_rest.start()
+        t_ws.start()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            if (getattr(self, "_rest_up", False)
+                    and getattr(self, "_ws_up", False)):
+                return
+            time.sleep(0.02)
+        raise RuntimeError("fake binance failed to start")
+
+    def stop(self) -> None:
+        self._stop.set()
+        try:
+            self.drop_upstream_connections()
+        except Exception:
+            pass
+        try:
+            self._httpd.shutdown()
+        except Exception:
+            pass
+        try:
+            self._ws_server.shutdown()
+        except Exception:
+            pass
+
+    # ── REST plane ───────────────────────────────────────────────────────
+
+    def _run_rest(self) -> None:
+        outer = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def _json(self, obj, status=200):
+                body = json.dumps(obj).encode()
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_GET(self):
+                from urllib.parse import parse_qs, urlparse
+                u = urlparse(self.path)
+                q = parse_qs(u.query)
+                with outer._lock:
+                    if u.path == "/fapi/v1/exchangeInfo":
+                        return self._json({"symbols": outer.exchange_symbols})
+                    if u.path == "/fapi/v1/depth":
+                        outer.depth_rest_hits += 1
+                        return self._json(outer.depth_snapshot)
+                    if u.path == "/fapi/v1/klines":
+                        return self._json(outer.klines)
+                    if u.path == "/fapi/v1/premiumIndex":
+                        return self._json(outer.premium)
+                    if u.path == "/fapi/v1/openInterest":
+                        return self._json({
+                            "openInterest": outer.open_interest,
+                            "time": _ms()})
+                    if u.path == "/fapi/v1/ticker/24hr":
+                        return self._json(outer.tickers_24h)
+                return self._json({"code": -1, "msg": "not found"}, status=404)
+
+        self._httpd = ThreadingHTTPServer(("127.0.0.1", self._rest_port),
+                                          Handler)
+        self._rest_up = True
+        self._httpd.serve_forever()
+
+    # ── WS plane ─────────────────────────────────────────────────────────
+
+    def _run_ws(self) -> None:
+        self._ws_server = serve(self._handle_ws, "127.0.0.1", self._ws_port)
+        self._ws_up = True
+        self._ws_server.serve_forever()
+
+    def _handle_ws(self, conn: ServerConnection) -> None:
+        path = conn.request.path if conn.request else ""
+        with self._lock:
+            self.connects.append(path)
+            if "/public/stream" in path:
+                bucket = self._depth_clients
+            else:
+                bucket = self._market_clients
+            bucket.append(conn)
+        try:
+            # The gateway never sends client messages upstream; just hold the
+            # socket. Reading keeps control frames flowing (ping/pong).
+            for _msg in conn:
+                pass
+        except Exception:
+            pass
+        finally:
+            with self._lock:
+                if conn in bucket:
+                    bucket.remove(conn)
+
+    def send_to_route(self, route: str, stream: str, data) -> None:
+        """One combined-stream envelope to every live client on the route."""
+        frame = json.dumps({"stream": stream, "data": data})
+        with self._lock:
+            clients = list(self._depth_clients if route == "public"
+                           else self._market_clients)
+        for c in clients:
+            try:
+                c.send(frame)
+            except Exception:
+                pass
+
+    def send_depth_diff(self, U: int, u: int, pu: int,
+                        bids=None, asks=None, ts: int | None = None) -> None:
+        self.send_to_route("public", "btcusdt@depth@100ms", {
+            "e": "depthUpdate", "E": ts or _ms(), "U": U, "u": u, "pu": pu,
+            "b": bids or [], "a": asks or []})
+
+    def send_trade(self, price: str, qty: str, agg_id: int, maker: bool,
+                   ts: int | None = None) -> None:
+        t = ts or _ms()
+        self.send_to_route("market", "btcusdt@aggTrade", {
+            "e": "aggTrade", "E": t, "p": price, "q": qty,
+            "T": t, "t": agg_id, "a": agg_id, "m": maker})
+
+    def send_mark_price(self, mark: str, funding: str,
+                        next_funding: int | None = None) -> None:
+        self.send_to_route("market", "btcusdt@markPrice@1s", {
+            "e": "markPriceUpdate", "E": _ms(), "p": mark, "r": funding,
+            "T": next_funding or (_ms() + 28_800_000)})
+
+    def send_liquidation(self, side: str, price: str, avg: str,
+                         qty: str) -> None:
+        self.send_to_route("market", "btcusdt@forceOrder", {
+            "e": "forceOrder", "E": _ms(),
+            "o": {"S": side, "p": price, "ap": avg, "q": qty}})
+
+    def send_raw(self, route: str, obj) -> None:
+        """Arbitrary (possibly malformed on purpose) combined envelope."""
+        frame = obj if isinstance(obj, str) else json.dumps(obj)
+        with self._lock:
+            clients = list(self._depth_clients if route == "public"
+                           else self._market_clients)
+        for c in clients:
+            try:
+                c.send(frame)
+            except Exception:
+                pass
+
+    def drop_upstream_connections(self) -> None:
+        """Simulate a Binance outage: close every gateway->venue socket."""
+        with self._lock:
+            clients = list(self._depth_clients) + list(self._market_clients)
+        for c in clients:
+            try:
+                c.close()
+            except Exception:
+                pass
+
+    def depth_connected(self, n=1) -> bool:
+        with self._lock:
+            return len(self._depth_clients) >= n
+
+    def market_connected(self, n=1) -> bool:
+        with self._lock:
+            return len(self._market_clients) >= n
+
+
+def wait_for(cond, timeout: float = 15.0, interval: float = 0.02,
+             what: str = "condition"):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        v = cond()
+        if v:
+            return v
+        time.sleep(interval)
+    raise AssertionError(f"timed out waiting for {what}")
