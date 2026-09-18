@@ -1,6 +1,6 @@
 # Render blueprint: one-click deploy → https://render.com/deploy
 #   ?repo=https://github.com/nova369-BOT/TraderOS
-#   &branch=arena/01a0a9dd-traderos
+#   &branch=arena/01a0b463-traderos
 # Creates a NEW web service (traderos-w) alongside anything you already run.
 # The Binance USD-M data spine is merged INTO this image (ported from the
 # edgedepth-gateway adapter), so no second service and no wiring is needed.
