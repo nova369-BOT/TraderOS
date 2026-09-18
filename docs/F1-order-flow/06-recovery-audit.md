@@ -75,3 +75,27 @@ EdgeDepth properly; be the professional this project needs.
       egress fails fast; ChartPane poll has an in-flight guard.
 - [ ] Phase 2 chart pane never visually confirmed by user.
 - [ ] Gateway live proof (E3 against real Binance) still pending.
+
+## 5 · Binance full-path audit — 2026-09-18 (user: "go through the depth, solve everything")
+
+Traced provider → `/api/candles` → `/api/ws` → both shells. Root causes,
+each reproduced in isolation before the fix, each pinned by a test:
+
+| # | Symptom | Root cause (evidence) | Fix | Commit |
+|---|---|---|---|---|
+| 1 | "Only a few timeframes work" | Shell opens every chart at `limit=5000`; provider forwarded it verbatim; Binance caps klines at 1500/1000 → HTTP 400 `-1130` on both legs → 502 for **every** kline tf. tick/1s/30s survived only because aggTrades was clamped. Error text said "unreachable". Mock exchange with real caps: `5000 → FAIL` on all kline tfs | Paged parallel windows (≤5 legs, one RTT), stitched + deduped; `BinanceRESTError` surfaces code/msg; `end` s→ms (was seconds; a test pinned it); ISO windows accepted | `be7c6c3` |
+| 2 | "Candles don't update fast" | `/api/ws → stream()` reused the depth pump: awaited a 1000-level REST snapshot before the first yield and re-awaited inline on every gap. Reproduced with an 8s snapshot line: **first tick at 8.0s**. Also a bookTicker frame KeyError'd the market route | Dedicated tick pump (aggTrade + bookTicker, no REST); first tick <1s regardless of REST latency (test); bid/ask on every tick; depth pump resyncs off the reader via per-symbol workers | `8359d97` |
+| 3 | Ladder thin / inconsistent | Provider lacked 30m/2h/1w (native); `app.js TF_SECONDS` lacked 2h (bucketing fell to 3600); `/w/` pane merged `kline_<new>` frames into the old tf's bars mid-switch; 1s/30s built from last 1000 prints (~seconds) though the spot mirror serves real 1s klines | Full ladder both UIs; 1s/30s from real 1s klines (paged, vectorised fold, 50ms budget test), tape as fallback; switch clears+reloads before merging | `ef03c5e` |
+
+Verified through the real FastAPI app against a cap-enforcing mock
+exchange: all 9 kline tfs load 5000 contiguous bars in 31–94ms; re-switch
+30ms (SWR); tail fetch 3 bars ~6ms; **0** over-cap requests reach the
+exchange. Full suite 231 passed / 2 skipped (+8 tests). Sandbox egress to
+Binance is walled, so:
+
+- [ ] USER: open Binance BTCUSDT, click every tf 1m…1w — each must paint
+      5000 bars (scroll back), no "candles failed" toast.
+- [ ] USER: on 1m, watch the forming candle move on every print (not every
+      5s) and bid/ask lines appear on the chart.
+- [ ] USER: `/w/` — switch 1m→5m→1h; the chart must clear and reload, badge
+      `BINANCE · LIVE · RT`.

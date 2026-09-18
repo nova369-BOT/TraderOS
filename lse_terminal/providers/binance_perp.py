@@ -26,12 +26,14 @@ Ported semantics, verbatim from feed.go/stream.go/rest.go:
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import logging
 import os
 import random
 import threading
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import AsyncIterator, Callable, Dict, List, Optional
@@ -65,12 +67,25 @@ MIRROR_REST = os.environ.get("BINANCE_MIRROR_REST",
 MIRROR_WS = os.environ.get("BINANCE_MIRROR_WS",
                            "wss://data-stream.binance.vision")
 
-INTERVALS = {60: "1m", 300: "5m", 900: "15m", 3600: "1h", 14400: "4h",
-             86400: "1d"}
-# The ladder mirrors the LSE book's sub-minute set: Binance publishes no
-# sub-minute klines, so tick/1s/30s are built from the exchange's own
-# recent trade tape (aggTrades) — the finest real data the wire carries.
-TIMEFRAMES = ["tick", "1s", "30s", "1m", "5m", "15m", "1h", "4h", "1d"]
+INTERVALS = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1h",
+             7200: "2h", 14400: "4h", 86400: "1d", 604800: "1w"}
+# The ladder mirrors the LSE book: every minute-and-up bar is a native
+# Binance kline on both venues. Below the minute the futures wire carries
+# no klines at all, so 1s/30s are built from the exchange's own recent
+# trade tape (aggTrades) — the finest real data the futures line carries —
+# and tick is one bar per print.
+TIMEFRAMES = ["tick", "1s", "30s", "1m", "5m", "15m", "30m", "1h", "2h",
+              "4h", "1d", "1w"]
+
+# Hard per-request caps published by the exchange: futures klines 1500,
+# spot klines 1000, aggTrades 1000 on both. Anything above is a 400
+# `-1130 limit is not valid` — which is exactly how every kline timeframe
+# used to die (the shell opens charts at limit=5000). History deeper than
+# one page is fetched as PARALLEL windowed pages and stitched (see
+# _fetch_klines_paged).
+KLINE_PAGE_CAP = {"futures": 1500, "spot": 1000}
+KLINE_PAGE = 1000            # one page size valid on EITHER leg of the race
+KLINE_MAX_PAGES = 5          # 5000 bars = the engine's per-request cap
 
 SYMBOLS = {
     "BTCUSDT": "Bitcoin / Tether (USD-M perp)",
@@ -117,6 +132,12 @@ TAIL_MIN_INTERVAL = 1.6
 # and the prewarm + routes + auto-reload loop all share it.
 _refresh_pool = ThreadPoolExecutor(max_workers=4,
                                    thread_name_prefix="binance-bg")
+# Cold (user-blocking) fetches get their own, wider pool: a cold switch
+# fires catalog + board + chart at once, each racing two legs; funnelling
+# them through the 4-slot refresh pool serialised them (measured: a 3s
+# line became a 9s watchlist and a 12s chart).
+_cold_pool = ThreadPoolExecutor(max_workers=16,
+                                thread_name_prefix="binance-cold")
 _inflight: set = set()
 _inflight_lock = __import__("threading").Lock()
 _cold: Dict[str, "object"] = {}     # key -> in-flight cold fetch (Future)
@@ -151,7 +172,7 @@ def _coalesce(key: str, fetch):
     with _cold_lock:
         fut = _cold.get(key)
         if fut is None:
-            fut = _refresh_pool.submit(fetch)
+            fut = _cold_pool.submit(fetch)
             _cold[key] = fut
     try:
         return fut.result()
@@ -184,8 +205,36 @@ def _get_json(base: str, path: str, params: Dict[str, str],
               timeout: float = REST_TIMEOUT) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = base + path + ("?" + q if q else "")
-    with urllib.request.urlopen(url, timeout=timeout) as r:
-        return json.loads(r.read())
+    # gzip: the whole-book ticker is ~1MB and exchangeInfo multi-MB
+    # uncompressed; the exchange gzips ~10x when asked, and on a degraded
+    # datacenter line transfer time IS the latency.
+    req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip",
+                                               "User-Agent": "lse-terminal"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            raw = r.read()
+            if r.headers.get("Content-Encoding", "") == "gzip":
+                raw = gzip.decompress(raw)
+            return json.loads(raw)
+    except urllib.error.HTTPError as exc:
+        # Binance answers 4xx with {"code": -1130, "msg": "..."}; that text
+        # is the diagnosis (a rejected parameter is NOT "unreachable").
+        try:
+            body = json.loads(exc.read() or b"")
+            msg = body.get("msg") or body
+            code = body.get("code")
+        except Exception:  # noqa: BLE001 — non-JSON error body
+            msg, code = exc.reason, None
+        raise BinanceRESTError(exc.code, code, str(msg), path) from exc
+
+
+class BinanceRESTError(Exception):
+    """An HTTP error the exchange itself answered (not a dead line)."""
+
+    def __init__(self, http: int, code, msg: str, path: str):
+        self.http, self.code, self.msg, self.path = http, code, msg, path
+        super().__init__(f"binance HTTP {http} on {path}: "
+                         f"{'' if code is None else f'{code} '}{msg}")
 
 
 # primary -> mirror, same wire format on both; tried CONCURRENTLY so a
@@ -194,6 +243,9 @@ _DEPTH_CALLS = (("futures", REST_BASE, "/fapi/v1/depth"),
                 ("spot", MIRROR_REST, "/api/v3/depth"))
 _KLINE_CALLS = (("futures", REST_BASE, "/fapi/v1/klines"),
                 ("spot", MIRROR_REST, "/api/v3/klines"))
+# 1s klines exist on SPOT only (futures publishes nothing below 1m); the
+# 1s/30s charts take them from the mirror and fall back to the trade tape.
+_KLINE_1S_CALLS = (("spot", MIRROR_REST, "/api/v3/klines"),)
 
 
 def _first_json(calls, params: Dict[str, str]):
@@ -234,7 +286,7 @@ def rest_depth(symbol: str, limit: int = SNAPSHOT_LIMIT) -> dict:
 def rest_klines(symbol: str, tf_sec: int, count: int,
                 end_ms: Optional[int] = None) -> list:
     params = {"symbol": symbol.upper(), "interval": INTERVALS[tf_sec],
-              "limit": str(count)}
+              "limit": str(max(1, min(int(count), KLINE_PAGE)))}
     if end_ms:
         params["endTime"] = str(int(end_ms))
     data, _ = _first_json(_KLINE_CALLS, params)
@@ -302,15 +354,27 @@ def _usdt_rows(payload, venue: str) -> list:
     return sorted(out)
 
 
-def rest_exchange_symbols() -> tuple[list, str]:
+def _call_symbols(fn, ticker):
+    """rest_exchange_symbols with the shared board fetch when the callee
+    takes one (tests stub it with a zero-arg lambda)."""
+    import inspect
+    try:
+        takes = bool(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        takes = False
+    return fn(ticker) if takes else fn()
+
+
+def rest_exchange_symbols(ticker=None) -> tuple[list, str]:
     """(trading USDT symbols, venue) from the exchange itself: the
     whole-book ticker first (small, fast, lists exactly what is trading
     right now), the authoritative exchangeInfo as fallback. The venue
     label rides back so the catalog can name its own source honestly.
     Both failing means egress is dead — the caller keeps the offline
-    core and its 60s negative TTL."""
+    core and its 60s negative TTL. `ticker` lets the provider pass its
+    shared, coalesced board fetch so catalog + board = ONE download."""
     try:
-        data, venue = _first_json(_TICKER_CALLS, {})
+        data, venue = (ticker or rest_ticker24h)()
         syms = _usdt_rows(data, venue)
         if syms:
             return syms, venue
@@ -379,6 +443,25 @@ def tape_to_candles(rows: list, timeframe: str,
     return out[-max(1, int(limit)):], newest
 
 
+def fold_candles(df, step_sec: int, pd):
+    """Fold finer bars into `step_sec` buckets — vectorised groupby, one
+    pass. Only buckets that hold at least one bar are emitted (no
+    fabricated fill), open/close by first/last bar time."""
+    if not len(df):
+        return df
+    key = (df["ts"] // step_sec) * step_sec
+    g = df.groupby(key, sort=True)
+    out = pd.DataFrame({
+        "open": g["open"].first(), "high": g["high"].max(),
+        "low": g["low"].min(), "close": g["close"].last(),
+        "volume": g["volume"].sum(),
+    })
+    out.index.name = None
+    out = out.reset_index().rename(columns={"index": "ts"})
+    out["ts"] = out["ts"].astype(float)
+    return out[CANDLE_COLUMNS]
+
+
 def parse_klines(rows: list) -> list:
     """Kline row: [openTime, o, h, l, c, v, closeTime, ...] as strings."""
     out = []
@@ -387,6 +470,71 @@ def parse_klines(rows: list) -> list:
                     float(r[3]), float(r[4]), float(r[5])))
     out.sort(key=lambda x: x[0])
     return out
+
+
+def _to_ms(v) -> Optional[int]:
+    """start/end as the exchange wants them: None passthrough; digit
+    strings/numbers are epoch SECONDS (ms if already > 1e12); anything
+    else is parsed as an ISO-8601 timestamp (naive = UTC)."""
+    if v is None or v == "":
+        return None
+    txt = str(v).strip()
+    try:
+        num = float(txt)
+    except ValueError:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(txt.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    return int(num if num > 1e12 else num * 1000)
+
+
+def fetch_klines_paged(params: Dict[str, str], tf_sec: int):
+    """(rows, venue) for `params` honouring the exchange's per-request
+    caps. One page ≤ KLINE_PAGE goes straight through the primary→mirror
+    race. Deeper history (the shell opens at 5000) is split into
+    consecutive time windows of KLINE_PAGE bars each, fetched IN PARALLEL
+    (bounded: KLINE_MAX_PAGES legs), stitched by open time and de-duplicated
+    — so a 5000-bar chart costs one round-trip of latency, not five, and
+    never a rejected request. Windows are anchored on endTime when given,
+    else on "now"; startTime (when given) trims the oldest page."""
+    limit = max(1, int(params.get("limit", "500")))
+    base = {k: v for k, v in params.items() if k != "limit"}
+    calls = _KLINE_1S_CALLS if base.get("interval") == "1s" else _KLINE_CALLS
+    if limit <= KLINE_PAGE:
+        base["limit"] = str(limit)
+        return _first_json(calls, base)
+    step_ms = tf_sec * 1000
+    end_ms = int(base.pop("endTime", 0)) or int(time.time() * 1000)
+    start_ms = int(base.pop("startTime", 0)) or None
+    pages = min(KLINE_MAX_PAGES, -(-limit // KLINE_PAGE))
+    windows = []
+    hi = end_ms
+    for _ in range(pages):
+        lo = hi - KLINE_PAGE * step_ms
+        if start_ms is not None and lo < start_ms:
+            lo = start_ms
+        windows.append((lo, hi))
+        hi = lo - 1
+        if start_ms is not None and hi <= start_ms:
+            break
+
+    def one(lo, hi):
+        p = dict(base, startTime=str(lo), endTime=str(hi),
+                 limit=str(KLINE_PAGE))
+        return _first_json(calls, p)
+
+    with ThreadPoolExecutor(max_workers=len(windows)) as ex:
+        results = list(ex.map(lambda w: one(*w), windows))
+    seen: Dict[int, list] = {}
+    venue = results[0][1] if results else "futures"
+    for rows, v in results:
+        venue = v
+        for r in rows or []:
+            seen[int(r[0])] = r
+    rows = [seen[k] for k in sorted(seen)]
+    return rows[-limit:], venue
 
 
 # ── the book state machine (feed.go, ported 1:1) ─────────────────────────
@@ -528,8 +676,8 @@ class BookFeed:
 
     # trades -----------------------------------------------------------------
     def on_agg_trade(self, d: dict, last_ids: Dict[str, int]) -> Optional[TradeEvent]:
-        if d.get("e") == "calc" or str(d.get("st", "")) == "2":
-            return None                          # CM messages excluded
+        if d.get("e") != "aggTrade" or str(d.get("st", "")) == "2":
+            return None                  # CM/calc/other frames excluded
         tid = int(d.get("t", 0))
         if tid and tid <= last_ids.get(self.symbol, 0):
             return None                          # duplicate ids never double-count
@@ -564,6 +712,7 @@ class BinancePerpProvider(Provider):
 
     def __init__(self):
         self._last_trade_ids: Dict[str, int] = {}
+        self._ws_winner: Dict[str, str] = {}   # route -> base last held
         # 24h-ticker board cache: (epoch, rows, venue). The watchlist polls
         # once a second; Binance needs one 2s TTL between them, not one
         # REST call per poll. Stale rows are SERVED (with a background
@@ -615,11 +764,17 @@ class BinancePerpProvider(Provider):
         """The one blocking catalog fetch. Success: real book + venue.
         Failure: whatever was held before (the offline core at cold
         boot), stamped with the negative TTL so the next retry is 10s
-        out, not next millisecond."""
+        out, not next millisecond.
+
+        ONE download serves both surfaces: the whole-book ticker IS the
+        price board, so it is fetched once (coalesced with prices()) and
+        seeds self._ticker — the sidebar and the board used to download
+        the same 1MB payload twice on every cold switch."""
         now = time.time()
         ts, venue, syms = self._catalog
         try:
-            fresh, fresh_venue = rest_exchange_symbols()
+            fresh, fresh_venue = _call_symbols(rest_exchange_symbols,
+                                               self._ticker_rows)
             if fresh:
                 self._catalog = (now, fresh_venue, fresh)
                 return fresh_venue, fresh
@@ -627,6 +782,16 @@ class BinancePerpProvider(Provider):
             pass
         self._catalog = (now, venue, syms)
         return venue, syms
+
+    def _ticker_rows(self) -> tuple[list, str]:
+        """The whole-book 24h ticker, at most one fetch in flight per
+        provider; a fresh (<2s) held board is returned without a fetch."""
+        ts, rows, venue = self._ticker
+        if rows and time.time() - ts < 2.0:
+            return rows, venue
+        rows, venue = _coalesce(f"ticker:{id(self)}", rest_ticker24h)
+        self._ticker = (time.time(), rows, venue)
+        return rows, venue
 
     def _resolve_symbol(self, symbol: str) -> Optional[str]:
         """The exchange's own spelling of `symbol`, or None.
@@ -637,6 +802,12 @@ class BinancePerpProvider(Provider):
         s = (symbol or "").strip().upper()
         if not s:
             return None
+        # A symbol the HELD book already lists resolves without waiting:
+        # the chart must never queue behind the sidebar's cold catalog
+        # download (measured: +3s on the first chart for a 3s line). Only
+        # a miss against what is held pays for the fresh book.
+        if s in self._catalog[2]:
+            return s
         _, have = self.catalog()
         have = set(have)
         if s in have:
@@ -691,14 +862,15 @@ class BinancePerpProvider(Provider):
             raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
         params = {"symbol": sym, "interval": INTERVALS[tf],
                   "limit": str(int(limit))}
-        # Digit strings are epoch seconds (the shell's live tail fetch);
-        # ISO strings pass through untouched for the backtest paths.
-        if start is not None and str(start).isdigit():
-            params["startTime"] = str(int(start) * 1000)
-        if end is not None and str(end).isdigit():
-            params["endTime"] = str(int(end))
+        # start/end: epoch seconds (the shell's live tail fetch) or ISO
+        # strings (the backtest windows) — both become the exchange's ms.
+        s_ms, e_ms = _to_ms(start), _to_ms(end)
+        if s_ms is not None:
+            params["startTime"] = str(s_ms)
+        if e_ms is not None:
+            params["endTime"] = str(e_ms)
         return self._candles_klines(sym, timeframe, limit, start, end,
-                                    params, pd)
+                                    params, pd, tf)
 
     # --- stale-while-revalidate candle serving ----------------------------
     # The whole point: a user-visible request blocks on the exchange ONLY
@@ -744,10 +916,39 @@ class BinancePerpProvider(Provider):
         return df
 
     def _candles_tape(self, sym, timeframe, limit, start, pd):
-        fetch = lambda: self._fetch_tape(sym, timeframe, limit, pd)
+        fetch = lambda: self._fetch_subminute(sym, timeframe, limit, start,
+                                              pd)
         if start is not None:
             return self._live_tail((sym, timeframe), fetch)
         return self._swr_candles((sym, timeframe, limit, start), fetch)
+
+    def _fetch_subminute(self, sym, timeframe, limit, start, pd):
+        """1s / 30s: real 1s klines from the spot mirror first (paged, so
+        a 5000-bar 1s chart is 83 real minutes, 30s folded from them =
+        ~41 hours), the trade tape (last 1000 prints) only when the mirror
+        is unreachable. tick: always the tape (one bar per print)."""
+        if timeframe in ("1s", "30s"):
+            try:
+                return self._fetch_1s_klines(sym, timeframe, limit, start, pd)
+            except Exception as exc:  # noqa: BLE001 — mirror down: tape
+                log.info("binance 1s klines unavailable (%s); tape", exc)
+        return self._fetch_tape(sym, timeframe, limit, pd)
+
+    def _fetch_1s_klines(self, sym, timeframe, limit, start, pd):
+        fold = 30 if timeframe == "30s" else 1
+        want = min(5000, int(limit) * fold)
+        params = {"symbol": sym, "interval": "1s", "limit": str(want)}
+        s_ms = _to_ms(start)
+        if s_ms is not None:
+            params["startTime"] = str(s_ms)
+        rows, venue = fetch_klines_paged(params, 1)
+        if not rows:
+            raise NotSupported("binance served no 1s klines")
+        df = pd.DataFrame(parse_klines(rows), columns=CANDLE_COLUMNS)
+        if fold > 1:
+            df = fold_candles(df, fold, pd)
+        df.attrs["venue"] = venue
+        return df, venue
 
     def _fetch_tape(self, sym, timeframe, limit, pd):
         rows, venue = rest_agg_trades(sym, limit=1000)
@@ -758,15 +959,18 @@ class BinancePerpProvider(Provider):
         df.attrs["venue"] = venue          # honesty: the badge says the book
         return df, venue
 
-    def _candles_klines(self, sym, timeframe, limit, start, end, params, pd):
-        fetch = lambda: self._fetch_klines(params, pd)
+    def _candles_klines(self, sym, timeframe, limit, start, end, params, pd,
+                        tf_sec):
+        fetch = lambda: self._fetch_klines(params, pd, tf_sec)
         if start is not None:
             return self._live_tail((sym, timeframe), fetch)
         return self._swr_candles((sym, timeframe, limit, start, end), fetch)
 
-    def _fetch_klines(self, params, pd):
+    def _fetch_klines(self, params, pd, tf_sec):
         try:
-            rows, venue = _first_json(_KLINE_CALLS, params)
+            rows, venue = fetch_klines_paged(params, tf_sec)
+        except BinanceRESTError as exc:
+            raise NotSupported(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001
             raise NotSupported(f"binance REST unreachable: {exc}") from exc
         if not rows:
@@ -792,12 +996,9 @@ class BinancePerpProvider(Provider):
                 _schedule_refresh(f"ticker:{id(self)}", self._refresh_ticker)
             else:
                 # Nothing held yet (first poll of a cold process): the one
-                # blocking fetch; an honest error beats a blank board.
-                try:
-                    rows, venue = rest_ticker24h()
-                    self._ticker = (time.time(), rows, venue)
-                except Exception:  # noqa: BLE001
-                    raise
+                # blocking fetch, SHARED with the catalog's (same payload);
+                # an honest error beats a blank board.
+                rows, venue = self._ticker_rows()
         out: List[dict] = []
         for r in rows:
             sym = str(r.get("symbol", "")).upper()
@@ -821,7 +1022,7 @@ class BinancePerpProvider(Provider):
     def _refresh_ticker(self):
         """Background board refresh (stale-while-revalidate): the poll
         keeps serving the last real board while this catches up."""
-        rows, venue = rest_ticker24h()
+        rows, venue = _coalesce(f"ticker:{id(self)}", rest_ticker24h)
         self._ticker = (time.time(), rows, venue)
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
@@ -841,12 +1042,59 @@ class BinancePerpProvider(Provider):
                 raise ValueError(f"binance: unknown symbol {s!r}")
             resolved.append(r)
 
-        async def _ticks():
-            async for ev in self._pump(resolved):
-                if isinstance(ev, TradeEvent):
-                    yield {"symbol": ev.symbol, "price": ev.price,
-                           "ts": ev.ts, "volume": ev.size, "side": ev.side}
-        return _ticks()
+        return self._tick_pump(resolved)
+
+    async def _tick_pump(self, symbols: List[str]) -> AsyncIterator[dict]:
+        """The candle chart's tick stream: aggTrade (every print) plus
+        bookTicker (best bid/ask on every quote change) — and NOTHING
+        else. This deliberately does not share the depth pump: that one
+        must await a 1000-level REST snapshot before it can yield and
+        re-awaits one on every sequence gap, which on a degraded line held
+        the FIRST TICK for the whole snapshot latency (measured 8s) and
+        stalled the tape on every resync. A price tick needs no book.
+        Budget: first tick < 1s after the socket opens on a healthy line;
+        thereafter wire latency only."""
+        out_q: asyncio.Queue = asyncio.Queue()
+        quotes: Dict[str, tuple[float, float]] = {}
+        lower = [s.lower() for s in symbols]
+        names = ([f"{s}@aggTrade" for s in lower]
+                 + [f"{s}@bookTicker" for s in lower])
+
+        async def on_msg(stream_name: str, data: dict) -> None:
+            sym = stream_name.split("@")[0].upper()
+            if stream_name.endswith("@bookTicker"):
+                try:
+                    b, a = float(data.get("b", 0)), float(data.get("a", 0))
+                except (TypeError, ValueError):
+                    return
+                if b > 0 and a > b:
+                    quotes[sym] = (b, a)
+                return
+            if data.get("e") != "aggTrade" or str(data.get("st", "")) == "2":
+                return                      # CM/calc/other frames excluded
+            tid = int(data.get("t", 0))
+            if tid and tid <= self._last_trade_ids.get(sym, 0):
+                return                              # duplicate id
+            self._last_trade_ids[sym] = tid
+            try:
+                tick = {"symbol": sym, "price": float(data["p"]),
+                        "ts": int(data.get("T", data.get("E", 0))) / 1000.0,
+                        "volume": float(data["q"]),
+                        "side": TRADE_SELL if data.get("m") else TRADE_BUY}
+            except (KeyError, TypeError, ValueError):
+                return
+            q = quotes.get(sym)
+            if q:
+                tick["bid"], tick["ask"] = q
+            out_q.put_nowait(tick)
+
+        task = asyncio.create_task(
+            self._watch_route("market", names, on_msg))
+        try:
+            while True:
+                yield await out_q.get()
+        finally:
+            task.cancel()
 
     def depth_history(self, symbol, start, end, column_ms=1000,
                       max_levels=50):
@@ -863,157 +1111,201 @@ class BinancePerpProvider(Provider):
         return caps
 
     # pump: two self-healing upstream sockets per symbol set ----------------
-    async def _pump(self, symbols: List[str]) -> AsyncIterator:
-        import websockets
-        feeds = {s: BookFeed(s.lower()) for s in symbols}
-        out_q: asyncio.Queue = asyncio.Queue()
-
-        def drain_into_queue(feed: BookFeed) -> None:
-            while feed.events:
-                out_q.put_nowait(feed.events.pop(0))
-
-        # fstream routes: /market + /public; the .vision mirror serves
-        # combined streams under /stream on one socket. Candidates are tried
-        # in "last winner first" order: whichever base last held a stream
-        # goes first, so a WAF'd or ISP-blocked primary (Render datacenter
-        # egress) is never re-probed for its full open_timeout on every
-        # reconnect — the stream that worked keeps winning until it fails,
-        # then the other is tried.
-        ROUTES = {
+    # fstream routes: /market + /public; the .vision mirror serves
+    # combined streams under /stream on one socket. Candidates are tried
+    # in "last winner first" order: whichever base last held a stream
+    # goes first, so a WAF'd or ISP-blocked primary (Render datacenter
+    # egress) is never re-probed for its full open_timeout on every
+    # reconnect — the stream that worked keeps winning until it fails,
+    # then the other is tried. The winner table is per provider (one
+    # instance in the registry) so every pump learns from every other.
+    def _routes(self) -> Dict[str, list]:
+        return {
             "market": [(WS_BASE, "/market"), (MIRROR_WS, "/stream")],
             "public": [(WS_BASE, "/public"), (MIRROR_WS, "/stream")],
         }
-        winner: Dict[str, str] = {}   # route -> base that last held a stream
 
-        async def watch(route: str, names: List[str],
-                        handler) -> None:
-            base_cands = ROUTES[route]
-            # Order: last winner first, then the rest. Rebuilt each attempt
-            # so a winner flip reorders without any index bookkeeping.
-            def ordered():
-                w = winner.get(route)
-                return sorted(base_cands,
-                              key=lambda c: 0 if c[0] == w else 1)
+    async def _watch_route(self, route: str, names: List[str], on_msg,
+                           on_reset=None) -> None:
+        """Hold one upstream combined-stream socket forever: race the
+        bases cold, prefer the last winner warm, reconnect with jittered
+        backoff (Binance drops every WS at 24h). Every frame goes to
+        on_msg(stream_name, data); on_reset() fires when a fresh socket
+        is held (sequence-continuous state must be rebuilt)."""
+        import websockets
+        winner = self._ws_winner
+        base_cands = self._routes()[route]
+        # Order: last winner first, then the rest. Rebuilt each attempt
+        # so a winner flip reorders without any index bookkeeping.
+        def ordered():
+            w = winner.get(route)
+            return sorted(base_cands,
+                          key=lambda c: 0 if c[0] == w else 1)
 
-            async def _try_connect(base: str, path: str):
-                url = f"{base}{path}?streams=" + ",".join(names)
-                return await websockets.connect(
-                    url, max_size=8 * 1024 * 1024, open_timeout=8)
+        async def _try_connect(base: str, path: str):
+            url = f"{base}{path}?streams=" + ",".join(names)
+            return await websockets.connect(
+                url, max_size=8 * 1024 * 1024, open_timeout=8)
 
-            async def acquire(cands):
-                """(ws, base) for the next connection to hold, else
-                (None, None). COLD start (no known winner yet): race every
-                candidate IN PARALLEL — a WAF'd or ISP-blocked base must
-                cost zero latency, so the healthy mirror wins the race on
-                the first page load instead of ~8s of serial probing.
-                WARM reconnect: try the last winner first, serially — one
-                healthy connect, no fork."""
-                if winner.get(route) is None and len(base_cands) > 1:
-                    tasks = {}
-                    for base, path in cands:
-                        tasks[asyncio.ensure_future(_try_connect(base, path))] = base
-                    try:
-                        while True:
-                            done, pending = await asyncio.wait(
-                                list(tasks),
-                                return_when=asyncio.FIRST_COMPLETED)
-                            for f in done:
-                                try:
-                                    return f.result(), tasks[f]
-                                except asyncio.CancelledError:
-                                    raise
-                                except Exception as exc:  # noqa: BLE001
-                                    log.warning("binance %s connect (%s) failed: %s",
-                                                route, tasks[f], exc)
-                            if not pending:
-                                return None, None
-                    finally:
-                        for f in tasks:
-                            if not f.done():
-                                f.cancel()
-                                # reap without blocking: a blackholed loser
-                                # must not hold the winner hostage
-                                f.add_done_callback(
-                                    lambda t: None
-                                    if t.cancelled() else t.exception())
+        async def acquire(cands):
+            """(ws, base) for the next connection to hold, else
+            (None, None). COLD start (no known winner yet): race every
+            candidate IN PARALLEL — a WAF'd or ISP-blocked base must
+            cost zero latency, so the healthy mirror wins the race on
+            the first page load instead of ~8s of serial probing.
+            WARM reconnect: try the last winner first, serially — one
+            healthy connect, no fork."""
+            if winner.get(route) is None and len(base_cands) > 1:
+                tasks = {}
                 for base, path in cands:
-                    try:
-                        return await _try_connect(base, path), base
-                    except asyncio.CancelledError:
-                        raise
-                    except Exception as exc:  # noqa: BLE001
-                        log.warning("binance %s connect (%s) failed: %s",
-                                    route, base, exc)
-                return None, None
+                    tasks[asyncio.ensure_future(_try_connect(base, path))] = base
+                try:
+                    while True:
+                        done, pending = await asyncio.wait(
+                            list(tasks),
+                            return_when=asyncio.FIRST_COMPLETED)
+                        for f in done:
+                            try:
+                                return f.result(), tasks[f]
+                            except asyncio.CancelledError:
+                                raise
+                            except Exception as exc:  # noqa: BLE001
+                                log.warning("binance %s connect (%s) failed: %s",
+                                            route, tasks[f], exc)
+                        if not pending:
+                            return None, None
+                finally:
+                    for f in tasks:
+                        if not f.done():
+                            f.cancel()
+                            # reap without blocking: a blackholed loser
+                            # must not hold the winner hostage
+                            f.add_done_callback(
+                                lambda t: None
+                                if t.cancelled() else t.exception())
+            for base, path in cands:
+                try:
+                    return await _try_connect(base, path), base
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("binance %s connect (%s) failed: %s",
+                                route, base, exc)
+            return None, None
 
-            backoff = 1.0
-            while True:
-                ws, base = await acquire(ordered())
-                held_any = False
-                if ws is not None:
-                    winner[route] = base
-                    held_any = True
-                    backoff = 1.0
+        backoff = 1.0
+        while True:
+            ws, base = await acquire(ordered())
+            held_any = False
+            if ws is not None:
+                winner[route] = base
+                held_any = True
+                backoff = 1.0
+                try:
+                    if on_reset is not None:
+                        on_reset()
+                    async for raw in ws:
+                        env = json.loads(raw)
+                        await on_msg(env.get("stream", ""),
+                                     env.get("data", {}) or {})
+                except asyncio.CancelledError:
+                    raise
+                finally:
                     try:
-                        for f in feeds.values():
-                            f.reset_for_reconnect()
-                        async for raw in ws:
-                            env = json.loads(raw)
-                            stream_name, data = env.get("stream", ""), env.get("data", {})
-                            sym = stream_name.split("@")[0].upper()
-                            feed = feeds.get(sym)
-                            if feed is None:
-                                continue
-                            await handler(feed, data)
-                            drain_into_queue(feed)
-                    except asyncio.CancelledError:
-                        raise
-                    finally:
-                        try:
-                            await ws.close()
-                        except Exception:  # noqa: BLE001 — stream is gone anyway
-                            pass
-                if held_any:
-                    # A stream held this pass: quick jittered re-pick so a
-                    # healthy mirror is re-established in well under a second
-                    # (Binance drops every WS at 24h; this is the routine hop).
-                    await asyncio.sleep(0.1 + random.random() * 0.3)
-                    continue
-                # nothing held: brief jittered backoff, then re-try (winner
-                # order will prefer the healthy base on the next pass)
-                await asyncio.sleep(backoff + random.random() * 0.5)
-                backoff = min(30.0, backoff * 2)
+                        await ws.close()
+                    except Exception:  # noqa: BLE001 — stream is gone anyway
+                        pass
+            if held_any:
+                # A stream held this pass: quick jittered re-pick so a
+                # healthy mirror is re-established in well under a second
+                # (Binance drops every WS at 24h; this is the routine hop).
+                await asyncio.sleep(0.1 + random.random() * 0.3)
+                continue
+            # nothing held: brief jittered backoff, then re-try (winner
+            # order will prefer the healthy base on the next pass)
+            await asyncio.sleep(backoff + random.random() * 0.5)
+            backoff = min(30.0, backoff * 2)
 
-        async def on_market(feed: BookFeed, data: dict) -> None:
+    # depth pump: book state machine + trades, for depth_stream ----------
+    async def _pump(self, symbols: List[str]) -> AsyncIterator:
+        feeds = {s: BookFeed(s.lower()) for s in symbols}
+        out_q: asyncio.Queue = asyncio.Queue()
+        resyncs: set = set()
+
+        def drain(feed: BookFeed) -> None:
+            while feed.events:
+                out_q.put_nowait(feed.events.pop(0))
+
+        def kick_resync(feed: BookFeed) -> None:
+            """Snapshot fetches run as their own tasks: the socket reader
+            must never await REST (a slow snapshot used to freeze trade
+            delivery for its whole latency on every sequence gap)."""
+            if feed.resyncing or time.monotonic() < feed.next_resync:
+                return
+
+            async def _go():
+                await feed._trigger_resync("initial sync", 0, 0)
+                drain(feed)
+            t = asyncio.create_task(_go())
+            resyncs.add(t)
+            t.add_done_callback(resyncs.discard)
+
+        async def on_market(stream_name: str, data: dict) -> None:
+            feed = feeds.get(stream_name.split("@")[0].upper())
+            if feed is None:
+                return
             ev = feed.on_agg_trade(data, self._last_trade_ids)
             if ev is not None:
-                feed.events.append(ev)
-            # a fresh trade on an unsynced book also nudges first sync
-            if not feed.synced and not feed.resyncing:
-                await feed._trigger_resync("initial sync", 0, 0)
+                out_q.put_nowait(ev)
+            if not feed.synced:
+                kick_resync(feed)   # a fresh trade nudges first sync
 
-        async def on_public(feed: BookFeed, data: dict) -> None:
-            await feed.on_depth(data)
+        # Depth diffs are handed to a per-feed worker: on_depth may await
+        # a REST snapshot (sequence gap, first sync), and that wait must
+        # never sit on the socket reader — the reader keeps draining the
+        # wire (frames for the other symbols keep flowing, and this
+        # symbol's diffs queue up to be replayed in order).
+        diff_q: Dict[str, asyncio.Queue] = {
+            s.upper(): asyncio.Queue() for s in symbols}
+
+        async def depth_worker(feed: BookFeed, q: asyncio.Queue) -> None:
+            while True:
+                d = await q.get()
+                try:
+                    await feed.on_depth(d)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 — one bad frame
+                    log.warning("depth frame dropped (%s): %s",
+                                feed.symbol, exc)
+                drain(feed)
+
+        async def on_public(stream_name: str, data: dict) -> None:
+            q = diff_q.get(stream_name.split("@")[0].upper())
+            if q is not None:
+                q.put_nowait(data)
+
+        def on_reset() -> None:
+            for f in feeds.values():
+                f.reset_for_reconnect()
 
         lower = [s.lower() for s in symbols]
-        tasks = [
-            asyncio.create_task(watch("market",
-                                      [f"{s}@aggTrade" for s in lower],
-                                      on_market)),
-            asyncio.create_task(watch("public",
-                                      [f"{s}@depth@100ms" for s in lower],
-                                      on_public)),
+        tasks = [asyncio.create_task(depth_worker(feeds[k], diff_q[k]))
+                 for k in feeds] + [
+            asyncio.create_task(self._watch_route(
+                "market", [f"{s}@aggTrade" for s in lower], on_market,
+                on_reset)),
+            asyncio.create_task(self._watch_route(
+                "public", [f"{s}@depth@100ms" for s in lower], on_public,
+                on_reset)),
         ]
-        # initial snapshots — in parallel: 8 symbols x serial REST would
-        # block the first yield for minutes on a slow egress
-        await asyncio.gather(*[f._trigger_resync("initial sync", 0, 0)
-                               for f in feeds.values()])
+        # initial snapshots, in parallel and OFF the yield path: the first
+        # event (a trade, or the snapshot itself) flows the moment it exists
         for f in feeds.values():
-            drain_into_queue(f)
+            kick_resync(f)
         try:
             while True:
-                ev = await out_q.get()
-                yield ev
+                yield await out_q.get()
         finally:
-            for t in tasks:
+            for t in list(tasks) + list(resyncs):
                 t.cancel()

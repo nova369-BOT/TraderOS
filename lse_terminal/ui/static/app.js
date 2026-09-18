@@ -4,7 +4,8 @@
 
 const TF_SECONDS = { "1s": 1, "30s": 30,
                      "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
-                     "1h": 3600, "4h": 14400, "1d": 86400, "1w": 604800 };
+                     "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400,
+                     "1w": 604800 };
 // A tick chart appends one bar per trade; big liquid pairs print ~24/s, so
 // without a cap a day-open session would grow the array into millions of
 // bars and the canvas repaint would die long before the memory did.
@@ -300,8 +301,8 @@ function chartReloadCadence() {
   // 4h/1d: a bar only forms once in hours, so 1/2 minutes is plenty.
   const tf = state.timeframe;
   if (tf === "tick" || tf === "1s" || tf === "30s") return 2000;
-  if (tf === "1d") return 120000;
-  if (tf === "4h") return 60000;
+  if (tf === "1d" || tf === "1w") return 120000;
+  if (tf === "2h" || tf === "4h") return 60000;
   return 5000;
 }
 async function liveChartReload() {
@@ -883,6 +884,17 @@ function renderWatchlist() {
   // its own stars, its own open/closed memory (keys are prefixed with the
   // source name so the two sections never fight), and a pick crosses the
   // source for you (pickFromSource).
+  if (!state.instruments.length && state.provider === "binance") {
+    // The exchange's whole book is still downloading (a cold switch on a
+    // slow line is the one fetch here that can take seconds): say so,
+    // instead of a blank sidebar that reads as broken. The chart never
+    // waits for this — it is already painting BTCUSDT.
+    el.innerHTML =
+      '<div class="wl-loading">' +
+        '<span class="wl-loading-dot"></span>loading the Binance book…' +
+      '</div>';
+    return;
+  }
   const buildGroups = (instruments) => {
     const gs = [];
     for (const ins of instruments) {

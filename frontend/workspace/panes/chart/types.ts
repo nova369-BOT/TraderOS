@@ -12,7 +12,9 @@ export interface Candle {
 
 export type Source = 'demo' | 'binance';
 
-export const TIMEFRAMES = ['1m', '5m', '15m', '1h'] as const;
+// The exchange's native kline ladder (both venues; kline_<tf> WS streams
+// carry the same names), matching the engine's Binance provider.
+export const TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '1d'] as const;
 export type Timeframe = typeof TIMEFRAMES[number];
 
 export const CANDLE_GAP_RATIO = 0.2;

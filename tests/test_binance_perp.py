@@ -23,6 +23,7 @@ from lse_terminal.contracts import (
     NotSupported,
     TRADE_BUY,
     TRADE_SELL,
+    TradeEvent,
 )
 from lse_terminal.providers.binance_perp import (
     SYMBOLS,
@@ -657,6 +658,7 @@ def test_first_json_single_ceiling_gives_slow_line_a_chance():
     import lse_terminal.providers.binance_perp as bp
 
     class FakeResp:
+        headers = {}
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -666,8 +668,11 @@ def test_first_json_single_ceiling_gives_slow_line_a_chance():
 
     seen = []
 
-    def fake_urlopen(url, timeout=6.0):
+    def fake_urlopen(req, timeout=6.0):
+        url = req.full_url if hasattr(req, "full_url") else req
         seen.append((url, timeout))
+        # gzip is always requested: the whole-book ticker is ~1MB raw
+        assert req.get_header("Accept-encoding") == "gzip"
         if "fapi" in url:
             raise RuntimeError("WAF 418")      # blocked base, always
         if timeout >= 8.0:
@@ -844,6 +849,8 @@ def test_tape_to_candles_malformed_rows_skipped():
 
 
 def test_candles_subminute_serves_tape_honestly(monkeypatch):
+    """Mirror unreachable (no 1s klines): tick/1s/30s fall back to the
+    exchange's own trade tape, labelled with the book it came from."""
     import lse_terminal.providers.binance_perp as bp
     p = BinancePerpProvider()
     p._catalog = (0.0, "spot", ["BTCUSDT"])
@@ -851,6 +858,10 @@ def test_candles_subminute_serves_tape_honestly(monkeypatch):
     monkeypatch.setattr(bp, "rest_agg_trades",
                         lambda s, limit=1000: (calls.append(s) or
                                                (_tape_rows(), "spot")))
+
+    def no_klines(params, tf_sec):
+        raise RuntimeError("mirror down")
+    monkeypatch.setattr(bp, "fetch_klines_paged", no_klines)
     for tf in ("tick", "1s", "30s"):
         df = p.candles("BTCUSDT", tf, limit=10)
         assert len(df) <= 10
@@ -880,4 +891,369 @@ def test_candles_klines_passes_start_end(monkeypatch):
                    end="1700003600")
     assert df.attrs["venue"] == "spot"
     assert seen["startTime"] == "1700000000000"  # s -> ms
-    assert seen["endTime"] == "1700003600"
+    assert seen["endTime"] == "1700003600000"    # s -> ms (both edges)
+
+
+def test_candles_accepts_iso_window(monkeypatch):
+    """The backtest paths pass ISO timestamps; they must reach the
+    exchange as ms, not be silently dropped."""
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    seen = {}
+
+    def fake_first(calls, params):
+        seen.update(params)
+        return [[1700000000000, "1", "2", "0.5", "1.5", "7"]], "spot"
+
+    monkeypatch.setattr(bp, "_first_json", fake_first)
+    p.candles("BTCUSDT", "1h", limit=10, start="2023-11-14T22:13:20Z",
+              end="2023-11-14T23:13:20+00:00")
+    assert seen["startTime"] == "1700000000000"
+    assert seen["endTime"] == "1700003600000"
+
+
+# ── B1: the exchange's per-request caps (root cause of "only a few
+# timeframes work": the shell opens every chart at limit=5000, Binance caps
+# klines at 1500/1000 and answers 400 -1130 — every kline timeframe 502'd
+# while the aggTrades-backed tick/1s/30s, clamped to 1000, kept working) ──
+
+class _CappedExchange:
+    """Stand-in for _first_json that enforces Binance's real caps and
+    serves a synthetic contiguous kline series anchored on endTime."""
+
+    def __init__(self, cap=1000, venue="spot"):
+        self.cap, self.venue, self.calls = cap, venue, []
+
+    def __call__(self, calls, params):
+        if "interval" not in params:          # catalog/ticker probes
+            return [], self.venue
+        self.calls.append(dict(params))
+        lim = int(params.get("limit", "500"))
+        if lim > self.cap:
+            raise bp_mod().BinanceRESTError(
+                400, -1130, "Data sent for parameter 'limit' is not valid.",
+                "/api/v3/klines")
+        step = 60_000
+        end = int(params.get("endTime", "1800000000000"))
+        end -= end % step
+        start = int(params.get("startTime", "0"))
+        rows, t = [], end
+        while len(rows) < lim and t >= start:
+            rows.append([t, "1", "2", "0.5", "1.5", "7"])
+            t -= step
+        rows.reverse()
+        return rows, self.venue
+
+
+def bp_mod():
+    import lse_terminal.providers.binance_perp as bp
+    return bp
+
+
+def test_klines_5000_is_paged_never_rejected(monkeypatch):
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    df = p.candles("BTCUSDT", "1m", limit=5000)
+    assert len(df) == 5000
+    # every page respected the cap
+    assert all(int(c["limit"]) <= 1000 for c in ex.calls)
+    assert len(ex.calls) == 5
+    # stitched contiguous, ascending, no duplicate open times
+    d = df["ts"].diff().dropna()
+    assert (d == 60).all()
+    assert df["ts"].is_monotonic_increasing and df["ts"].is_unique
+
+
+def test_klines_small_request_is_one_call(monkeypatch):
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    assert len(p.candles("BTCUSDT", "5m", limit=400)) == 400
+    assert len(ex.calls) == 1 and ex.calls[0]["limit"] == "400"
+
+
+def test_klines_paged_window_respects_start(monkeypatch):
+    """start + big limit: pages never reach before start."""
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    df = p.candles("BTCUSDT", "1m", limit=3000, start="1799999000",
+                   end="1800000000")
+    assert df["ts"].min() >= 1799999000
+    assert df["ts"].max() <= 1800000000
+    assert all(int(c["startTime"]) >= 1799999000000 for c in ex.calls)
+
+
+def test_rest_error_carries_binance_code_and_msg(monkeypatch):
+    """A 400 from the exchange is a diagnosis, not 'unreachable'."""
+    import io
+    import urllib.error
+    bp = bp_mod()
+
+    def boom(url, timeout):
+        raise urllib.error.HTTPError(
+            url, 400, "Bad Request", {},
+            io.BytesIO(b'{"code":-1130,"msg":"Data sent for parameter '
+                       b'\'limit\' is not valid."}'))
+
+    monkeypatch.setattr(bp.urllib.request, "urlopen", boom)
+    with pytest.raises(bp.BinanceRESTError) as ei:
+        bp._get_json("https://x", "/fapi/v1/klines", {"limit": "5000"})
+    assert ei.value.code == -1130
+    assert "limit" in str(ei.value) and "-1130" in str(ei.value)
+
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    with pytest.raises(NotSupported) as e2:
+        p.candles("BTCUSDT", "1h", limit=10)
+    assert "-1130" in str(e2.value) and "unreachable" not in str(e2.value)
+
+
+def test_full_ladder_is_native_or_tape():
+    bp = bp_mod()
+    native = set(bp.INTERVALS.values())
+    for tf in bp.TIMEFRAMES:
+        assert tf in native or tf in ("tick", "1s", "30s")
+    for tf in ("30m", "2h", "1w"):
+        assert tf in bp.TIMEFRAMES
+
+
+# ── B2: the tick stream must never wait on the order book ────────────────
+# Root cause of "candles don't update fast": /api/ws -> stream() reused the
+# depth pump, which awaited a 1000-level REST snapshot before its first
+# yield and re-awaited one inline on every sequence gap — on a degraded
+# line (measured 8s) the FIRST TICK arrived 8s after connect and the tape
+# stalled on every resync. Budget: first tick < 1s on a healthy socket
+# regardless of REST latency; bid/ask ride each tick from bookTicker.
+
+def _serve_ticks(n_trades=300, n_depth=300, seq=None):
+    import json
+    seq = seq if seq is not None else {"u": 100}
+
+    async def handler(ws):
+        req = getattr(ws, "request", None)
+        path = getattr(req, "path", "") if req is not None else ""
+        try:
+            if "aggTrade" in path:
+                await ws.send(json.dumps({"stream": "btcusdt@bookTicker",
+                                          "data": {"b": "100.4",
+                                                   "a": "100.6"}}))
+                for i in range(n_trades):
+                    await ws.send(json.dumps({
+                        "stream": "btcusdt@aggTrade",
+                        "data": {"e": "aggTrade", "T": 1750000001000 + i,
+                                 "p": "100.5", "q": "0.2", "t": 11 + i,
+                                 "m": True, "s": "BTCUSDT"}}))
+                    await asyncio.sleep(0.01)
+            else:
+                for i in range(n_depth):
+                    seq["u"] += 1
+                    u = seq["u"]
+                    await ws.send(json.dumps({
+                        "stream": "btcusdt@depth@100ms",
+                        "data": {"e": "depth", "E": 1000 + i, "U": u,
+                                 "u": u, "pu": u - 1,
+                                 "b": [["100.4", "1"]],
+                                 "a": [["100.5", "1"]]}}))
+                    await asyncio.sleep(0.01)
+            await ws.wait_closed()
+        except Exception:  # noqa: BLE001 — peer closed first
+            pass
+    return handler
+
+
+def test_tick_stream_first_tick_independent_of_depth_rest(monkeypatch):
+    import time as _time
+    import websockets
+    import lse_terminal.providers.binance_perp as bp
+    rest_calls = []
+
+    def slow_rest(calls, params):
+        rest_calls.append(params)
+        _time.sleep(2.0)                    # a degraded depth line
+        return {"lastUpdateId": 150, "bids": [], "asks": []}, "spot"
+    monkeypatch.setattr(bp, "_first_json", slow_rest)
+
+    async def main():
+        server = await websockets.serve(_serve_ticks(), "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        monkeypatch.setattr(bp, "WS_BASE", f"ws://127.0.0.1:{port}")
+        monkeypatch.setattr(bp, "MIRROR_WS", f"ws://127.0.0.1:{port}")
+        p = bp.BinancePerpProvider()
+        p._catalog = (0.0, "spot", ["BTCUSDT"])
+        t0 = _time.monotonic()
+        got = []
+        async for ev in p.stream(["BTCUSDT"]):
+            got.append(ev)
+            if len(got) == 1:
+                first = _time.monotonic() - t0
+            if len(got) >= 20:
+                break
+        server.close()
+        await server.wait_closed()
+        return got, first
+
+    got, first = run(main(), timeout=15.0)
+    assert first < 1.0, f"first tick waited on something: {first:.2f}s"
+    assert not [c for c in rest_calls if "limit" in c], \
+        "the tick stream must not fetch a depth snapshot"
+    assert got[0]["bid"] == 100.4 and got[0]["ask"] == 100.6
+    assert got[0]["side"] == TRADE_SELL and got[0]["price"] == 100.5
+    assert len({g["ts"] for g in got}) == 20      # no dupes
+
+
+def test_depth_stream_trades_flow_while_snapshot_in_flight(monkeypatch):
+    """The depth pump: trades are delivered immediately; the snapshot
+    (slow REST) lands later without ever having blocked them; the book
+    then syncs on the straddling diff and deltas follow."""
+    import time as _time
+    import websockets
+    import lse_terminal.providers.binance_perp as bp
+
+    seq = {"u": 100}
+
+    def slow_rest(calls, params):
+        if "limit" not in params:
+            return [], "spot"                  # catalog probe
+        _time.sleep(1.0)
+        # like the real exchange: the snapshot id is wherever the live
+        # sequence is NOW, so the next diff straddles it
+        return {"lastUpdateId": seq["u"] + 1, "bids": [["100", "1"]],
+                "asks": [["101", "1"]]}, "spot"
+    monkeypatch.setattr(bp, "_first_json", slow_rest)
+
+    async def main():
+        server = await websockets.serve(_serve_ticks(seq=seq),
+                                        "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        # one live base only: two winners of the cold race would both
+        # consume the shared sequence counter and fake a gap
+        monkeypatch.setattr(bp, "WS_BASE", "ws://127.0.0.1:1")
+        monkeypatch.setattr(bp, "MIRROR_WS", f"ws://127.0.0.1:{port}")
+        p = bp.BinancePerpProvider()
+        p._catalog = (0.0, "spot", ["BTCUSDT"])
+        t0 = _time.monotonic()
+        first_trade = first_snap = None
+        n_delta = 0
+        async for ev in p.depth_stream(["BTCUSDT"]):
+            now = _time.monotonic() - t0
+            if isinstance(ev, TradeEvent) and first_trade is None:
+                first_trade = now
+            elif getattr(ev, "type", "") == DEPTH_SNAPSHOT:
+                first_snap = first_snap or now
+            elif getattr(ev, "type", "") == DEPTH_DELTA:
+                n_delta += 1
+            if first_snap is not None and n_delta >= 5:
+                break
+        server.close()
+        await server.wait_closed()
+        return first_trade, first_snap, n_delta
+
+    first_trade, first_snap, n_delta = run(main(), timeout=15.0)
+    assert first_trade is not None and first_trade < 0.5, first_trade
+    assert first_snap is not None and first_snap >= 1.0
+    assert n_delta >= 5
+
+
+# ── B3: 1s / 30s from REAL 1s klines (spot mirror), tape only as fallback ──
+
+def test_subminute_prefers_real_1s_klines(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    seen = []
+
+    def klines(params, tf_sec):
+        seen.append((dict(params), tf_sec))
+        n = int(params["limit"])
+        base = 1_699_999_980_000
+        return ([[base + i * 1000, "1", "2", "0.5", "1.5", "1"]
+                 for i in range(n)], "spot")
+    monkeypatch.setattr(bp, "fetch_klines_paged", klines)
+    monkeypatch.setattr(bp, "rest_agg_trades",
+                        lambda *a, **k: pytest.fail("tape must not be hit"))
+
+    df = p.candles("BTCUSDT", "1s", limit=120)
+    assert len(df) == 120 and seen[-1][0]["interval"] == "1s"
+    assert seen[-1][1] == 1                       # paged at 1s steps
+    assert (df["ts"].diff().dropna() == 1).all()
+
+    df30 = p.candles("BTCUSDT", "30s", limit=4)
+    assert seen[-1][0]["limit"] == "120"          # 4 x 30 real seconds
+    assert len(df30) == 4
+    assert (df30["ts"] % 30 == 0).all()
+    assert (df30["volume"] == 30).all()           # folded sums, not fabricated
+    assert df30.attrs["venue"] == "spot"
+
+    # only the spot mirror carries 1s: the futures leg is never asked
+    assert all(c[0] == "spot" for c in bp._KLINE_1S_CALLS)
+
+
+def test_fold_candles_is_vectorised_and_gap_honest():
+    import numpy as np
+    import pandas as pd
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    ts = np.concatenate([np.arange(0, 60), np.arange(120, 150)]).astype(float)
+    df = pd.DataFrame({"ts": ts, "open": 1.0, "high": 2.0, "low": 0.5,
+                       "close": 1.5, "volume": 1.0})
+    out = bp.fold_candles(df, 30, pd)
+    assert out["ts"].tolist() == [0.0, 30.0, 120.0]   # 60-119: no bar, no fill
+    assert out["volume"].tolist() == [30.0, 30.0, 30.0]
+    big = pd.DataFrame({"ts": np.arange(0, 5000, dtype=float), "open": 1.0,
+                        "high": 2.0, "low": 0.5, "close": 1.5, "volume": 1.0})
+    t0 = _time.perf_counter()
+    bp.fold_candles(big, 30, pd)
+    assert _time.perf_counter() - t0 < 0.05            # budget: 50ms / 5000 bars
+
+
+# ── cold switch: catalog + board = ONE download; chart never queues behind it
+
+def test_cold_switch_shares_one_ticker_download_and_chart_does_not_wait(monkeypatch):
+    """Measured before: a 3s ticker line gave a 9s watchlist (catalog and
+    board each downloaded the ~1MB ticker, serialised through the 4-slot
+    refresh pool) and the chart queued behind the catalog for symbol
+    validation. Budget: watchlist = line latency; chart independent."""
+    import threading
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    calls = []
+
+    def slow_first(cands, params):
+        label = cands[0][0]
+        path = cands[0][2]
+        calls.append(path)
+        if "ticker" in path:
+            _time.sleep(0.6)
+            return [{"symbol": "BTCUSDT", "lastPrice": "1", "bidPrice": "0.9",
+                     "askPrice": "1.1"},
+                    {"symbol": "ETHUSDT", "lastPrice": "2"}], label
+        if "klines" in path:
+            return [[1700000000000, "1", "2", "0.5", "1.5", "7"]], label
+        return [], label
+    monkeypatch.setattr(bp, "_first_json", slow_first)
+    p = bp.BinancePerpProvider()
+    out = {}
+
+    def run(name, fn):
+        t0 = _time.perf_counter()
+        fn()
+        out[name] = _time.perf_counter() - t0
+    ts = [threading.Thread(target=run, args=("catalog", lambda: p.search("", 5000))),
+          threading.Thread(target=run, args=("board", lambda: p.prices(["BTCUSDT"]))),
+          threading.Thread(target=run, args=("chart", lambda: p.candles("BTCUSDT", "1h", 50)))]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert calls.count("/fapi/v1/ticker/24hr") == 1, calls
+    assert out["catalog"] < 0.9 and out["board"] < 0.9
+    assert out["chart"] < 0.3, f"chart waited on the catalog: {out['chart']:.2f}s"
