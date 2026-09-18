@@ -169,7 +169,8 @@ export default function ChartPane({ theme }: Props) {
         style={{ display: 'block', touchAction: 'none', cursor: 'crosshair' }}
       />
       <div style={{ position: 'absolute', top: 22, right: 6,
-                    display: 'flex', gap: 4 }}>
+                    display: 'flex', gap: 4, flexWrap: 'wrap',
+                    justifyContent: 'flex-end', maxWidth: '70%' }}>
         <button
           className="ws-chip"
           title="Data source: BINANCE (direct spine, falls back to gateway, then honest DEMO)"
