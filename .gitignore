@@ -43,6 +43,12 @@ desktop/*.log
 .env.*
 !.env.example
 
+# Go build artifacts (vendored edgedepth-gateway; source is committed, binaries are not)
+services/edgedepth-gateway/bin/
+services/edgedepth-gateway/edgedepth-gateway
+*.test
+*.out
+
 # Data & runtime artifacts
 *.db
 *.db-journal
