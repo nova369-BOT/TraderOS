@@ -405,3 +405,106 @@ def test_provider_validates_and_honest_history(monkeypatch):
     # generator starts no I/O until iterated, so building it offline must
     # simply succeed
     assert hasattr(provider.depth_stream(list(SYMBOLS)), "__anext__")
+
+
+# ── sub-minute charts: the exchange's own trade tape ─────────────────────
+
+def _tape_rows():
+    """Canned aggTrades prints over a 35-second window (T in ms, a real
+    epoch base — a multiple of 30s so 30s buckets align to it, exactly
+    as they do on the wire)."""
+    base_ms = 1_699_999_980_000        # % 30000 == 0
+    rows = []
+    a = 1000
+    for sec, price, qty in (
+        (0, 1000.0, 1.0),
+        (0, 1001.0, 2.0),   # 0s bucket: o=1000 h=1001 l=1000 c=1001 v=3
+        (1, 998.0, 1.0),    # 1s bucket
+        (29, 1002.0, 4.0),  # 0-29s 30s bucket edge
+        (34, 997.0, 1.0),   # 30s bucket
+    ):
+        a += 1
+        rows.append({"a": a, "p": str(price), "q": str(qty),
+                     "f": a, "l": a, "T": base_ms + sec * 1000, "m": False})
+    return rows
+
+
+def test_tape_to_candles_1s_buckets():
+    from lse_terminal.providers.binance_perp import tape_to_candles
+    base = 1_699_999_980.0
+    bars, newest = tape_to_candles(_tape_rows(), "1s")
+    assert len(bars) == 4                       # 0s,1s,29s,34s buckets
+    first = bars[0]
+    assert first[0] == base                     # bucket key = ts floored to s
+    assert (first[1], first[2], first[3], first[4], first[5]) == \
+        (1000.0, 1001.0, 1000.0, 1001.0, 3.0)   # real OHLCV of the prints
+    assert newest == base + 34.0
+
+
+def test_tape_to_candles_30s_and_tick_and_limit():
+    from lse_terminal.providers.binance_perp import tape_to_candles
+    base = 1_699_999_980.0
+    rows = _tape_rows()
+    bars30, _ = tape_to_candles(rows, "30s")
+    assert [b[0] for b in bars30] == [base, base + 30.0]
+    first30 = bars30[0]
+    assert (first30[1], first30[2], first30[3], first30[4]) == \
+        (1000.0, 1002.0, 998.0, 1002.0)         # o/h/l/c across the bucket
+    tick, _ = tape_to_candles(rows, "tick")
+    # one bar per DISTINCT print time (the two same-second prints merge,
+    # exactly the way the live shell paints a tick bar)
+    assert len(tick) == len(rows) - 1
+    assert all(b[1] == b[2] == b[3] == b[4] for b in tick)
+    assert tick[0] == (base, 1001.0, 1001.0, 1001.0, 1001.0, 3.0)
+    capped, _ = tape_to_candles(rows, "1s", limit=2)
+    assert [b[0] for b in capped] == [base + 29.0, base + 34.0]  # newest kept
+
+
+def test_tape_to_candles_malformed_rows_skipped():
+    from lse_terminal.providers.binance_perp import tape_to_candles
+    rows = [{"p": "1.0"}, {"T": 0, "p": "1.0", "q": "1.0"},
+            {"T": 1000, "p": "oops", "q": "1.0"}, "not-a-dict",
+            {"t": 2_000_000_000, "p": "2.5", "q": "0.5"}]  # t fallback, no T
+    bars, newest = tape_to_candles(rows, "1s")
+    assert len(bars) == 1 and bars[0][1] == 2.5
+    assert newest == 2_000_000.0               # 2_000_000_000 ms -> s
+
+
+def test_candles_subminute_serves_tape_honestly(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    calls = []
+    monkeypatch.setattr(bp, "rest_agg_trades",
+                        lambda s, limit=1000: (calls.append(s) or
+                                               (_tape_rows(), "spot")))
+    for tf in ("tick", "1s", "30s"):
+        df = p.candles("BTCUSDT", tf, limit=10)
+        assert len(df) <= 10
+        assert df.attrs["venue"] == "spot"      # the mirror's tape: labelled
+        assert df["ts"].is_monotonic_increasing
+    assert calls == ["BTCUSDT"] * 3
+    with monkeypatch.context() as m:
+        m.setattr(bp, "rest_agg_trades", lambda s, limit=1000: ([], "spot"))
+        with pytest.raises(NotSupported) as ei:
+            p.candles("BTCUSDT", "1s")
+        assert "no trades" in str(ei.value)
+
+
+def test_candles_klines_passes_start_end(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    seen = {}
+
+    def fake_first(calls, params):
+        seen.update(params)
+        rows = [[1000000000000, "1", "2", "0.5", "1.5", "7"]]
+        return rows, "spot"
+
+    monkeypatch.setattr(bp, "_first_json", fake_first)
+    df = p.candles("BTCUSDT", "5m", limit=50, start="1700000000",
+                   end="1700003600")
+    assert df.attrs["venue"] == "spot"
+    assert seen["startTime"] == "1700000000000"  # s -> ms
+    assert seen["endTime"] == "1700003600"

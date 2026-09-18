@@ -66,7 +66,10 @@ MIRROR_WS = os.environ.get("BINANCE_MIRROR_WS",
 
 INTERVALS = {60: "1m", 300: "5m", 900: "15m", 3600: "1h", 14400: "4h",
              86400: "1d"}
-TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"]
+# The ladder mirrors the LSE book's sub-minute set: Binance publishes no
+# sub-minute klines, so tick/1s/30s are built from the exchange's own
+# recent trade tape (aggTrades) — the finest real data the wire carries.
+TIMEFRAMES = ["tick", "1s", "30s", "1m", "5m", "15m", "1h", "4h", "1d"]
 
 SYMBOLS = {
     "BTCUSDT": "Bitcoin / Tether (USD-M perp)",
@@ -165,18 +168,85 @@ def rest_exchange_symbols() -> tuple[list, str]:
     terminal charts); the spot mirror carries its own book. The venue
     label rides back so the catalog can name its own source honestly."""
     data, venue = _first_json(_EXCHANGE_INFO_CALLS, {})
+    return _exchange_rows(data), venue
+
+
+def rest_agg_trades(symbol: str, limit: int = 1000) -> tuple[list, str]:
+    """The exchange's own recent trade tape (most recent `limit` prints),
+    both bases same primary->mirror race. This is the finest real data
+    Binance publishes — there are no sub-minute klines — so it backs the
+    tick / 1s / 30s charts, honestly: a few seconds-to-minutes deep for a
+    liquid pair, the live stream extending the edge from there.
+
+    Row fields used: T (trade time, ms) falling back to t, p (price),
+    q (quantity) — strings on the wire, per Binance's JSON contract."""
+    calls = (("futures", REST_BASE, "/fapi/v1/aggTrades"),
+             ("spot", MIRROR_REST, "/api/v3/aggTrades"))
+    data, venue = _first_json(calls, {"symbol": symbol.upper(),
+                                      "limit": str(max(1, min(int(limit), 1000)))})
+    return (data if isinstance(data, list) else []), venue
+
+
+def tape_to_candles(rows: list, timeframe: str,
+                    limit: int = 500) -> tuple[list, str]:
+    """aggTrades rows -> (candle tuples, newest-tape-time) for tick/1s/30s.
+
+    tick: one bar per print (o=h=l=c=price, the LSE tape shape). 1s/30s:
+    fixed second buckets. Empty/short tapes return what exists — never a
+    fabricated fill, and never more than `limit` newest bars."""
+    step = {"1s": 1, "30s": 30}.get(timeframe, 0)
+    buckets: "dict[float, list]" = {}
+    order: list[float] = []
+    newest = 0.0
+    for r in rows:
+        try:
+            t_ms = int(r.get("T") or r.get("t") or 0)
+            price = float(r["p"])
+            qty = float(r["q"])
+        except (TypeError, ValueError, KeyError, AttributeError):
+            continue                       # garbage row: the wire moves on
+        if t_ms <= 0:
+            continue
+        ts = t_ms / 1000.0
+        newest = max(newest, ts)
+        key = (ts // step) * step if step else ts
+        if key not in buckets:
+            buckets[key] = []
+            order.append(key)
+        buckets[key].append((price, qty))
+    out: list[tuple] = []
+    for key in sorted(buckets):
+        pts = buckets[key]
+        if step:
+            o = pts[0][0]
+            h = max(p for p, _ in pts)
+            l = min(p for p, _ in pts)
+            c = pts[-1][0]
+            v = sum(q for _, q in pts)
+        else:
+            o = h = l = c = pts[-1][0]
+            v = sum(q for _, q in pts)
+        out.append((key, o, h, l, c, v))
+    return out[-max(1, int(limit)):], newest
+
+
+def _exchange_rows(data: dict) -> list:
+    """exchangeInfo 'symbols' -> sorted trading USDT symbols. Self-pairs
+    excluded; a futures payload keeps only perpetuals (spot payloads carry
+    no contractType and keep everything)."""
     out: list[str] = []
     for s in data.get("symbols", []):
         if s.get("quoteAsset") != "USDT" or s.get("status") != "TRADING":
             continue
-        if venue == "futures" and s.get("contractType") != "PERPETUAL":
+        contract = s.get("contractType")
+        if contract and contract != "PERPETUAL":
             continue
         if str(s.get("baseAsset", "")).upper() == "USDT":
             continue                     # self-pair junk, not an instrument
         sym = str(s.get("symbol", "")).upper()
         if sym:
             out.append(sym)
-    return sorted(set(out)), venue
+    return sorted(set(out))
 
 
 def parse_klines(rows: list) -> list:
@@ -444,16 +514,31 @@ class BinancePerpProvider(Provider):
 
     def candles(self, symbol, timeframe, limit=500, start=None, end=None):
         import pandas as pd
-        tf = {v: k for k, v in INTERVALS.items()}.get(timeframe)
-        if tf is None:
-            raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
         sym = self._resolve_symbol(symbol)
         if sym is None:
             raise ValueError(
                 f"binance: no instrument named {symbol} in the catalog — "
                 "search it in the sidebar's Binance book")
+        # Sub-minute: no such klines exist on the wire, so the bars are the
+        # exchange's own recent trade tape (honest, shortest real history,
+        # the live stream extends the edge). start/end are irrelevant to it.
+        if timeframe in ("tick", "1s", "30s"):
+            rows, venue = rest_agg_trades(sym, limit=1000)
+            if not rows:
+                raise NotSupported(f"binance served no trades for {sym}")
+            bars, _newest = tape_to_candles(rows, timeframe, limit)
+            df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
+            df.attrs["venue"] = venue
+            return df
+        tf = {v: k for k, v in INTERVALS.items()}.get(timeframe)
+        if tf is None:
+            raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
         params = {"symbol": sym, "interval": INTERVALS[tf],
                   "limit": str(int(limit))}
+        # Digit strings are epoch seconds (the shell's live tail fetch);
+        # ISO strings pass through untouched for the backtest paths.
+        if start is not None and str(start).isdigit():
+            params["startTime"] = str(int(start) * 1000)
         if end is not None and str(end).isdigit():
             params["endTime"] = str(int(end))
         try:
@@ -552,44 +637,65 @@ class BinancePerpProvider(Provider):
                 out_q.put_nowait(feed.events.pop(0))
 
         # fstream routes: /market + /public; the .vision mirror serves
-        # combined streams under /stream on one socket. Cycle candidates on
-        # every failed connect so a WAF'd or ISP-blocked primary heals to the
-        # mirror without any operator action.
+        # combined streams under /stream on one socket. Candidates are tried
+        # in "last winner first" order: whichever base last held a stream
+        # goes first, so a WAF'd or ISP-blocked primary (Render datacenter
+        # egress) is never re-probed for its full open_timeout on every
+        # reconnect — the stream that worked keeps winning until it fails,
+        # then the other is tried.
         ROUTES = {
             "market": [(WS_BASE, "/market"), (MIRROR_WS, "/stream")],
             "public": [(WS_BASE, "/public"), (MIRROR_WS, "/stream")],
         }
+        winner: Dict[str, str] = {}   # route -> base that last held a stream
 
         async def watch(route: str, names: List[str],
                         handler) -> None:
-            candidates = ROUTES[route]
-            ci = 0
+            base_cands = ROUTES[route]
+            # Order: last winner first, then the rest. Rebuilt each attempt
+            # so a winner flip reorders without any index bookkeeping.
+            def ordered():
+                w = winner.get(route)
+                return sorted(base_cands,
+                              key=lambda c: 0 if c[0] == w else 1)
             backoff = 1.0
             while True:
-                base, path = candidates[ci]
-                url = f"{base}{path}?streams=" + ",".join(names)
-                try:
-                    async with websockets.connect(
-                            url, max_size=8 * 1024 * 1024,
-                            open_timeout=10) as ws:
-                        backoff = 1.0
-                        for f in feeds.values():
-                            f.reset_for_reconnect()
-                        async for raw in ws:
-                            env = json.loads(raw)
-                            stream_name, data = env.get("stream", ""), env.get("data", {})
-                            sym = stream_name.split("@")[0].upper()
-                            feed = feeds.get(sym)
-                            if feed is None:
-                                continue
-                            await handler(feed, data)
-                            drain_into_queue(feed)
-                except asyncio.CancelledError:
-                    raise
-                except Exception as exc:  # noqa: BLE001
-                    log.warning("binance %s stream error (%s): %s",
-                                route, base, exc)
-                    ci = (ci + 1) % len(candidates)   # primary -> mirror
+                cands = ordered()
+                held_any = False
+                for base, path in cands:
+                    url = f"{base}{path}?streams=" + ",".join(names)
+                    try:
+                        async with websockets.connect(
+                                url, max_size=8 * 1024 * 1024,
+                                open_timeout=8) as ws:
+                            backoff = 1.0
+                            winner[route] = base
+                            held_any = True
+                            for f in feeds.values():
+                                f.reset_for_reconnect()
+                            async for raw in ws:
+                                env = json.loads(raw)
+                                stream_name, data = env.get("stream", ""), env.get("data", {})
+                                sym = stream_name.split("@")[0].upper()
+                                feed = feeds.get(sym)
+                                if feed is None:
+                                    continue
+                                await handler(feed, data)
+                                drain_into_queue(feed)
+                            break          # stream ended cleanly; re-pick
+                    except asyncio.CancelledError:
+                        raise
+                    except Exception as exc:  # noqa: BLE001
+                        log.warning("binance %s connect (%s) failed: %s",
+                                    route, base, exc)
+                if held_any:
+                    # A stream held this pass: quick jittered re-pick so a
+                    # healthy mirror is re-established in well under a second
+                    # (Binance drops every WS at 24h; this is the routine hop).
+                    await asyncio.sleep(0.1 + random.random() * 0.3)
+                    continue
+                # nothing held: brief jittered backoff, then re-try (winner
+                # order will prefer the healthy base on the next pass)
                 await asyncio.sleep(backoff + random.random() * 0.5)
                 backoff = min(30.0, backoff * 2)
 

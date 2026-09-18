@@ -280,6 +280,80 @@ async function loadChart() {
   // "LSE Terminal" and the topline status only carries transient loading and
   // error messages (classic pro-terminal quiet top bar).
   status("");
+  lastChartReload = Date.now();  // a manual load just painted: full cadence
+}
+
+/* ---------- live auto-reload (freshness is a guarantee, not a hope) ----------
+   The websocket paints the forming bar tick by tick, but if the stream dies
+   (exchange drops, WAF blip, server asleep) the chart used to sit frozen
+   until the next manual timeframe click. This loop closes that gap: on a
+   per-timeframe cadence it re-fetches only the TAIL (a few bars back from
+   the newest one on screen, capped at 200) and merges it by bar time —
+   with a healthy stream the merge is a no-op most cycles, without one the
+   chart still moves. Hidden tabs skip, like the price poll. Manual loads
+   own the error toasts; a failed cycle just waits for the next one. */
+let chartReloadBusy = false;
+let lastChartReload = 0;
+function chartReloadCadence() {
+  // Sub-minute tfs move fast: 2s keeps 1s bars and the tick tape honest.
+  // 1m..1h: 5s (the forming bar is what changes; history is immutable).
+  // 4h/1d: a bar only forms once in hours, so 1/2 minutes is plenty.
+  const tf = state.timeframe;
+  if (tf === "tick" || tf === "1s" || tf === "30s") return 2000;
+  if (tf === "1d") return 120000;
+  if (tf === "4h") return 60000;
+  return 5000;
+}
+async function liveChartReload() {
+  if (document.hidden) return;
+  if (!state.provider || !state.symbol || !state.chartMounted) return;
+  if (chartReloadBusy) return;           // never stack requests
+  const held = state.candleData;
+  if (!held || !held.length) return;
+  chartReloadBusy = true;
+  const seq = (state.loadSeq = (state.loadSeq || 0) + 1);
+  try {
+    // Tail fetch: start 3 bars before the newest held so a just-formed bar
+    // (and any gap) is always covered; 200 bars is the forming edge, never
+    // the history the user already scrolls through.
+    const start = held[Math.max(0, held.length - 3)].time;
+    const url = `/api/candles?provider=${encodeURIComponent(state.provider)}` +
+      `&symbol=${encodeURIComponent(state.symbol)}&timeframe=${state.timeframe}` +
+      `&limit=200&start=${start}`;
+    const res = await fetch(url);
+    if (seq !== state.loadSeq) return;   // a manual load superseded us
+    if (!res.ok) return;
+    const j = await res.json();
+    if (seq !== state.loadSeq) return;
+    let changed = false;
+    const byTime = new Map(held.map((c, i) => [c.time, i]));
+    for (const [t, o, h, l, c, v] of (j.candles || [])) {
+      const i = byTime.get(t);
+      const bar = { time: t, open: o, high: h, low: l, close: c, volume: v };
+      if (i === undefined) {
+        state.candleData.push(bar);
+        byTime.set(t, state.candleData.length - 1);
+        changed = true;
+      } else {
+        const cur = state.candleData[i];
+        if (cur.close !== c || cur.high !== h || cur.low !== l) {
+          state.candleData[i] = bar;
+          changed = true;
+        }
+      }
+    }
+    // Sub-minute charts grow from the live edge; cap them the same way the
+    // tick tape is capped so the canvas repaint never drowns.
+    if (state.candleData.length > TICK_MAX_BARS) {
+      state.candleData = state.candleData.slice(-TICK_MAX_BARS);
+    }
+    if (changed) {
+      state.candleData = state.candleData.slice();  // new identity: repaint
+      state.lastBar = state.candleData[state.candleData.length - 1] || null;
+      pushToChart();
+    }
+  } catch (e) { /* network blip: the next cycle simply retries */ }
+  finally { chartReloadBusy = false; }
 }
 
 /* ---------- live stream + price board poll ---------- */
@@ -2559,6 +2633,17 @@ function switchProvider(name) {
 
 async function runSwitchProvider(name) {
   state.provider = name;
+  // The timeframe must survive the switch: the books' ladders differ
+  // (LSE has 30m/2h/1w, Binance has 15m/4h plus the tape rungs), so a
+  // timeframe the new book cannot serve would 404 the first load and leave
+  // a dead chart. Fall back to a rung both ladders carry.
+  const ladder = (state.providers.find((x) => x.name === name) || {}).timeframes || [];
+  if (state.timeframe && ladder.length && !ladder.includes(state.timeframe)) {
+    const subMin = state.timeframe === "tick" ||
+      state.timeframe === "1s" || state.timeframe === "30s";
+    state.timeframe = (subMin && ladder.includes("1m")) ? "1m"
+      : (ladder.includes("15m") ? "15m" : ladder[0]);
+  }
   state.prices = {};
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
@@ -14817,6 +14902,16 @@ async function boot() {
   // Watchlist price board poll: once a second for the rows on screen
   // (pollPrices itself skips hidden windows and stacked requests).
   setInterval(pollPrices, 1000);
+  // Chart auto-reload ticker: one beat per second decides, the per-timeframe
+  // cadence (chartReloadCadence) decides how often a tail merge actually
+  // runs; liveChartReload skips hidden tabs and stacked fetches itself.
+  setInterval(() => {
+    const now = Date.now();
+    if (now - lastChartReload >= chartReloadCadence()) {
+      lastChartReload = now;
+      liveChartReload();
+    }
+  }, 1000);
 
   $("symbol").addEventListener("input", (e) => loadInstruments(e.target.value));
   $("symbol").addEventListener("change", (e) => {
