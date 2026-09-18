@@ -281,10 +281,20 @@ def test_prices_boards_from_ticker(monkeypatch):
     # TTL: a second poll within 2s reuses the cached ticker (one call).
     p.prices(["BTCUSDT"])
     assert len(calls) == 1
-    # ...and after the TTL the board refreshes (second call).
+    # ...and after the TTL the stale board is served INSTANTLY (the 1s
+    # poll must never stall on the exchange) while a background refresh
+    # catches up.
+    import time as _time
     monkeypatch.setattr(p, "_ticker", (p._ticker[0] - 3.0,
                                        p._ticker[1], p._ticker[2]))
-    p.prices(["BTCUSDT"])
+    t0 = _time.time()
+    rows = p.prices(["BTCUSDT"])
+    # the poll returned instantly with the last real board — the refresh
+    # may already be running in the background, so the fetch count is
+    # asserted AFTER giving it time to finish (exactly one, single-flight)
+    assert _time.time() - t0 < 0.05
+    assert rows and rows[0]["price"] == 65000.1   # the last real board
+    _time.sleep(0.5)                              # let the bg refresh run
     assert len(calls) == 2
 
 
@@ -348,9 +358,159 @@ def test_catalog_offline_keeps_core_and_retries(monkeypatch):
     venue, syms = p.catalog()
     assert venue == "core"
     assert list(SYMBOLS) == syms
-    p.catalog()                      # inside the 60s negative TTL
+    p.catalog()                      # inside the 10s negative TTL
     p.catalog()
     assert len(calls) == 1           # one probe, not one per render
+
+
+# ── stale-while-revalidate: requests never re-block on the exchange ─────
+
+def test_candles_swr_never_reblocks(monkeypatch):
+    """True miss blocks once; fresh serves from memory; STALE serves
+    instantly with a single background refresh (single-flight) — not a
+    second 3.5s stall per request."""
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    fetches = []
+    # keep the catalog's background refresh out of the fake _first_json
+    monkeypatch.setattr(bp, "rest_exchange_symbols",
+                        lambda: (["BTCUSDT"], "spot"))
+
+    def slow_klines(calls, params):
+        fetches.append(1)
+        _time.sleep(0.2)
+        return [[1750000000000, "1", "2", "0.5", "1.5", "7"]], "spot"
+
+    monkeypatch.setattr(bp, "_first_json", slow_klines)
+    key = ("BTCUSDT", "5m", 50, None, None)
+
+    t0 = _time.time()
+    p.candles("BTCUSDT", "5m", limit=50)              # true miss: one block
+    miss = _time.time() - t0
+    assert miss >= 0.15 and fetches == [1]
+
+    t0 = _time.time()
+    p.candles("BTCUSDT", "5m", limit=50)              # fresh: from memory
+    assert _time.time() - t0 < 0.05 and fetches == [1]
+
+    # force stale: two back-to-back stale hits must cost ONE background
+    # fetch, and neither hit may block
+    p._candle_cache[key] = (_time.time() - 10, p._candle_cache[key][1], "spot")
+    t0 = _time.time()
+    p.candles("BTCUSDT", "5m", limit=50)
+    p.candles("BTCUSDT", "5m", limit=50)
+    assert _time.time() - t0 < 0.05 and fetches == [1]
+    _time.sleep(0.5)                                  # let the bg refresh run
+    assert len(fetches) == 2                          # single-flight
+
+
+def test_prices_swr_serves_stale_board_instantly(monkeypatch):
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    board = [{"symbol": "BTCUSDT", "lastPrice": "100",
+              "bidPrice": "99.9", "askPrice": "100.1"}]
+    calls = []
+
+    def slow_ticker():
+        calls.append(1)
+        _time.sleep(0.2)
+        return board, "spot"
+
+    monkeypatch.setattr(bp, "rest_ticker24h", slow_ticker)
+    out = p.prices(["BTCUSDT"])                       # cold: one block
+    assert out and out[0]["price"] == 100.0 and calls == [1]
+
+    p._ticker = (_time.time() - 5, board, "spot")     # force stale
+    t0 = _time.time()
+    out = p.prices(["BTCUSDT"])                       # stale: instant serve
+    assert _time.time() - t0 < 0.05 and calls == [1]
+    assert out and out[0]["price"] == 100.0
+    _time.sleep(0.5)
+    assert len(calls) == 2                            # bg refresh caught up
+
+
+def test_catalog_swr_serves_held_book_instantly(monkeypatch):
+    """A real book already held is served instantly past its TTL; the
+    refresh (and only the refresh) touches the exchange, in the
+    background."""
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT", "ETHUSDT"])  # held, stamp expired
+    calls = []
+
+    def slow_exchange():
+        calls.append(1)
+        _time.sleep(0.2)
+        return ["BTCUSDT", "ETHUSDT", "SOLUSDT"], "spot"
+
+    monkeypatch.setattr(bp, "rest_exchange_symbols", slow_exchange)
+    t0 = _time.time()
+    venue, syms = p.catalog()
+    assert _time.time() - t0 < 0.05
+    assert (venue, syms) == ("spot", ["BTCUSDT", "ETHUSDT"])
+    _time.sleep(0.5)
+    assert calls == [1]
+    venue, syms = p.catalog()
+    assert syms == ["BTCUSDT", "ETHUSDT", "SOLUSDT"]  # bg refresh landed
+
+
+def test_cold_fetch_is_coalesced_across_callers(monkeypatch):
+    """The first (and only) blocking fetch for a key is SHARED by
+    concurrent callers — the boot prewarm and a user's first click on
+    the same chart hit the exchange once, not twice, and both get the
+    same data."""
+    import concurrent.futures
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    monkeypatch.setattr(bp, "rest_exchange_symbols",
+                        lambda: (["BTCUSDT"], "spot"))
+    hits = []
+
+    def slow(calls_, params):
+        hits.append(1)
+        _time.sleep(0.5)
+        return [[1750000000000, "1", "2", "0.5", "1.5", "7"]], "spot"
+
+    monkeypatch.setattr(bp, "_first_json", slow)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as ex:
+        f1 = ex.submit(p.candles, "BTCUSDT", "5m", limit=50)
+        f2 = ex.submit(p.candles, "BTCUSDT", "5m", limit=50)
+        d1, d2 = f1.result(5.0), f2.result(5.0)
+    assert hits == [1]          # one exchange hit, not two
+    assert d1 is d2             # both callers got the same frame
+
+
+def test_live_tail_gate_rerates_the_edge(monkeypatch):
+    """The auto-reload loop's start=… edge fetches share a floor: within
+    TAIL_MIN_INTERVAL the last tail is re-served (dupes are a no-op for
+    the shell's merge) instead of cold-fetching every cycle."""
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    calls = []
+    monkeypatch.setattr(bp, "rest_exchange_symbols",
+                        lambda: (["BTCUSDT"], "spot"))
+    monkeypatch.setattr(bp, "TAIL_MIN_INTERVAL", 0.1)  # fast-forward the floor
+
+    def slow_klines(calls_, params):
+        calls.append(1)
+        return [[1750000000000, "1", "2", "0.5", "1.5", "7"]], "spot"
+
+    monkeypatch.setattr(bp, "_first_json", slow_klines)
+    df1 = p.candles("BTCUSDT", "5m", limit=200, start="1749999000")
+    df2 = p.candles("BTCUSDT", "5m", limit=200, start="1749999990")
+    assert df2 is df1 and calls == [1]     # within the floor: re-served
+    _time.sleep(0.2)                       # past the floor: refetches
+    df3 = p.candles("BTCUSDT", "5m", limit=200, start="1749999991")
+    assert df3 is not df1 and len(calls) == 2   # past the floor: one refetch
 
 
 def test_resolve_symbol_bare_base():
@@ -446,8 +606,9 @@ def test_catalog_ticker_first_exchangeinfo_fallback(monkeypatch):
     info = {"symbols": [{"symbol": "BTCUSDT", "baseAsset": "BTC",
                          "quoteAsset": "USDT", "status": "TRADING"}]}
 
-    def fake_get(base, path, params, timeout=6.0):
-        calls.append((base, path, timeout))
+    def fake_get(base, path, params, timeout=None):
+        calls.append((base, path,
+                      bp.REST_TIMEOUT if timeout is None else timeout))
         if "/ticker/24hr" in path:
             if "fapi" in base:
                 raise RuntimeError("WAF 418")
@@ -463,41 +624,72 @@ def test_catalog_ticker_first_exchangeinfo_fallback(monkeypatch):
     # even requested
     assert all("/ticker/24hr" in p for _, p, _ in calls)
 
-    # ticker book dead -> the deep fallback runs, with its 20s allowance
+    # ticker book dead -> the deep fallback runs. A multi-MB payload that
+    # needs 8s must still land under the single patient ceiling.
     calls.clear()
 
-    def dead_ticker(base, path, params, timeout=6.0):
-        calls.append((base, path, timeout))
+    def slow_deep(base, path, params, timeout=None):
+        eff = bp.REST_TIMEOUT if timeout is None else timeout
+        calls.append((base, path, eff))
         if "/ticker/24hr" in path:
             raise RuntimeError("mirror down")
         if "fapi" in base:
             raise RuntimeError("WAF 418")
+        if eff < 8.0:
+            raise TimeoutError("multi-MB payload needs the full allowance")
         return info
 
-    monkeypatch.setattr(bp, "_get_json", dead_ticker)
+    monkeypatch.setattr(bp, "_get_json", slow_deep)
     syms, venue = bp.rest_exchange_symbols()
     assert syms == ["BTCUSDT"] and venue == "spot"
-    deep = [(p, t) for _, p, t in calls if "exchangeInfo" in p]
-    assert deep and all(t == 20.0 for _, t in deep)  # long allowance only here
+    deep_ts = [t for _, p, t in calls if "exchangeInfo" in p]
+    # the deep payload got the full patient ceiling (>= the 8s it needed)
+    assert deep_ts and all(t >= 8.0 for t in deep_ts)
 
 
-def test_first_json_per_call_timeout():
+def test_first_json_single_ceiling_gives_slow_line_a_chance():
+    """One generous ceiling per leg, raced concurrently: the race returns
+    the moment ANY leg answers (healthy line: ~1s, the fast leg wins), a
+    degraded mirror that needs 8s still delivers (8s < 10s ceiling), and
+    a blackholed losing leg never holds the winner (shutdown wait=False).
+    The old per-call 6s ceiling is what 502'd a slow-but-alive line."""
+    import unittest.mock as mock
     import lse_terminal.providers.binance_perp as bp
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+        def read(self):
+            return b'{"ok": true}'
+
     seen = []
-    import urllib.request
 
     def fake_urlopen(url, timeout=6.0):
-        seen.append(timeout)
-        raise RuntimeError("stop here")
+        seen.append((url, timeout))
+        if "fapi" in url:
+            raise RuntimeError("WAF 418")      # blocked base, always
+        if timeout >= 8.0:
+            return FakeResp()                  # degraded mirror: needs 8s
+        raise TimeoutError("line answers too late for this ceiling")
 
-    import unittest.mock as mock
     with mock.patch.object(bp.urllib.request, "urlopen", fake_urlopen):
-        try:
-            bp._first_json([("a", "http://x", "/p", 3.5),
-                            ("b", "http://x", "/p", 9.0)], {})
-        except RuntimeError:
-            pass
-    assert 3.5 in seen and 9.0 in seen
+        data, label = bp._first_json(
+            [("futures", "http://fapi.x", "/p"),
+             ("spot", "http://spot.x", "/p")], {})
+    assert data == {"ok": True} and label == "spot"
+    spot_caps = [t for u, t in seen if "spot" in u]
+    # every leg gets the full patient ceiling — the timeout is a cap, not
+    # a wait: healthy lines win the race long before it
+    assert spot_caps and all(t == bp.REST_TIMEOUT for t in spot_caps)
+
+
+def test_first_json_ceiling_value():
+    import lse_terminal.providers.binance_perp as bp
+    # patient enough for an 8s degraded line, bounded for a dead one
+    assert bp.REST_TIMEOUT >= 8.0
+    assert bp.REST_TIMEOUT <= 12.0
 
 
 def test_ws_cold_start_races_bases_in_parallel(monkeypatch):

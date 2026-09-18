@@ -30,6 +30,7 @@ import json
 import logging
 import os
 import random
+import threading
 import time
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -87,21 +88,102 @@ RESYNC_COOLDOWN = 1.0       # feed.go: nextResync collapse window
 SNAPSHOT_LIMIT = 1000       # feed.go: Depth(symbol, 1000)
 
 # Catalog freshness: a real book caches 1h (exchangeInfo moves on listings,
-# not ticks); the offline core re-tries after 60s so a cold boot on dead
+# not ticks); the offline core re-tries after 10s so a cold boot on dead
 # egress heals the moment egress returns, without re-hammering the exchange.
+# (The retry is cheap: the ticker-first catalog is a ~1MB fetch, and once a
+# real book is held, expiry NEVER re-blocks the request — see catalog():
+# the stale book is served instantly and the refresh runs in the background.)
 CATALOG_TTL = 3600.0
-CATALOG_NEG_TTL = 60.0
+CATALOG_NEG_TTL = 10.0
+
+# Candle/tape board: 2s is the freshness a live chart actually needs (the
+# websocket paints the forming bar between refetches); anything older is
+# still SERVED — instantly — while a background refresh catches up
+# (stale-while-revalidate). A request only ever blocks when this provider
+# holds NO data for the key at all.
+CANDLE_TTL = 2.0
+
+# The live auto-reload tail (start=…) refetches the same edge on a 2s
+# cadence; this floor stops a degraded line from turning that cadence into
+# a 3.5s stall every cycle — within the floor the last tail is re-served
+# (the shell's merge-by-bar-time makes duplicates a no-op).
+TAIL_MIN_INTERVAL = 1.6
+
+# ── stale-while-revalidate machinery ─────────────────────────────────────
+# The request path must never wait on the exchange when we already hold
+# data: a held answer is served instantly, and the refresh runs here, at
+# most one in flight per key. A small pool bounds the background load;
+# keys are module-scoped because the registry holds one provider instance
+# and the prewarm + routes + auto-reload loop all share it.
+_refresh_pool = ThreadPoolExecutor(max_workers=4,
+                                   thread_name_prefix="binance-bg")
+_inflight: set = set()
+_inflight_lock = __import__("threading").Lock()
+_cold: Dict[str, "object"] = {}     # key -> in-flight cold fetch (Future)
+_cold_lock = __import__("threading").Lock()
+
+
+def _schedule_refresh(key: str, fn) -> None:
+    """Refresh `key` in the background, at most once concurrently. The
+    caller keeps serving whatever it holds meanwhile."""
+    with _inflight_lock:
+        if key in _inflight:
+            return
+        _inflight.add(key)
+
+    def _run() -> None:
+        try:
+            fn()
+        except Exception as exc:  # noqa: BLE001 — stale data stays served
+            log.warning("binance background refresh %s failed: %s", key, exc)
+        finally:
+            with _inflight_lock:
+                _inflight.discard(key)
+
+    _refresh_pool.submit(_run)
+
+
+def _coalesce(key: str, fetch):
+    """The one blocking fetch for a key, SHARED by concurrent callers:
+    the boot prewarm and a user's first click on the same chart hit the
+    exchange once, not twice — every other caller joins the in-flight
+    fetch and gets the same result. fetch() -> (df, venue)."""
+    with _cold_lock:
+        fut = _cold.get(key)
+        if fut is None:
+            fut = _refresh_pool.submit(fetch)
+            _cold[key] = fut
+    try:
+        return fut.result()
+    except BaseException:
+        with _cold_lock:
+            if _cold.get(key) is fut:
+                del _cold[key]
+        raise
+    finally:
+        # Success: drop the finished future — the candle cache (written
+        # by the caller) now answers, so the next miss is a real one.
+        with _cold_lock:
+            if _cold.get(key) is fut:
+                del _cold[key]
 
 
 # ── REST (sync, run in threadpool from async) ────────────────────────────
 
+# One generous ceiling per leg: the race below returns the moment ANY leg
+# answers, so a healthy line resolves in well under a second regardless —
+# the ceiling only bounds a DEAD leg. 10s is patient enough to capture a
+# degraded datacenter line that needs 8s (measured: that scenario used to
+# 502 the request and fall the catalog to the 8-symbol core for a minute),
+# and short enough that a truly dead line can never hold a user-visible
+# request past one cold fetch.
+REST_TIMEOUT = 10.0
+
+
 def _get_json(base: str, path: str, params: Dict[str, str],
-              timeout: float = 6.0) -> dict:
+              timeout: float = REST_TIMEOUT) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = base + path + ("?" + q if q else "")
-    # 6s default, not 15: a WAF-blackholed egress must fail FAST so the
-    # pane's honest fallback chain resolves quickly instead of stacking
-    # polls. Big once-an-hour payloads (exchangeInfo) pass a longer one.
     with urllib.request.urlopen(url, timeout=timeout) as r:
         return json.loads(r.read())
 
@@ -115,18 +197,31 @@ _KLINE_CALLS = (("futures", REST_BASE, "/fapi/v1/klines"),
 
 
 def _first_json(calls, params: Dict[str, str]):
-    """Race candidate (label, base, path[, timeout]) calls concurrently;
-    the first one to answer wins. A blocked base costs zero latency."""
+    """Race candidate (label, base, path) calls concurrently; the first one
+    to answer wins, and the call returns AT THAT MOMENT — the executor is
+    shut down without waiting, so a blackholed losing leg can never hold
+    the winner hostage (it dies on its own socket timeout). A WAF'd base
+    that 418s instantly costs zero latency either way.
+
+    Every leg gets the single REST_TIMEOUT ceiling: healthy lines resolve
+    in well under a second (the fast leg simply wins first); a degraded
+    line that needs 8s still delivers; a dead line is bounded at one
+    ceiling. Combined with stale-while-revalidate, a cold key costs at
+    most one such fetch per process — everything after is memory."""
     err: Optional[Exception] = None
-    with ThreadPoolExecutor(max_workers=len(calls)) as ex:
-        futs = {ex.submit(_get_json, base, path, params,
-                          rest[0] if rest else 6.0): label
-                for label, base, path, *rest in calls}
+    ex = ThreadPoolExecutor(max_workers=len(calls))
+    futs = {ex.submit(_get_json, base, path, params): label
+            for label, base, path in calls}
+    try:
         for f in as_completed(futs):
             try:
                 return f.result(), futs[f]
-            except Exception as exc:  # noqa: BLE001 — wait for the other base
+            except Exception as exc:  # noqa: BLE001 — keep racing the rest
                 err = exc
+    finally:
+        # Deliberately NOT wait=True: the winner must not pay for a
+        # blackholed loser. Losing legs bound themselves via REST_TIMEOUT.
+        ex.shutdown(wait=False, cancel_futures=True)
     raise err
 
 
@@ -164,18 +259,17 @@ def rest_ticker24h() -> tuple[list, str]:
 # Two depths, tried small first: the whole-book ticker/24hr (~1MB) lists
 # exactly the symbols trading right now and lands in well under a second.
 # exchangeInfo is the authoritative full book but a MULTI-megabyte payload
-# — on a datacenter line it can exceed the old 6s ceiling, and one slow
-# download used to fall the whole catalog back to the 8-symbol core for a
-# minute. It is now the fallback, with a 20s allowance.
-# (Sequential, not a 4-way race: a racing executor waits for its slowest
-# leg, which would pin the fast ticker answer behind a 20s download.)
+# — on a datacenter line one slow download used to fall the whole catalog
+# back to the 8-symbol core for a minute. It is now the fallback.
+# (Sequential, not a 4-way race: on any healthy line the ticker wins the
+# catalog in ~1s and the multi-MB download would only burn bandwidth.)
 _TICKER_CALLS = (
     ("futures", REST_BASE, "/fapi/v1/ticker/24hr"),
     ("spot", MIRROR_REST, "/api/v3/ticker/24hr"),
 )
 _EXCHANGE_INFO_CALLS = (
-    ("futures", REST_BASE, "/fapi/v1/exchangeInfo", 20.0),
-    ("spot", MIRROR_REST, "/api/v3/exchangeInfo", 20.0),
+    ("futures", REST_BASE, "/fapi/v1/exchangeInfo"),
+    ("spot", MIRROR_REST, "/api/v3/exchangeInfo"),
 )
 
 
@@ -472,33 +566,65 @@ class BinancePerpProvider(Provider):
         self._last_trade_ids: Dict[str, int] = {}
         # 24h-ticker board cache: (epoch, rows, venue). The watchlist polls
         # once a second; Binance needs one 2s TTL between them, not one
-        # REST call per poll.
+        # REST call per poll. Stale rows are SERVED (with a background
+        # refresh) — see prices().
         self._ticker: tuple[float, list, str] = (0.0, [], "")
-        # Catalog cache: (epoch, venue, [symbols]). A real book caches 1h;
-        # the offline core re-tries after 60s so a cold boot on dead egress
+        # Catalog cache: (epoch, venue, [symbols]). A real book caches 1h
+        # and is served stale-instantly past the TTL; the offline core
+        # re-tries after CATALOG_NEG_TTL so a cold boot on dead egress
         # heals the moment egress comes back.
         self._catalog: tuple[float, str, list] = (0.0, "core",
                                                   list(SYMBOLS))
+        # Candle/tape cache: (symbol, timeframe, limit, start, end) ->
+        # (epoch, df, venue). Stale-while-revalidate: the newest copy held
+        # is served instantly; the request path blocks only on a true miss.
+        self._candle_cache: Dict[tuple, tuple[float, "pd.DataFrame", str]] = {}
+        # Live tail (start=…) per (symbol, timeframe): (epoch, df, venue).
+        # The auto-reload loop's edge fetches re-serve within
+        # TAIL_MIN_INTERVAL instead of cold-fetching every cycle.
+        self._tail: Dict[tuple, tuple[float, "pd.DataFrame", str]] = {}
+        # Bounded cache: a session charts a handful of (symbol, tf) keys;
+        # 64 keeps it a flat dict, and evicting is just the oldest stamp.
+        self._candle_cache_cap = 64
 
     def catalog(self) -> tuple[str, list]:
-        """(venue, trading USDT symbols), from the exchange's own
-        exchangeInfo when reachable, else the offline core. Everything
-        listed here is fetchable by the same bases that serve klines/depth
-        — the catalog never advertises what the wire will not carry."""
+        """(venue, trading USDT symbols), from the exchange's own book
+        (ticker-first, exchangeInfo as fallback), else the offline core.
+        Everything listed here is fetchable by the same bases that serve
+        klines/depth — the catalog never advertises what the wire will
+        not carry.
+
+        Freshness discipline: a real book already held is served
+        INSTANTLY, even past its TTL — the refresh runs in the background
+        (single-flight), so a slow exchange can never re-block a
+        user-visible request. Only the very first catalog of a process
+        (cold boot, offline core on the table) blocks, and only once."""
         now = time.time()
         ts, venue, syms = self._catalog
         ttl = CATALOG_TTL if venue in ("futures", "spot") else CATALOG_NEG_TTL
         if now - ts < ttl:
             return venue, syms
+        if venue in ("futures", "spot") and syms:
+            _schedule_refresh(f"catalog:{id(self)}", self._fetch_catalog)
+            return venue, syms
+        # True miss (cold process): the one blocking catalog fetch,
+        # COALESCED — the boot prewarm and a user's first click share it.
+        return _coalesce(f"catalog:{id(self)}", self._fetch_catalog)
+
+    def _fetch_catalog(self) -> tuple[str, list]:
+        """The one blocking catalog fetch. Success: real book + venue.
+        Failure: whatever was held before (the offline core at cold
+        boot), stamped with the negative TTL so the next retry is 10s
+        out, not next millisecond."""
+        now = time.time()
+        ts, venue, syms = self._catalog
         try:
             fresh, fresh_venue = rest_exchange_symbols()
             if fresh:
                 self._catalog = (now, fresh_venue, fresh)
                 return fresh_venue, fresh
-        except Exception:  # noqa: BLE001 — offline: keep serving the core
+        except Exception:  # noqa: BLE001 — offline: keep serving what we have
             pass
-        # Stamp the fallback so the negative TTL actually holds (a render
-        # loop must not re-probe the dead exchange on every pass).
         self._catalog = (now, venue, syms)
         return venue, syms
 
@@ -555,17 +681,11 @@ class BinancePerpProvider(Provider):
             raise ValueError(
                 f"binance: no instrument named {symbol} in the catalog — "
                 "search it in the sidebar's Binance book")
-        # Sub-minute: no such klines exist on the wire, so the bars are the
-        # exchange's own recent trade tape (honest, shortest real history,
-        # the live stream extends the edge). start/end are irrelevant to it.
         if timeframe in ("tick", "1s", "30s"):
-            rows, venue = rest_agg_trades(sym, limit=1000)
-            if not rows:
-                raise NotSupported(f"binance served no trades for {sym}")
-            bars, _newest = tape_to_candles(rows, timeframe, limit)
-            df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
-            df.attrs["venue"] = venue
-            return df
+            # Sub-minute: no such klines exist on the wire, so the bars are
+            # the exchange's own recent trade tape (honest, shortest real
+            # history, the live stream extends the edge).
+            return self._candles_tape(sym, timeframe, limit, start, pd)
         tf = {v: k for k, v in INTERVALS.items()}.get(timeframe)
         if tf is None:
             raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
@@ -577,6 +697,74 @@ class BinancePerpProvider(Provider):
             params["startTime"] = str(int(start) * 1000)
         if end is not None and str(end).isdigit():
             params["endTime"] = str(int(end))
+        return self._candles_klines(sym, timeframe, limit, start, end,
+                                    params, pd)
+
+    # --- stale-while-revalidate candle serving ----------------------------
+    # The whole point: a user-visible request blocks on the exchange ONLY
+    # the first time a (symbol, timeframe, …) key is seen. Every switch
+    # back, timeframe click, and auto-reload cycle after that is served
+    # from memory — instantly — with the refresh riding in the background.
+
+    def _swr_candles(self, key, fetch):
+        """Serve the newest held copy of `key` instantly; schedule the
+        background refresh when it is stale; block only on a true miss —
+        and even then only as one shared fetch (coalesced with the boot
+        prewarm and any simultaneous first click)."""
+        hit = self._candle_cache.get(key)
+        if hit is not None:
+            if time.time() - hit[0] < CANDLE_TTL:
+                return hit[1]
+            _schedule_refresh(f"candle:{id(self)}:{key}",
+                              lambda: self._candles_fetch_into(key, fetch))
+            return hit[1]
+        return self._candles_fetch_into(key, lambda: _coalesce(
+            f"candle:{id(self)}:{key}", fetch))[1]
+
+    def _candles_fetch_into(self, key, fetch):
+        df, venue = fetch()
+        if len(self._candle_cache) >= self._candle_cache_cap:
+            oldest = min(self._candle_cache,
+                         key=lambda k: self._candle_cache[k][0])
+            del self._candle_cache[oldest]
+        self._candle_cache[key] = (time.time(), df, venue)
+        return time.time(), df, venue
+
+    def _live_tail(self, gkey, fetch):
+        """The auto-reload loop's edge fetch (start=…): re-serve the last
+        tail within TAIL_MIN_INTERVAL so a degraded line can't turn the 2s
+        cadence into a 3.5s stall every cycle — the shell's merge-by-bar-
+        time makes the duplicate a no-op. A real edge fetch is
+        coalesced, so the loop and a manual reload share one hit."""
+        hit = self._tail.get(gkey)
+        if hit is not None and time.time() - hit[0] < TAIL_MIN_INTERVAL:
+            return hit[1]
+        df, venue = _coalesce(f"tail:{id(self)}:{gkey}", fetch)
+        self._tail[gkey] = (time.time(), df, venue)
+        return df
+
+    def _candles_tape(self, sym, timeframe, limit, start, pd):
+        fetch = lambda: self._fetch_tape(sym, timeframe, limit, pd)
+        if start is not None:
+            return self._live_tail((sym, timeframe), fetch)
+        return self._swr_candles((sym, timeframe, limit, start), fetch)
+
+    def _fetch_tape(self, sym, timeframe, limit, pd):
+        rows, venue = rest_agg_trades(sym, limit=1000)
+        if not rows:
+            raise NotSupported(f"binance served no trades for {sym}")
+        bars, _newest = tape_to_candles(rows, timeframe, limit)
+        df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
+        df.attrs["venue"] = venue          # honesty: the badge says the book
+        return df, venue
+
+    def _candles_klines(self, sym, timeframe, limit, start, end, params, pd):
+        fetch = lambda: self._fetch_klines(params, pd)
+        if start is not None:
+            return self._live_tail((sym, timeframe), fetch)
+        return self._swr_candles((sym, timeframe, limit, start, end), fetch)
+
+    def _fetch_klines(self, params, pd):
         try:
             rows, venue = _first_json(_KLINE_CALLS, params)
         except Exception as exc:  # noqa: BLE001
@@ -584,9 +772,8 @@ class BinancePerpProvider(Provider):
         if not rows:
             raise NotSupported("binance served no klines")
         df = pd.DataFrame(parse_klines(rows), columns=CANDLE_COLUMNS)
-        # honesty: the badge downstream must say spot when the mirror won
-        df.attrs["venue"] = venue
-        return df
+        df.attrs["venue"] = venue          # honesty: the badge says the book
+        return df, venue
 
     def prices(self, symbols: List[str]) -> List[dict]:
         """Price board for the terminal's watchlist poll: last price plus
@@ -595,14 +782,21 @@ class BinancePerpProvider(Provider):
         Rows for symbols the exchange has no ticker for are simply absent —
         the board row keeps its dash rather than showing a guess."""
         wanted = {s.upper() for s in symbols}
-        now = time.time()
         ts, rows, venue = self._ticker
-        if now - ts >= 2.0:
-            try:
-                rows, venue = rest_ticker24h()
-                self._ticker = (now, rows, venue)
-            except Exception:  # noqa: BLE001 — keep the stale board rows
-                if not rows:
+        if time.time() - ts >= 2.0:
+            if rows:
+                # Stale-while-revalidate: serve the last REAL board
+                # instantly — the poll is 1s, so a 3.5s stall on every
+                # expiry is exactly the frozen-board pathology (measured) —
+                # and let the background refresh catch up.
+                _schedule_refresh(f"ticker:{id(self)}", self._refresh_ticker)
+            else:
+                # Nothing held yet (first poll of a cold process): the one
+                # blocking fetch; an honest error beats a blank board.
+                try:
+                    rows, venue = rest_ticker24h()
+                    self._ticker = (time.time(), rows, venue)
+                except Exception:  # noqa: BLE001
                     raise
         out: List[dict] = []
         for r in rows:
@@ -623,6 +817,12 @@ class BinancePerpProvider(Provider):
                     pass
             out.append(row)
         return out
+
+    def _refresh_ticker(self):
+        """Background board refresh (stale-while-revalidate): the poll
+        keeps serving the last real board while this catches up."""
+        rows, venue = rest_ticker24h()
+        self._ticker = (time.time(), rows, venue)
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
         resolved = []

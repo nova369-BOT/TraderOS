@@ -7594,18 +7594,35 @@ def create_app() -> FastAPI:
     # warms the catalog cache (and, with it, the 2s price board) a moment
     # after boot so that first chart is just a kline fetch.
     def _prewarm_binance():
-        time.sleep(0.5)
+        # LSE_BINANCE_PREWARM=0 disables it (the test suite: walled
+        # egress would turn the warmup into long dead timeouts).
+        if os.environ.get("LSE_BINANCE_PREWARM", "1") != "1":
+            return
+        time.sleep(0.2)
         try:
             prov = reg.get("binance")
             venue, syms = prov.catalog()
-            try:
-                prov.prices(["BTCUSDT"])
-            except Exception:  # noqa: BLE001 — board warms on first poll
-                pass
-            print(f"[binance] prewarm: {len(syms)} symbols via {venue}",
-                  flush=True)
         except Exception as exc:  # noqa: BLE001 — offline boot stays quiet
             print(f"[binance] prewarm skipped: {exc}", flush=True)
+            return
+        print(f"[binance] prewarm: {len(syms)} symbols via {venue}",
+              flush=True)
+        # The board (one whole-book ticker) plus the charts a session
+        # opens with, at the shell's exact 5000-bar limit so the cache
+        # keys match the first real request. By the time a human first
+        # clicks Binance, the switch is served from memory, not the
+        # exchange. A few common pairs across the common timeframes:
+        # enough to make the first switch instant without hammering a
+        # slow line (the pool of 4 spaces them out).
+        warm_charts = [("BTCUSDT", "1h"), ("BTCUSDT", "1m"),
+                       ("BTCUSDT", "5m"), ("ETHUSDT", "1h"), ("ETHUSDT", "1m")]
+        for job in ([lambda: prov.prices(["BTCUSDT"])]
+                    + [lambda s=s, tf=tf: prov.candles(s, tf, 5000)
+                       for s, tf in warm_charts]):
+            try:
+                job()
+            except Exception:  # noqa: BLE001 — a miss just stays cold
+                pass
 
     _threading.Thread(target=_prewarm_binance, daemon=True).start()
 
