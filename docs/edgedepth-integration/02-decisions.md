@@ -1,0 +1,69 @@
+# EdgeDepth Integration — Decisions Log
+
+Each entry: context, decision, why, and how to reverse.
+
+## D1 — Vendoring layout (2026-09-18)
+
+The actual EdgeDepth Go gateway is vendored **pristine** at
+`services/edgedepth-gateway/` (see its VENDORED.md). The pre-existing
+contract pin at `third_party/edgedepth-gateway/` (LICENSE + proto) is kept;
+a test guards byte-parity between the two proto copies. `services/` was
+chosen over extending `third_party/` because the gateway is a runnable
+service the engine manages, not a library we link.
+
+Reverse: move the tree; update VENDORED.md paths + the parity test.
+
+## D2 — two Binance engines (2026-09-18)
+
+**Context.** `providers/binance_perp.py` (Python port, merged 2026-09-18 per
+owner direction, Render zero-config spine) duplicates gateway functionality.
+The master prompt mandates the actual Go implementation and no duplicate
+engines; it also forbids breaking working deploys.
+
+**Decision.** The **Go gateway is the integration-authoritative Binance
+implementation**. New work (gateway lifecycle, health surface, fake-Binance
+E2E) targets the gateway path only. `binance_perp.py` is NOT deleted in this
+milestone: Render runs a single Python container today and deleting the port
+would silently remove the crypto book there. The port remains registered,
+labelled as the merged zero-config path, and gets no new features. The
+end-state — gateway binary shipped in the served image (or a second Render
+service), port retired — is a deploy-milestone decision with the owner
+(question was put to the owner 2026-09-18; no ruling yet, so the
+non-destructive path was chosen).
+
+Reverse: delete `binance_perp.py`, its tests, and its Render env var when
+the gateway ships in the image.
+
+## D3 — managed gateway binary sourcing (2026-09-18)
+
+Upstream publishes a GHCR Docker image but **no downloadable binaries**. The
+lifecycle manager resolves the executable in this order:
+
+1. `EDGEDEPTH_GATEWAY_BIN` (explicit dev/admin override — validated, no PATH
+   tricks beyond PATH itself),
+2. `edgedepth-gateway` on PATH (admin-installed),
+3. build from the vendored source when a Go toolchain ≥ 1.24 is available
+   (`go build`, output under the user config dir, never touching the vendored
+   tree),
+4. otherwise the manager reports UNAVAILABLE with an actionable reason and
+   the provider fails open exactly like any other unconfigured source.
+
+No arbitrary command execution: the executable must end in
+`edgedepth-gateway` (or `.exe`) and is spawned with a fixed argument vector.
+Desktop installers bundling per-platform binaries is a later milestone.
+
+## D4 — no Python re-implementation (2026-09-18)
+
+Nothing in the gateway is re-implemented in Python for this integration.
+The engine speaks the gateway's own wire (already implemented and tested in
+`providers/edgedepth/wire.py`), spawns/monitors the actual binary, and the
+fake-Binance test rig drives the REAL binary through its documented
+`-binance-rest`/`-binance-ws` mirror flags. The only new Python is glue:
+lifecycle, health, config, API surface, tests.
+
+## D5 — sandbox egress reality (2026-09-18)
+
+Binance/Coinbase are unreachable from this sandbox. Everything is built so
+the same code path works against real venues with zero changes; the
+real-network checklist (`99-real-network-checklist.md`) lists the exact
+re-runs. We do not claim real-data verification where it was impossible.
