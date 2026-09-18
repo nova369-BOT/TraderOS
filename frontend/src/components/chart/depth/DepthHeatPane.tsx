@@ -66,9 +66,15 @@ type PaneState =
   | { kind: 'live'; demo: boolean; provider: string };
 
 export default function DepthHeatPane({
-  symbol, colors, syncedCrosshairTime, onCrosshairMove, onToggleKind,
+  symbol, sourceProvider, colors, syncedCrosshairTime, onCrosshairMove, onToggleKind,
 }: {
   symbol: string;
+  // The shell's active data source. The orderflow endpoints resolve the
+  // depth provider by capability, and several sources can carry the same
+  // symbol (binance direct vs ccxt vs the gateway) — the symbol's OWN
+  // source must win, so the book matches the chart next door. Named to
+  // avoid shadowing the resolved provider name inside load().
+  sourceProvider?: string;
   colors?: any;
   syncedCrosshairTime?: number | null;
   onCrosshairMove?: (t: number | null) => void;
@@ -221,11 +227,15 @@ export default function DepthHeatPane({
       const r = rendererRef.current;
       if (!r) return;
       const now = Date.now() / 1000;
+      // Pin every orderflow call to the shell's active source (see the
+      // sourceProvider prop): explicit-name-first resolution in the engine.
+      const prov = sourceProvider
+        ? `&provider=${encodeURIComponent(sourceProvider)}` : '';
       // 1. history grid fill
       let demo = false, provider = '';
       try {
         const res = await fetch(
-          `/api/orderflow/depth?symbol=${encodeURIComponent(symbol)}` +
+          `/api/orderflow/depth?symbol=${encodeURIComponent(symbol)}` + prov +
           `&from=${now - HISTORY_SECONDS}&to=${now}&column_ms=1000&max_levels=60`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
@@ -258,6 +268,7 @@ export default function DepthHeatPane({
       try {
         const st = loadSettings(symbol);
         const q = new URLSearchParams({ symbol });
+        if (sourceProvider) q.set('provider', sourceProvider);
         if (st.activeRange > 0) q.set('active_levels', String(st.activeRange));
         q.set('reset', st.resetPolicy);
         if (st.resetPolicy === 'interval') {
@@ -275,7 +286,7 @@ export default function DepthHeatPane({
       // 3. live depth topic: SNAPSHOT on subscribe, coalesced DELTAs, trades
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
       ws = new WebSocket(
-        `${proto}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(symbol)}`);
+        `${proto}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(symbol)}${prov}`);
       ws.onmessage = (m) => {
         if (cancelled) return;
         let frame: DepthWsFrame;

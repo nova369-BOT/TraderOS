@@ -536,12 +536,16 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             timeframe={timeframe}
             colors={colors}
             quote={quote}
+            sourceProvider={provider}
           />
         ) : (layoutState.panelKinds[0] === 'depth' ? (
           // F1: the single-pane view flips to Depth Heat exactly like the
           // multi-grid panels do — the 🔥 corner button is on both now.
+          // sourceProvider pins the pane's book to the charted symbol's own
+          // source (binance BTCUSDT → the binance book).
           <DepthHeatPane
             symbol={symbol}
+            sourceProvider={provider}
             colors={colors}
             onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
           />

@@ -291,7 +291,11 @@ async function loadChart() {
    /v1/prices -> x_live_prices, ~50ms fresh), so every visible row prices on
    the next poll no matter how many pairs are open; no per-row stream slots,
    no 16-symbol plan-cap fight. */
-function visibleWatchSymbols() {
+/* Visible watchlist rows, with their SOURCE. Rows of the active source
+   carry no data-src; the partner section's rows carry theirs, so the
+   price poll can hit each source's own board for its own rows (one source
+   has no price route for the other's symbols). */
+function visibleWatchRows() {
   const list = $("watchlist");
   if (!list || !list.offsetParent) return []; // watchlist hidden on this tab
   const box = list.getBoundingClientRect();
@@ -302,7 +306,9 @@ function visibleWatchSymbols() {
   // quota on symbols the board can never have.
   for (const row of list.querySelectorAll('.wrow[data-symbol]:not([data-live="0"])')) {
     const r = row.getBoundingClientRect();
-    if (r.bottom >= box.top && r.top <= box.bottom) out.push(row.dataset.symbol);
+    if (r.bottom >= box.top && r.top <= box.bottom) {
+      out.push({ symbol: row.dataset.symbol, src: row.dataset.src || "" });
+    }
   }
   return out;
 }
@@ -335,20 +341,34 @@ function paintBoardPrice(r) {
 }
 
 let pricePollBusy = false;
+async function pollProviderPrices(provider, syms) {
+  try {
+    const res = await fetch(`/api/prices?provider=${encodeURIComponent(provider)}` +
+      `&symbols=${encodeURIComponent(syms.slice(0, 50).join(","))}`);
+    if (res.ok) for (const row of await res.json()) paintBoardPrice(row);
+  } catch (e) { /* transient network error; next poll retries */ }
+}
 async function pollPrices() {
   if (document.hidden || pricePollBusy) return; // no cost when minimised
-  const syms = visibleWatchSymbols().filter((s) => s !== state.symbol);
-  if (!syms.length) return;
+  const rows = visibleWatchRows().filter((r) => r.symbol !== state.symbol);
+  // The charted symbol's source polls its own rows; the partner section
+  // polls through ITS source's board. Two fetches in parallel when both
+  // sections have visible rows, one (or none) otherwise.
+  const active = rows.filter((r) => !r.src || r.src === state.provider)
+    .map((r) => r.symbol);
+  const alt = altSourceName();
+  const other = alt
+    ? rows.filter((r) => r.src === alt).map((r) => r.symbol)
+    : [];
+  if (!active.length && !other.length) return;
   pricePollBusy = true; // a slow response must not stack requests
   try {
-    const res = await fetch(`/api/prices?provider=${encodeURIComponent(state.provider)}` +
-      `&symbols=${encodeURIComponent(syms.slice(0, 50).join(","))}`);
-    if (res.ok) {
-      for (const row of await res.json()) paintBoardPrice(row);
-      savePriceCache(); // freshest board just painted; next launch starts here
-    }
-  } catch (e) { /* transient network error; next poll retries */ }
-  finally { pricePollBusy = false; }
+    const jobs = [];
+    if (active.length) jobs.push(pollProviderPrices(state.provider, active));
+    if (other.length) jobs.push(pollProviderPrices(alt, other));
+    await Promise.all(jobs);
+    savePriceCache(); // freshest board just painted; next launch starts here
+  } finally { pricePollBusy = false; }
 }
 
 function connectStream() {
@@ -629,18 +649,70 @@ function setupIndicatorPanel() {
   });
 }
 
+/* ---------- Panes dropdown (toolbar) ----------
+   What the chart pane ITSELF shows: the price chart, or the Depth Heat
+   orderflow pane. The single-pane view and the SELECTED multi-grid panel
+   share one layoutStore kind, so the dropdown drives whichever is on
+   screen; the 🔥 corner button stays as the quick flip. This is the F2
+   workspace's panes brought into the LSE terminal as a dropdown: the LSE
+   chart (indicators, drawings, everything) is the primary surface, and
+   Depth Heat is a pane you can switch into, not a separate window. */
+function setupPanesPanel() {
+  const btn = $("panes-open");
+  const panel = $("panes-panel");
+  if (!btn || !panel) return;
+  const close = () => { panel.classList.add("hidden"); panel.innerHTML = ""; };
+  const open = () => {
+    closeIndPanels();
+    const ls = window.LSEChart && window.LSEChart.layoutStore;
+    if (!ls) return; // chart bundle not up yet; the button stays quiet
+    const st = ls.get();
+    // The dropdown drives the pane the user is looking at: panel 0 in the
+    // single-pane view, the SELECTED panel in a grid.
+    const idx = st.layout === "1x1" ? 0 : Math.min(st.activePanel, 8);
+    const kind = st.panelKinds[idx] || "chart";
+    const rows = [
+      { k: "chart", label: "Price chart",
+        hint: "candles, indicators, drawings" },
+      { k: "depth", label: "Depth Heat",
+        hint: "live order-book liquidity heatmap" },
+    ];
+    panel.innerHTML = rows.map((r) =>
+      `<div class="panes-row${r.k === kind ? " on" : ""}" data-kind="${r.k}">` +
+      `<span class="panes-name">${r.k === kind ? "✓ " : ""}${r.label}</span>` +
+      `<span class="panes-hint">${r.hint}</span></div>`).join("");
+    for (const el of panel.querySelectorAll(".panes-row")) {
+      el.onclick = () => { ls.setPanelKind(idx, el.dataset.kind); close(); };
+    }
+    panel.classList.remove("hidden");
+    positionPanel(panel, btn);
+  };
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    panel.classList.contains("hidden") ? open() : close();
+  };
+  // Click-away closes, same contract as the indicator panels.
+  document.addEventListener("click", (e) => {
+    if (panel.classList.contains("hidden")) return;
+    if (!panel.contains(e.target) && e.target !== btn) close();
+  });
+}
+
 /* ---------- watchlist + controls ---------- */
 
-/* Starred instruments of the ACTIVE source (state.watchlists, keyed by
-   provider name: "lse", "broker:<id>", ...). Order = order starred. */
+/* Starred instruments per source (state.watchlists, keyed by provider name:
+   "lse", "binance", "broker:<id>", ...). Order = order starred. The src
+   argument defaults to the active source; the partner section of the
+   sidebar stars its own list through the same helpers. */
 const WL_FAV_GROUP = "\u2605watchlist"; // groupsOpen key; cannot collide with a category name
-function wlFavs() { return state.watchlists[state.provider] || []; }
-function wlIsFav(sym) { return wlFavs().includes(sym); }
-function wlToggleFav(sym) {
-  const list = wlFavs().slice();
+function wlFavs(src) { return state.watchlists[src || state.provider] || []; }
+function wlIsFav(sym, src) { return wlFavs(src).includes(sym); }
+function wlToggleFav(sym, src) {
+  const key = src || state.provider;
+  const list = wlFavs(key).slice();
   const i = list.indexOf(sym);
   if (i >= 0) list.splice(i, 1); else list.push(sym);
-  state.watchlists[state.provider] = list;
+  state.watchlists[key] = list;
   saveShellState();
   renderWatchlist();
 }
@@ -684,15 +756,20 @@ function renderWatchlist() {
   // default). The provider delivers instruments already
   // grouped and ordered (see loadInstruments), so folders emerge from one
   // pass; state.groupsOpen remembers what the user opened until the
-  // provider changes.
-  const groups = [];
-  for (const ins of state.instruments) {
-    const cat = ins.category || "Other";
-    if (!groups.length || groups[groups.length - 1].cat !== cat) {
-      groups.push({ cat, items: [] });
+  // provider changes. The PARTNER source (Binance next to LSE, LSE next to
+  // Binance) renders its own section below the active one: same row look,
+  // its own stars, its own open/closed memory (keys are prefixed with the
+  // source name so the two sections never fight), and a pick crosses the
+  // source for you (pickFromSource).
+  const buildGroups = (instruments) => {
+    const gs = [];
+    for (const ins of instruments) {
+      const cat = ins.category || "Other";
+      if (!gs.length || gs[gs.length - 1].cat !== cat) gs.push({ cat, items: [] });
+      gs[gs.length - 1].items.push(ins);
     }
-    groups[groups.length - 1].items.push(ins);
-  }
+    return gs;
+  };
   // Logo variant follows the shell theme (html.dark, flipped via reload, so
   // one read per render is safe). Missing/failed art falls back to the
   // monogram tile underneath the <img>; loading="lazy" keeps an opened
@@ -703,13 +780,16 @@ function renderWatchlist() {
   // starred instrument looks identical in both places (logo, symbol, name,
   // price, spread) and the star is the only difference: filled on a
   // starred row, shown on hover otherwise. The star's click never charts.
-  const wrow = (ins) => {
+  // src = the partner section's provider name; rows of the ACTIVE source
+  // carry no data-src (the price poll treats those as "the source I am on").
+  const wrow = (ins, src) => {
     const row = document.createElement("div");
     row.className = "wrow" + (ins.symbol === state.symbol ? " active" : "");
     row.dataset.symbol = ins.symbol;
+    if (src) row.dataset.src = src;
     // live === false: a history-only dataset (chartable archive, no feed).
     // Labeled instead of showing a dash that reads like a broken price,
-    // and excluded from the price poll (visibleWatchSymbols).
+    // and excluded from the price poll (visibleWatchRows).
     const hist = ins.live === false;
     if (hist) row.dataset.live = "0";
     const lg = state.logos[ins.symbol];
@@ -718,7 +798,7 @@ function renderWatchlist() {
     // (paintBoardPrice/onTick strip the class); no cache and no price
     // keeps the old dash.
     const stale = state.staleFromCache && state.staleFromCache.has(ins.symbol);
-    const fav = wlIsFav(ins.symbol);
+    const fav = wlIsFav(ins.symbol, src);
     row.innerHTML =
       `<span class="wlogo">` +
       (lsrc ? `<img src="${lsrc}" alt="" loading="lazy" onerror="this.remove()">` : "") +
@@ -735,49 +815,68 @@ function renderWatchlist() {
           `</span>`) +
       `<button class="wstar${fav ? " on" : ""}" title="${fav ? "Remove from watchlist" : "Add to watchlist"}">` +
       `${fav ? "&#9733;" : "&#9734;"}</button>`;
-    row.onclick = () => setSymbol(ins.symbol);
-    row.querySelector(".wstar").onclick = (e) => { e.stopPropagation(); wlToggleFav(ins.symbol); };
+    row.onclick = () => (src ? pickFromSource(src, ins.symbol) : setSymbol(ins.symbol));
+    row.querySelector(".wstar").onclick = (e) => { e.stopPropagation(); wlToggleFav(ins.symbol, src); };
     return row;
   };
-  // WATCHLIST: the active source's starred instruments, first group in the
-  // sidebar, open by default; a symbol that left the source's catalog is
-  // simply not shown (its star survives in the list for when it returns).
-  {
-    const favs = wlFavs();
-    const bySym = new Map(state.instruments.map((i) => [i.symbol, i]));
-    const items = favs.map((sy) => bySym.get(sy)).filter(Boolean);
-    const open = state.groupsOpen[WL_FAV_GROUP] !== false;
-    const head = document.createElement("div");
-    head.className = "wgroup wgroup-fav";
-    head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
-      `Watchlist<span class="wcount">${items.length}</span>`;
-    head.onclick = () => { state.groupsOpen[WL_FAV_GROUP] = !open; renderWatchlist(); };
-    el.appendChild(head);
-    if (open) for (const ins of items) el.appendChild(wrow(ins));
-  }
-  for (const g of groups) {
-    const open = !!state.groupsOpen[g.cat];
-    const head = document.createElement("div");
-    head.className = "wgroup";
-    head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
-      `${g.cat}<span class="wcount">${g.items.length}</span>`;
-    head.onclick = () => {
-      state.groupsOpen[g.cat] = !open;
-      state.groupShown[g.cat] = WL_CHUNK;   // reopening starts from the top
-      renderWatchlist();
-    };
-    el.appendChild(head);
-    if (!open) continue;
-    // An opened folder renders in chunks, not whole. Stocks is 3,885 rows:
-    // building them all cost ~100ms of scripting plus ~250ms of layout on
-    // every render (measured), left ~35k nodes in the sidebar and
-    // fired hundreds of logo requests as you scrolled. The next chunk is
-    // appended as the scroll approaches it (wlMoreOnScroll), so scrolling
-    // behaves exactly as before; only the up-front cost is gone.
-    const shownFor = state.groupShown[g.cat] || WL_CHUNK;
-    const items = g.items.slice(0, shownFor);
-    if (items.length < g.items.length) pendingGrow.push(g.cat);
-    for (const ins of items) el.appendChild(wrow(ins));
+  // One source section: its starred group (the ACTIVE source always shows
+  // it, even at zero stars, so the door is findable; the partner only
+  // when it has stars) + its category folders.
+  const renderSection = (instruments, src) => {
+    const favKey = src ? src + ":" + WL_FAV_GROUP : WL_FAV_GROUP;
+    const favs = wlFavs(src);
+    if (!src || favs.length) {
+      // A symbol that left the source's catalog is simply not shown (its
+      // star survives in the list for when it returns).
+      const bySym = new Map(instruments.map((i) => [i.symbol, i]));
+      const items = favs.map((sy) => bySym.get(sy)).filter(Boolean);
+      const open = state.groupsOpen[favKey] !== false;
+      const head = document.createElement("div");
+      head.className = "wgroup wgroup-fav";
+      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
+        `Watchlist<span class="wcount">${items.length}</span>`;
+      head.onclick = () => { state.groupsOpen[favKey] = !open; renderWatchlist(); };
+      el.appendChild(head);
+      if (open) for (const ins of items) el.appendChild(wrow(ins, src));
+    }
+    for (const g of buildGroups(instruments)) {
+      const key = src ? src + ":" + g.cat : g.cat;
+      const open = !!state.groupsOpen[key];
+      const head = document.createElement("div");
+      head.className = "wgroup";
+      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
+        `${g.cat}<span class="wcount">${g.items.length}</span>`;
+      head.onclick = () => {
+        state.groupsOpen[key] = !open;
+        state.groupShown[key] = WL_CHUNK;   // reopening starts from the top
+        renderWatchlist();
+      };
+      el.appendChild(head);
+      if (!open) continue;
+      // An opened folder renders in chunks, not whole. Stocks is 3,885 rows:
+      // building them all cost ~100ms of scripting plus ~250ms of layout on
+      // every render (measured), left ~35k nodes in the sidebar and
+      // fired hundreds of logo requests as you scrolled. The next chunk is
+      // appended as the scroll approaches it (wlMoreOnScroll), so scrolling
+      // behaves exactly as before; only the up-front cost is gone.
+      const shownFor = state.groupShown[key] || WL_CHUNK;
+      const items = g.items.slice(0, shownFor);
+      if (items.length < g.items.length) pendingGrow.push(key);
+      for (const ins of items) el.appendChild(wrow(ins, src));
+    }
+  };
+  renderSection(state.instruments, null);
+  // The partner section: the OTHER of LSE/Binance, when the engine lists
+  // it and its catalog has landed. The divider names the book so the two
+  // universes read as arranged side by side, not mixed together.
+  const alt = altSourceName();
+  if (alt && state.catalog[alt] && state.catalog[alt].length) {
+    const div = document.createElement("div");
+    div.className = "wgroup wgroup-src";
+    div.innerHTML = `<span class="wsrc-title">${altShortTitle(alt)}</span>` +
+      `<span class="wcount">${state.catalog[alt].length}</span>`;
+    el.appendChild(div);
+    renderSection(state.catalog[alt], alt);
   }
   wlWireGrow(pendingGrow);
   // Folder opens/closes expose new rows; price them now instead of waiting
@@ -820,7 +919,10 @@ function wlWireGrow(pending) {
    terminal to that vendor's universe. The sidebar deliberately carries no
    source list; a duplicate OTHER SOURCES section was removed. */
 function isLiveSource(name) {
-  if (name === "lse") return true;
+  // "binance" is a built-in keyless live source like "lse" (its universe
+  // ships with the engine, no vendor key to configure), so the MARKETS
+  // surface treats it identically: charts, stream, watchlist section.
+  if (name === "lse" || name === "binance") return true;
   const p = state.providers.find((x) => x.name === name);
   return !!(p && (p.custom || p.broker));
 }
@@ -1002,6 +1104,25 @@ async function openConnMenu() {
   keyline.querySelector("input").addEventListener("keydown", (e) => {
     if (e.key === "Enter") saveLse();
   });
+
+  // Binance row: the built-in keyless source, one click away. Shown only
+  // when the engine lists it (the fleet directory can withhold it, in
+  // which case the section never appears — same rule as the sidebar's
+  // partner section). Switching is a plain enterLiveSource: its universe
+  // needs no key to prove.
+  if (state.providers.some((p) => p.name === "binance")) {
+    const bnRow = document.createElement("div");
+    bnRow.className = "conn-row";
+    const inUse = state.provider === "binance";
+    bnRow.innerHTML =
+      `<span class="conn-name">Binance USD-M Futures</span>` +
+      `<span class="conn-key">keyless</span>` +
+      `<button class="conn-act"${inUse ? " disabled" : ""}>${inUse ? "In use" : "Use"}</button>`;
+    menu.appendChild(bnRow);
+    const go = () => { closeConnMenu(); enterLiveSource("binance"); };
+    bnRow.querySelector(".conn-act").onclick = go;
+    bnRow.onclick = (e) => { if (e.target.closest("button")) return; go(); };
+  }
 
   // No other-vendor line here: bring-your-own-key was pulled (different
   // keys return later, server-side) and the data section should state
@@ -2241,8 +2362,24 @@ async function loadInstruments(query = "") {
   }
   const items = await res.json();
   if (query) {
-    $("symbol-options").innerHTML =
-      items.map((i) => `<option value="${i.symbol}">${i.name}</option>`).join("");
+    // The search box serves BOTH books: the active source's server-side
+    // 30 plus the partner's cached catalog filtered locally (its catalog
+    // is a few dozen rows; no second request as you type).
+    const opts = items.map((i) => `<option value="${i.symbol}">${i.name}</option>`);
+    const alt = altSourceName();
+    if (alt && state.catalog[alt]) {
+      const q = query.trim().toUpperCase();
+      const have = new Set(items.map((i) => i.symbol));
+      for (const i of state.catalog[alt]) {
+        if (have.has(i.symbol)) continue;
+        if (i.symbol.toUpperCase().includes(q) ||
+            (i.name || "").toUpperCase().includes(q)) {
+          opts.push(`<option value="${i.symbol}">${i.name}</option>`);
+          if (opts.length >= 60) break;
+        }
+      }
+    }
+    $("symbol-options").innerHTML = opts.join("");
   } else {
     // Arrival order IS the display order: the provider contract says results
     // come grouped contiguously, groups pre-ordered by the source (the
@@ -2250,11 +2387,79 @@ async function loadInstruments(query = "") {
     // broker provider renders correctly unchanged. (Live prices no longer
     // depend on this order: the stream follows the visible rows.)
     state.instruments = items;
+    state.catalog[state.provider] = items;   // partner section + cross picks
     // symbol -> category lookup for the tick path (spread pips are FX-only)
     state.catBySym = {};
     for (const i of items) state.catBySym[i.symbol] = i.category || "";
     renderWatchlist();
   }
+}
+
+/* The partner live source rendered NEXT TO the active one in MARKETS:
+   Binance when LSE is active, LSE when Binance is active, nothing else
+   (brokers/userdata keep their single-section view). Requires the engine
+   to list the name in /api/providers — the fleet directory can still
+   withhold binance, in which case the section simply never appears. */
+function altSourceName() {
+  if (!state.providers.length) return null;
+  const hasBn = state.providers.some((p) => p.name === "binance");
+  const hasLse = state.providers.some((p) => p.name === "lse");
+  if (state.provider === "binance" && hasLse) return "lse";
+  if (state.provider === "lse" && hasBn) return "binance";
+  if (state.provider === null && hasLse && hasBn) return "binance";
+  return null;
+}
+
+function altShortTitle(name) {
+  // Divider labels name the book, not the provider's full technical title.
+  if (name === "binance") return "Binance · USD-M Futures";
+  const p = state.providers.find((x) => x.name === name);
+  return (p && p.title) || name;
+}
+
+/* Load the partner source's catalog once per session and cache it, so the
+   partner section appears the moment it lands and a cross-section pick
+   never pays a cold fetch. One in-flight guard; failures stay quiet (the
+   section just stays out, exactly like a failed logo load). */
+let altCatalogInflight = null;
+function loadAltCatalog() {
+  const name = altSourceName();
+  if (!name || state.catalog[name] || altCatalogInflight) return altCatalogInflight;
+  altCatalogInflight = fetch(
+      `/api/instruments?provider=${encodeURIComponent(name)}&query=&limit=5000`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((items) => {
+      if (Array.isArray(items) && items.length) {
+        state.catalog[name] = items;
+        if (state.provider !== "userdata" && !$( "watchlist").classList.contains("hidden")) {
+          renderWatchlist();   // the partner section appears when it lands
+        }
+      }
+    })
+    .catch(() => { /* partner section simply stays out */ })
+    .finally(() => { altCatalogInflight = null; });
+  return altCatalogInflight;
+}
+
+/* Chart a symbol that lives in the PARTNER section: flip the active source
+   to its own (the catalog is already cached, so no cold load and the board
+   cache for the other source stays warm), then go through setSymbol so the
+   chart, stream, title, timeframes and ticket all retarget exactly as a
+   sidebar click in the active section would. */
+async function pickFromSource(src, symbol) {
+  if (src === state.provider) { setSymbol(symbol); return; }
+  state.provider = src;
+  if (state.catalog[src]) {
+    state.instruments = state.catalog[src];
+    state.catBySym = {};
+    for (const i of state.instruments) state.catBySym[i.symbol] = i.category || "";
+  } else {
+    await loadInstruments();   // populates state.instruments + the cache
+  }
+  renderTimeframes();
+  renderWatchlist();
+  loadAltCatalog();            // the OTHER source may now be the partner
+  setSymbol(symbol);
 }
 
 /* One fetch per provider switch; the map is provider-wide and static for the
@@ -2314,6 +2519,7 @@ async function runSwitchProvider(name) {
   loadLogos();
   if (state.instruments.length) state.symbol = state.instruments[0].symbol;
   renderWatchlist();
+  loadAltCatalog(); // the OTHER book renders as the partner section
   await loadChart();
   connectStream();
   // A source switch (boot included) recharts to the list's first row without
@@ -14435,6 +14641,7 @@ async function boot() {
   if (typeof l3Init === "function") try { l3Init(); } catch (e) { /* rail absent */ }
 
   setupIndicatorPanel();
+  setupPanesPanel();
   setupEditor();
   setupBacktest();
   setupAiPanel(!!config.hosted);
@@ -14564,7 +14771,21 @@ async function boot() {
 
   $("symbol").addEventListener("input", (e) => loadInstruments(e.target.value));
   $("symbol").addEventListener("change", (e) => {
-    if (e.target.value) { setSymbol(e.target.value.trim()); e.target.blur(); }
+    const v = (e.target.value || "").trim().toUpperCase();
+    if (!v) return;
+    // The search box serves BOTH books: a pick that resolves to the partner
+    // section's catalog (not the active source's) crosses the source,
+    // exactly as clicking that row in the sidebar would.
+    const inActive = state.instruments.some(
+      (i) => i.symbol.toUpperCase() === v);
+    const alt = altSourceName();
+    if (!inActive && alt && state.catalog[alt] &&
+        state.catalog[alt].some((i) => i.symbol.toUpperCase() === v)) {
+      pickFromSource(alt, v);
+    } else {
+      setSymbol(v);
+    }
+    e.target.blur();
   });
 
   // Land on MARKETS: live LSE data when a key is set, otherwise the

@@ -246,6 +246,48 @@ def test_reset_for_reconnect_clears_state():
 
 # ── REST helpers ─────────────────────────────────────────────────────────
 
+def test_prices_boards_from_ticker(monkeypatch):
+    """The watchlist poll: one 24h ticker call feeds every visible row,
+    cached 2s so the 1s poll never double-hits the exchange; unknown
+    symbols simply get no row (the board keeps its dash, never a guess)."""
+    import lse_terminal.providers.binance_perp as bp
+
+    calls = []
+
+    def fake_ticker():
+        calls.append(1)
+        return ([
+            {"symbol": "BTCUSDT", "lastPrice": "65000.1",
+             "bidPrice": "65000.0", "askPrice": "65000.2"},
+            {"symbol": "ETHUSDT", "lastPrice": "3400.5",
+             "bidPrice": "3400.4", "askPrice": "3400.6"},
+            {"symbol": "DOGEUSDT", "lastPrice": "0.12"},
+            {"symbol": "SOLUSDT", "lastPrice": "not-a-number"},
+        ], "futures")
+
+    monkeypatch.setattr(bp, "rest_ticker24h", fake_ticker)
+    p = BinancePerpProvider()
+    rows = p.prices(["BTCUSDT", "ETHUSDT", "DOGEUSDT", "SOLUSDT", "AAABBB"])
+    by_sym = {r["symbol"]: r for r in rows}
+    assert by_sym["BTCUSDT"]["price"] == 65000.1
+    assert by_sym["BTCUSDT"]["bid"] == 65000.0
+    assert by_sym["BTCUSDT"]["ask"] == 65000.2
+    assert by_sym["ETHUSDT"]["price"] == 3400.5
+    # No bid/ask field -> price only, never fabricated levels.
+    assert "bid" not in by_sym["DOGEUSDT"]
+    # Unparseable lastPrice -> no row at all.
+    assert "SOLUSDT" not in by_sym and "AAABBB" not in by_sym
+
+    # TTL: a second poll within 2s reuses the cached ticker (one call).
+    p.prices(["BTCUSDT"])
+    assert len(calls) == 1
+    # ...and after the TTL the board refreshes (second call).
+    monkeypatch.setattr(p, "_ticker", (p._ticker[0] - 3.0,
+                                       p._ticker[1], p._ticker[2]))
+    p.prices(["BTCUSDT"])
+    assert len(calls) == 2
+
+
 def test_parse_klines_shape():
     rows = [[1750000060000, "101", "102", "100", "101.5", "9",
              1750000119999, "900", 5, "4", "400", "0"],

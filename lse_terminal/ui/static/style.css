@@ -2134,13 +2134,31 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
 .bt-chip.neg { color: var(--down); }
 
 /* indicator browser + parameter editor (JS-positioned dropdown cards) */
-#ind-panel, #ind-cfg, #tpl-panel {
+#ind-panel, #ind-cfg, #tpl-panel, #panes-panel {
   position: fixed; z-index: 60; width: 280px;
   background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
   box-shadow: 0 6px 20px var(--shadow); padding: 6px;
   display: flex; flex-direction: column; gap: 5px;
 }
-#ind-panel.hidden, #ind-cfg.hidden, #tpl-panel.hidden { display: none; }
+#ind-panel.hidden, #ind-cfg.hidden, #tpl-panel.hidden, #panes-panel.hidden { display: none; }
+/* Panes dropdown rows: label left, what-it-does right, current kind checked */
+.panes-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 6px 7px; border-radius: 2px; cursor: pointer; font-size: 12.5px;
+  color: var(--text);
+}
+.panes-row:hover { background: var(--edge); }
+.panes-row.on { font-weight: 600; }
+.panes-hint { color: var(--dim); font-size: 11px; flex: none; text-align: right; }
+/* Partner-source divider in the MARKETS sidebar (Binance next to LSE):
+   names the book; not collapsible (the folders under it are). */
+.wgroup-src {
+  padding: 12px 10px 3px; font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--title);
+  display: flex; align-items: center; gap: 5px; user-select: none;
+  border-top: 1px solid var(--edge); margin-top: 6px;
+}
+.wgroup-src .wsrc-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* Template rows share the indicator-row look; the delete x arms red. */
 .tpl-row {
   display: flex; align-items: center; gap: 8px;

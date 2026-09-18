@@ -648,6 +648,13 @@ def create_app() -> FastAPI:
         d = getattr(app.state, "directory_state", {}).get("d")
         allowed = ({p["key"] for p in d.get("providers", []) if p.get("key")}
                    if d else None)
+        # Operator override: built-in KEYLESS public sources the operator
+        # wants listed even when the fleet directory does not mention them
+        # (binance is the default — the terminal's crypto book). The
+        # directory still wins for everything else; this only ever ADDS
+        # names, and a name must exist in the registry (a typo lists nothing).
+        extra = {s.strip() for s in os.environ.get(
+            "LSE_EXTRA_PROVIDERS", "binance").split(",") if s.strip()}
         out = []
         for p in reg.all():
             # A connected broker is the user's own connection, not something
@@ -655,7 +662,8 @@ def create_app() -> FastAPI:
             # filtered by the allowlist.
             own = (bool(getattr(p, "is_custom", False)) or p.name == "userdata"
                    or bool(getattr(p, "is_broker", False)))
-            if allowed is not None and not own and p.name not in allowed:
+            if (allowed is not None and not own
+                    and p.name not in allowed and p.name not in extra):
                 continue
             out.append(
                 {"name": p.name, "title": p.title, "timeframes": p.timeframes,

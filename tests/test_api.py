@@ -27,6 +27,28 @@ def test_providers_listing(client):
     assert "stream" in provs["demo"]["capabilities"]
 
 
+def test_directory_gate_keeps_operator_extra_providers(client):
+    # The fleet directory lists only "lse"; without the operator override
+    # (LSE_EXTRA_PROVIDERS, default "binance") the keyless crypto book
+    # would vanish from /api/providers on a deployed terminal.
+    client.app.state.directory_state = {
+        "d": {"providers": [{"key": "lse"}]}}
+    provs = {p["name"] for p in client.get("/api/providers").json()}
+    assert "lse" in provs
+    assert "binance" in provs       # operator extra survives the gate
+    assert "demo" not in provs      # everything else stays gated
+    assert "userdata" in provs      # user-owned sources are never gated
+
+
+def test_directory_gate_honours_empty_extra_providers(client, monkeypatch):
+    monkeypatch.setenv("LSE_EXTRA_PROVIDERS", "")
+    client.app.state.directory_state = {
+        "d": {"providers": [{"key": "lse"}]}}
+    provs = {p["name"] for p in client.get("/api/providers").json()}
+    assert "binance" not in provs
+    assert "lse" in provs
+
+
 def test_instruments_and_candles_with_indicators(client):
     items = client.get("/api/instruments",
                        params={"provider": "demo", "query": "btc"}).json()

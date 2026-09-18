@@ -17,6 +17,11 @@ services:
       # hosting must whitelist its own host suffix or browsers are rejected.
       - key: LSE_TRUSTED_HOST_SUFFIXES
         value: onrender.com
+      # Built-in keyless sources listed even when the fleet directory does
+      # not mention them (the /api/providers gate is fleet-driven). binance
+      # is the terminal's crypto book: charts, live ticks, Depth Heat.
+      - key: LSE_EXTRA_PROVIDERS
+        value: binance
       # Optional, only if you ALSO run your own edgedepth-gateway somewhere
       # and want the gateway path alongside the merged direct spine:
       # - key: EDGEDEPTH_GATEWAY_URL

@@ -42,11 +42,11 @@ const LAYOUTS: Record<LayoutType, { count: number; cols: number; rows: number }>
 const STAGGER = ['1h', '4h', '1d', '15m', '5m', '1w', '30m', '1m'];
 
 function Panel({
-  symbol, timeframe, colors, active, onActivate, kind, onToggleKind,
+  symbol, sourceProvider, timeframe, colors, active, onActivate, kind, onToggleKind,
   syncedCrosshairTime, onCrosshairMove, syncedViewportTime, onViewportTimeChange,
   quote,
 }: {
-  symbol: string; timeframe: string; colors: any; active: boolean;
+  symbol: string; sourceProvider?: string; timeframe: string; colors: any; active: boolean;
   onActivate: () => void;
   kind: PanelKind;
   onToggleKind: () => void;
@@ -107,6 +107,7 @@ function Panel({
       {kind === 'depth' ? (
         <DepthHeatPane
           symbol={symbol}
+          sourceProvider={sourceProvider}
           colors={colors}
           syncedCrosshairTime={syncedCrosshairTime}
           onCrosshairMove={onCrosshairMove}
@@ -151,7 +152,7 @@ function Panel({
 }
 
 export default function TerminalMultiGrid({
-  layout, syncSettings, pair, timeframe, colors, quote,
+  layout, syncSettings, pair, timeframe, colors, quote, sourceProvider,
 }: {
   layout: LayoutType;
   syncSettings: SyncSettings;
@@ -159,6 +160,10 @@ export default function TerminalMultiGrid({
   timeframe: string;
   colors: any;
   quote?: { bid: number; ask: number } | null;
+  // The shell's active data source: each panel's Depth Heat pins its order-
+  // flow calls to it (a panel on BTCUSDT wants the binance book, not some
+  // other source that happens to carry the same pair).
+  sourceProvider?: string;
 }) {
   const cfg = LAYOUTS[layout] || LAYOUTS['2x2'];
   // Selection and per-panel symbols live in layoutStore, not local state: the
@@ -197,6 +202,7 @@ export default function TerminalMultiGrid({
         <Panel
           key={i}
           symbol={syncSettings.syncSymbol ? pair : (panelSymbols[i] || pair)}
+          sourceProvider={sourceProvider}
           timeframe={syncSettings.syncInterval ? timeframe : (panelTfs[i] || timeframe)}
           colors={base}
           active={i === active}

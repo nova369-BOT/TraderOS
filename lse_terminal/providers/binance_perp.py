@@ -128,6 +128,17 @@ def rest_klines(symbol: str, tf_sec: int, count: int,
     return data
 
 
+def rest_ticker24h() -> tuple[list, str]:
+    """24h ticker (lastPrice + bid/ask per symbol), whole book in one call.
+
+    Both bases carry the fields; the venue label rides back so the caller
+    can stay honest about which book priced the row (futures vs the spot
+    mirror)."""
+    calls = (("futures", REST_BASE, "/fapi/v1/ticker/24hr"),
+             ("spot", MIRROR_REST, "/api/v3/ticker/24hr"))
+    return _first_json(calls, {})
+
+
 def parse_klines(rows: list) -> list:
     """Kline row: [openTime, o, h, l, c, v, closeTime, ...] as strings."""
     out = []
@@ -309,6 +320,10 @@ class BinancePerpProvider(Provider):
 
     def __init__(self):
         self._last_trade_ids: Dict[str, int] = {}
+        # 24h-ticker board cache: (epoch, rows, venue). The watchlist polls
+        # once a second; Binance needs one 2s TTL between them, not one
+        # REST call per poll.
+        self._ticker: tuple[float, list, str] = (0.0, [], "")
 
     def search(self, query: str = "", limit: int = 50) -> List[Instrument]:
         q = (query or "").strip().upper().replace(" ", "")
@@ -340,6 +355,42 @@ class BinancePerpProvider(Provider):
         # honesty: the badge downstream must say spot when the mirror won
         df.attrs["venue"] = venue
         return df
+
+    def prices(self, symbols: List[str]) -> List[dict]:
+        """Price board for the terminal's watchlist poll: last price plus
+        bid/ask per symbol, from the 24h ticker (one REST call for the whole
+        book, cached for 2s so the 1s poll never double-hits the exchange).
+        Rows for symbols the exchange has no ticker for are simply absent —
+        the board row keeps its dash rather than showing a guess."""
+        wanted = {s.upper() for s in symbols}
+        now = time.time()
+        ts, rows, venue = self._ticker
+        if now - ts >= 2.0:
+            try:
+                rows, venue = rest_ticker24h()
+                self._ticker = (now, rows, venue)
+            except Exception:  # noqa: BLE001 — keep the stale board rows
+                if not rows:
+                    raise
+        out: List[dict] = []
+        for r in rows:
+            sym = str(r.get("symbol", "")).upper()
+            if sym not in wanted:
+                continue
+            try:
+                price = float(r["lastPrice"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            row: dict = {"symbol": sym, "price": price}
+            for src, dst in (("bidPrice", "bid"), ("askPrice", "ask")):
+                try:
+                    v = float(r.get(src))
+                    if v > 0:
+                        row[dst] = v
+                except (TypeError, ValueError):
+                    pass
+            out.append(row)
+        return out
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
         bad = [s for s in symbols if s.upper() not in SYMBOLS]
