@@ -102,6 +102,11 @@ Legend: `[ ] to-do` / `[x] done (date, evidence)`.
       the gateway from source on every deploy — run §1–§2 by simply opening
       it (Source → EdgeDepth, charts + Depth Heat + chip), then record
       outcomes against §1–§2 above.
+      Free-plan note: the service SLEEPS after idle and wakes in ~30-60s on
+      the first request (platform behavior, not the integration — every
+      request hangs, chart included). Ops choices, owner-level: keep-alive
+      pinger hitting /api/health every < 15 min, or a paid instance. The
+      post-wake first tap is covered by D9's boot prewarm.
 * [ ] **Restart-budget tuning.** Defaults (3 spawns / 120s, 30s stable
       reset) are desktop-reasonable; on a server make sure an orchestrator
       (systemd/docker) owns restarts instead: set

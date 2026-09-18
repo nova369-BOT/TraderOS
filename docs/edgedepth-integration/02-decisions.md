@@ -128,3 +128,33 @@ env var away (`EDGEDEPTH_GATEWAY_URL`) for anyone who wants the gateway as
 its own service instead of a child.
 Reverse: restore Dockerfile/render.yaml to commit `ce111d6` and deploy the
 single-stage image.
+
+## D9 — speed is engine bookkeeping, not user wait (2026-09-18)
+
+Owner feedback: tapping a pair on the EdgeDepth book "is not displaying /
+very slow; want it ultra fast". Instrument work first, then fix. What the
+measurement found: a warm tap costs one fresh WS dial (localhost, ~10-30ms)
+plus ONE Binance REST klines page (the gateway clamps count at 1500 — no
+pagination chain), so warm latency is ~0.3-1s and correct. The real costs:
+(a) ZERO caching — re-tapping a pair re-paid the venue hop in full; (b) the
+Go child spawned ON the first tap rather than at boot; (c) Render free-plan
+container sleep (30-60s wake per idle period) — platform, not code, handled
+by ops choice (keep-alive ping or paid instance), recorded in §3 of the
+real-network checklist.
+
+**Decision.** Speed moves from the user's click to engine bookkeeping:
+- Latest-frame memo in `EdgeDepthProvider.candles()` keyed
+  (symbol, tf, limit), TTL bounded by the bar itself (max 60s). Windowed
+  calls (start/end set — tail reload, scrollback, backtest) NEVER touch it,
+  so freshness-critical paths always hit the venue. Copies both ways: the
+  caller can never alias or corrupt the memo.
+- Boot hook `_edgedepth_boot_warm` (engine startup): managed-mode
+  `ensure_running` in a threadpool (child up before the browser arrives) +
+  whole-book prewarm in a daemon thread (8 symbols x 6 timeframes, pool of
+  8 — one burst far under Binance klines weight). Fail-silent by design:
+  autostart=0, missing executable, or a down gateway just leaves the memo
+  empty and the blocking path reports as before.
+- Honesty rails kept: forming bar via the live stream; NotSupported for
+  empty answers; `edgedepth` book only — other providers untouched.
+Reverse: remove `prewarm`, the memo block in `candles()`, and
+`_edgedepth_boot_warm`; the book returns to hop-per-tap pricing.

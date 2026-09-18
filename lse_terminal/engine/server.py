@@ -7462,6 +7462,26 @@ def create_app() -> FastAPI:
         except Exception:
             pass
 
+    # The edgedepth book's first pane tap used to pay for everything at
+    # once: child spawn (~1-3s), the engine->gateway dial, and the
+    # gateway->Binance REST hop - on the user's click. Spawn the child and
+    # memoize the book's latest frames AT BOOT instead, so the first tap
+    # paints from memo and the hop is engine bookkeeping, not user wait.
+    # run_in_threadpool for the spawn: boot must never block on Binance.
+    @app.on_event("startup")
+    async def _edgedepth_boot_warm():
+        import threading
+        from fastapi.concurrency import run_in_threadpool as _ritp
+        try:
+            if _gw_supervisor().mode() == "managed":
+                await _ritp(_gw_supervisor().ensure_running)
+            prov = reg.get("edgedepth")
+        except Exception:
+            # autostart disabled / no executable / book absent: the blocking
+            # path reports it all already; boot just proceeds unwarmed.
+            return
+        threading.Thread(target=prov.prewarm, daemon=True).start()
+
     # ── Algo trading: run a strategy LIVE against a brue-connect adapter ──
     #
     # MT5-style attach: the editor's Brue strategy + a symbol/timeframe +

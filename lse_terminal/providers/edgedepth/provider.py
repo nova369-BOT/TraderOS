@@ -12,10 +12,14 @@ terminal's own session recorder remain the history path.
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
-from typing import AsyncIterator, List, Optional
+import time
+from typing import AsyncIterator, Dict, List, Optional
 
 import pandas as pd
+
+log = logging.getLogger(__name__)
 
 from lse_terminal.contracts import (
     CANDLE_COLUMNS,
@@ -42,6 +46,19 @@ SYMBOLS = {
 
 _TIMEFRAMES = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400,
                "1d": 86400}
+
+# Every pane switch on this book used to pay the full round trip again:
+# engine -> gateway (fresh WS dial) + gateway -> Binance (REST klines). The
+# bars behind the forming one are immutable, so re-fetching the identical
+# latest frame on every tap buys nothing. Latest frames (start/end unset —
+# the pane-switch shape) ride this cache; the chart's tail-reload always
+# carries ``start`` and therefore ALWAYS goes to the venue, so freshness of
+# the open chart is untouched. The forming bar is painted by the live trade
+# stream regardless — a cached frame is a starting picture, never the truth
+# engine. TTL is bounded by the bar itself, matching the terminal's own
+# reload cadence (see app.js chartReloadCadence).
+def _frame_ttl_s(tf_s: int) -> float:
+    return min(60.0, max(3.0, tf_s / 10.0))
 
 
 def run_async(coro):
@@ -75,6 +92,12 @@ class EdgeDepthProvider(Provider):
 
     def __init__(self, url: Optional[str] = None):
         self.client = EdgeDepthClient(url)
+        # Latest-frame memo: (symbol, tf_s, limit) -> (monotonic_ts, frame).
+        # Guarded by a lock: candles() runs in uvicorn's threadpool.
+        self._frame_cache: Dict[tuple, tuple] = {}
+        self._cache_lock = threading.Lock()
+        # Tests pin TTL behaviour by overriding this one knob.
+        self._ttl_override: Optional[float] = None
 
     @staticmethod
     def _ensure() -> None:
@@ -115,8 +138,33 @@ class EdgeDepthProvider(Provider):
         if symbol not in SYMBOLS:
             raise ValueError(f"{self.name}: unknown symbol {symbol}")
         self._ensure()
-        values = run_async(self.client.fetch_candles(symbol, tf,
-                                                     limit=int(limit)))
+        # Windowed calls (scrollback, tail reload, backtest replay) are
+        # freshness-critical and unique-shaped: they never touch the memo.
+        latest = start is None and end is None
+        if not latest:
+            return self._fetch_frame(symbol, tf, int(limit))
+        key = (symbol, tf, int(limit))
+        now = time.monotonic()
+        hit = self._frame_cache.get(key)
+        ttl = (self._ttl_override
+               if self._ttl_override is not None else _frame_ttl_s(tf))
+        if hit is not None and now - hit[0] < ttl:
+            # Callers share nothing: a mutate-happy consumer (indicators)
+            # must never corrupt the memo for the next tap.
+            return hit[1].copy()
+        df = self._fetch_frame(symbol, tf, int(limit))
+        with self._cache_lock:
+            if len(self._frame_cache) >= 64:  # bounded, LRU by timestamp
+                del self._frame_cache[
+                    min(self._frame_cache, key=lambda k: self._frame_cache[k][0])]
+            # The memo owns its copy: the frame we return belongs to the
+            # caller and must never alias what the next tap reads.
+            self._frame_cache[key] = (now, df.copy())
+        return df
+
+    def _fetch_frame(self, symbol: str, tf_s: int, limit: int):
+        values = run_async(self.client.fetch_candles(symbol, tf_s,
+                                                     limit=limit))
         if not values:
             raise NotSupported(
                 f"{self.name}: gateway served no history for {symbol} "
@@ -127,6 +175,40 @@ class EdgeDepthProvider(Provider):
                          c.close, c.volume))
         rows.sort(key=lambda r: r[0])
         return pd.DataFrame(rows, columns=CANDLE_COLUMNS)
+
+    def prewarm(self, warmup_limit: int = 5000) -> None:
+        """Fill the latest-frame memo for the whole book, once, in the
+        background. The engine calls this at startup so the first pane tap
+        paints from memo instead of paying child-spawn + venue hop on a
+        user's click. Run with a small pool: one Binance burst stays far
+        under the klines weight budget. Any gateway absence just leaves the
+        memo empty — the blocking path reports that, unchanged."""
+        try:
+            self._ensure()
+        except NotSupported as e:
+            log.info("edgedepth prewarm skipped: %s", e)
+            return
+        jobs = [(sym, tf) for sym in SYMBOLS for tf in _TIMEFRAMES]
+        done = threading.Event()
+
+        def _worker():
+            while jobs and not done.is_set():
+                try:
+                    sym, tf = jobs.pop()
+                except IndexError:
+                    return
+                try:
+                    self.candles(sym, tf, limit=warmup_limit)
+                except Exception as e:  # noqa: BLE001
+                    log.debug("edgedepth prewarm miss %s %s: %s", sym, tf, e)
+
+        workers = [threading.Thread(target=_worker, daemon=True)
+                   for _ in range(8)]
+        for w in workers:
+            w.start()
+        for w in workers:
+            w.join()
+        log.info("edgedepth prewarm: %d frames memoized", len(self._frame_cache))
 
     # ── live streams ─────────────────────────────────────────────────────
 
