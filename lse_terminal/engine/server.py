@@ -7379,7 +7379,11 @@ def create_app() -> FastAPI:
         {"type": "trade"} for the volume dots."""
         await websocket.accept()
         try:
-            p, agen = _of_service.resolve_stream(symbol, provider or None)
+            # Resolution can block on first connect (the edgedepth provider
+            # may be spawning its gateway child): keep it off the event loop.
+            from fastapi.concurrency import run_in_threadpool as _ritp
+            p, agen = await _ritp(_of_service.resolve_stream, symbol,
+                                  provider or None)
             await agen.aclose()
         except _OrderflowUnavailable as e:
             await websocket.send_json({"type": "error", "message": str(e)})
@@ -7408,6 +7412,55 @@ def create_app() -> FastAPI:
                                            "message": str(e)[:200]})
             except Exception:
                 pass
+
+    # ── EdgeDepth gateway lifecycle (market-data service management) ──────
+    #
+    # The engine owns the actual EdgeDepth Go gateway process (managed mode)
+    # or points at an external one (EDGEDEPTH_GATEWAY_URL). These routes are
+    # the observability/control surface for that lifecycle: state, health,
+    # restart budget, log tail, and manual start/stop. The provider path
+    # auto-starts the gateway on first request; these exist so the UI (and
+    # an operator) can always SEE which Binance path is live and why.
+    from lse_terminal.engine.gateway import (
+        supervisor as _gw_supervisor,
+        GatewayUnavailable as _GatewayUnavailable,
+    )
+
+    @app.get("/api/edgedepth/gateway/status")
+    async def gw_status():
+        """Current gateway lifecycle state. Always 200: an UNKNOWN/FAILED
+        gateway is a normal answer here, not an HTTP error — the body says
+        why (observability rule: users must be able to see the data path)."""
+        from fastapi.concurrency import run_in_threadpool as _ritp
+        return await _ritp(_gw_supervisor().status)
+
+    @app.post("/api/edgedepth/gateway/start")
+    async def gw_start():
+        """Explicit start/retry after a FAILED state. 409 carries the
+        concrete reason (no executable, busy port, crash loop + log tail)."""
+        from fastapi.concurrency import run_in_threadpool as _ritp
+        sup = _gw_supervisor()
+        try:
+            return await _ritp(sup.start)
+        except _GatewayUnavailable as e:
+            raise HTTPException(409, str(e))
+
+    @app.post("/api/edgedepth/gateway/stop")
+    async def gw_stop():
+        """Graceful stop (SIGTERM -> SIGKILL -> reap). Idempotent."""
+        from fastapi.concurrency import run_in_threadpool as _ritp
+        return await _ritp(_gw_supervisor().stop)
+
+    @app.on_event("shutdown")
+    def _gateway_shutdown():
+        # Engine exit must never orphan the child (managed mode only;
+        # external URLs are not ours to stop).
+        try:
+            sup = _gw_supervisor()
+            if sup.mode() == "managed":
+                sup.stop()
+        except Exception:
+            pass
 
     # ── Algo trading: run a strategy LIVE against a brue-connect adapter ──
     #

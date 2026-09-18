@@ -107,7 +107,11 @@ class OrderflowService:
         none coalesce."""
         from lse_terminal.contracts import DepthEvent
 
-        _, agen = self.resolve_stream(symbol, provider)
+        # Resolution may block on a provider's first-connect work (e.g. the
+        # edgedepth provider auto-starting its gateway child), so it runs in
+        # a worker thread, never on the engine's event loop.
+        _, agen = await asyncio.to_thread(self.resolve_stream, symbol,
+                                          provider)
         latest: dict = {}
         trades: list = []
         pump_error: list = []
