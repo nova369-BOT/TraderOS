@@ -775,28 +775,34 @@ function setupPanesPanel() {
 }
 
 /* ---------- Source switch (toolbar) ----------
-   The quick flip between the terminal's books: LSE and Binance (when the
-   engine lists both). Toolbar on purpose: the conn-bar key manager hides
-   on hosted terminals, and a source switch is a chart action, not a
-   key-entry action. The MARKETS sidebar already shows both books side by
-   side; this is the button form of the same switch. Hidden when the
-   deployment lists only one book (nothing to switch). */
+   The quick flip between the terminal's books: LSE, Binance, the EdgeDepth
+   gateway book — whichever the engine lists (the fleet directory decides;
+   the rows just follow /api/providers). Toolbar on purpose: the conn-bar
+   key manager hides on hosted terminals, and a source switch is a chart
+   action, not a key-entry action. The MARKETS sidebar already shows both
+   books side by side; this is the button form of the same switch. Hidden
+   when the deployment lists only one book (nothing to switch). The rows
+   are data (SOURCE_BOOKS) rather than another inline ternary chain, so the
+   next book is one entry, not a rewrite. */
+const SOURCE_BOOKS = {
+  lse:       { label: "London Strategic Edge",      hint: "equities · FX · indices" },
+  binance:   { label: "Binance (futures & spot)",   hint: "crypto · keyless" },
+  edgedepth: { label: "EdgeDepth — Binance gateway", hint: "crypto · engine-owned" },
+};
 function setupSourcePanel() {
   const btn = $("src-open");
   const panel = $("src-panel");
   if (!btn || !panel) return;
   const close = () => { panel.classList.add("hidden"); panel.innerHTML = ""; };
   const render = () => {
-    const books = state.providers.filter(
-      (p) => p.name === "lse" || p.name === "binance");
+    const books = state.providers.filter((p) => SOURCE_BOOKS[p.name]);
     if (books.length < 2) { btn.classList.add("hidden"); close(); return; }
     btn.classList.remove("hidden");
     panel.innerHTML = books.map((p) => {
-      const isBn = p.name === "binance";
+      const meta = SOURCE_BOOKS[p.name];
       return `<div class="panes-row${p.name === state.provider ? " on" : ""}" data-src="${p.name}">` +
-        `<span class="panes-name">${p.name === state.provider ? "✓ " : ""}` +
-        `${isBn ? "Binance (futures & spot)" : "London Strategic Edge"}</span>` +
-        `<span class="panes-hint">${isBn ? "crypto · keyless" : "equities · FX · indices"}</span></div>`;
+        `<span class="panes-name">${p.name === state.provider ? "✓ " : ""}${meta.label}</span>` +
+        `<span class="panes-hint">${meta.hint}</span></div>`;
     }).join("");
     for (const el of panel.querySelectorAll(".panes-row")) {
       el.onclick = () => {
@@ -819,6 +825,129 @@ function setupSourcePanel() {
     if (panel.classList.contains("hidden")) return;
     if (!panel.contains(e.target) && e.target !== btn) close();
   });
+}
+
+/* ---------- EdgeDepth gateway chip (toolbar "ED") ----------
+   The gateway crypto book is served by a REAL Go service the engine owns
+   (spawn/monitor/restart owns it, per docs/edgedepth-integration). A dead
+   crypto chart must answer "why" without opening a terminal, so state is
+   pinned into the toolbar: green running, amber coming/up or going down,
+   red failed, grey stopped. Click: full status (mode, address, pid, exe
+   source, restart budget, last error verbatim), the log tail, and
+   start/stop over the management API — every op stays in HTTP, never a
+   shell. The status payload is data (always 200); a 404/405 answers "this
+   build predates the management API" and the chip stays quiet rather than
+   wrong. Hidden unless the engine lists the provider (same listing rule
+   as the Source dropdown). */
+function setupGatewayChip() {
+  const chip = $("gw-chip");
+  const panel = $("gw-panel");
+  if (!chip || !panel) return;
+  if (!state.providers.some((p) => p.name === "edgedepth")) {
+    chip.classList.add("hidden");
+    return;
+  }
+  chip.classList.remove("hidden");
+  let latest = null;
+  let mgmtMissing = false;   // route-absent build: don't badge it as broken
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const stateClass = (s) =>
+    s === "RUNNING" ? "run" : s === "FAILED" ? "down"
+    : (s === "STARTING" || s === "STOPPING") ? "up" : "";
+  const paintChip = () => {
+    if (mgmtMissing) { chip.classList.add("hidden"); return; }
+    if (!latest) return;
+    chip.innerHTML = `ED <span class="gw-dot ${stateClass(latest.state)}"></span>`;
+    chip.title = `EdgeDepth gateway: ${latest.state} (${latest.mode || "managed"})` +
+      (latest.last_error ? ` — ${latest.last_error}` : "");
+  };
+  const fmtUp = (s) => {
+    if (!s) return "";
+    const m = Math.floor(s / 60), h = Math.floor(m / 60);
+    return h ? `${h}h ${m % 60}m` : m ? `${m}m ${Math.floor(s % 60)}s` : `${Math.floor(s)}s`;
+  };
+  const kv = (k, v) => `<div class="gw-kv"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
+  const renderPanel = async () => {
+    const st = latest || {};
+    const kvs = [
+      ["State", st.state || "—"],
+      ["Mode", st.mode || "—"],
+      ["Address", st.addr ? `ws://${st.addr}${st.path || "/ws"}` : "—"],
+      ["Process", st.pid ? `pid ${st.pid}${st.adopted ? " (adopted)" : ""}` : "not running"],
+      ["Executable", st.exe ? `${st.exe} (${st.exe_origin || "?"})` : (st.exe_origin || "—")],
+      ["Healthz", st.mode === "managed" ? (st.healthz ? "ok" : "not answering") : "external"],
+      ["Uptime", fmtUp(st.uptime_s) || "—"],
+      ["Restarts", `${st.restarts ?? 0} (budget 3 per 120s)`],
+      ["Autostart", st.autostart === false ? "off" : "on"],
+      ["Venue mirrors", st.mirrors
+        ? `${st.mirrors.binance_rest ? "REST→" : ""}${st.mirrors.binance_ws ? "WS→" : ""}` +
+          (st.mirrors.binance_rest || st.mirrors.binance_ws ? "custom" : "production Binance") +
+          ` · trades via ${st.mirrors.trade_stream || "aggTrade"}`
+        : "—"],
+    ];
+    panel.innerHTML =
+      `<div class="gw-sec">EDGEDEPTH GATEWAY</div>` +
+      kvs.map(([k, v]) => kv(k, v)).join("") +
+      (st.last_error ? `<div class="gw-err">${esc(st.last_error)}</div>` : "") +
+      (st.log_tail && st.log_tail.length
+        ? `<div class="gw-sec">LOG TAIL</div><pre class="gw-log">${st.log_tail.map(esc).join("\n")}</pre>` : "") +
+      `<div class="gw-actions">` +
+      `<button id="gw-start"${st.state === "RUNNING" || st.state === "STARTING" ? " disabled" : ""}>Start</button>` +
+      `<button id="gw-stop"${st.mode !== "managed" ||
+          !(st.state === "RUNNING" || st.state === "STARTING") ? " disabled" : ""}>Stop</button>` +
+      `<button id="gw-refresh">Refresh</button>` +
+      `<span class="gw-note" id="gw-note"></span></div>`;
+    const note = (t) => { const n = panel.querySelector("#gw-note"); if (n) n.textContent = t; };
+    const act = async (verb) => {
+      note(verb + "…");
+      try {
+        const r = await fetch(`/api/edgedepth/gateway/${verb}`, { method: "POST" });
+        if (r.status === 404 || r.status === 405) { mgmtMissing = true; paintChip(); close(); return; }
+        if (r.status === 409) {          // actionable detail, shown verbatim
+          note((await r.json()).detail || `${verb} failed`);
+          return;
+        }
+        latest = await r.json();
+        note("");
+        poll();                          // converge quickly to the truth
+        setTimeout(poll, 1500);
+        setTimeout(poll, 3500);
+      } catch (e) { note(`${verb} failed (engine unreachable)`); }
+    };
+    const bs = panel.querySelector("#gw-start"), bq = panel.querySelector("#gw-stop");
+    if (bs) bs.onclick = () => act("start");
+    if (bq) bq.onclick = () => act("stop");
+    const rf = panel.querySelector("#gw-refresh");
+    if (rf) rf.onclick = () => poll();
+  };
+  const close = () => { panel.classList.add("hidden"); panel.innerHTML = ""; };
+  const open = () => {
+    closeIndPanels();
+    renderPanel();
+    panel.classList.remove("hidden");
+    positionPanel(panel, chip);
+  };
+  const poll = async () => {
+    try {
+      const r = await fetch("/api/edgedepth/gateway/status");
+      if (r.status === 404 || r.status === 405) { mgmtMissing = true; paintChip(); return; }
+      if (!r.ok) return;
+      latest = await r.json();
+      paintChip();
+      if (!panel.classList.contains("hidden")) renderPanel();
+    } catch (e) { /* engine mid-restart; next tick retries */ }
+  };
+  chip.onclick = (e) => {
+    e.stopPropagation();
+    panel.classList.contains("hidden") ? open() : close();
+  };
+  document.addEventListener("click", (e) => {
+    if (panel.classList.contains("hidden")) return;
+    if (!panel.contains(e.target) && e.target !== chip && !chip.contains(e.target)) close();
+  });
+  poll();
+  setInterval(() => { if (!document.hidden) poll(); }, 8000);
 }
 
 /* ---------- watchlist + controls ---------- */
@@ -1061,10 +1190,11 @@ function wlWireGrow(pending) {
    terminal to that vendor's universe. The sidebar deliberately carries no
    source list; a duplicate OTHER SOURCES section was removed. */
 function isLiveSource(name) {
-  // "binance" is a built-in keyless live source like "lse" (its universe
-  // ships with the engine, no vendor key to configure), so the MARKETS
-  // surface treats it identically: charts, stream, watchlist section.
-  if (name === "lse" || name === "binance") return true;
+  // "binance" and "edgedepth" are built-in keyless live sources like "lse"
+  // (their universes ship with the engine, no vendor key to configure), so
+  // the MARKETS surface treats them identically: charts, stream, watchlist
+  // section.
+  if (name === "lse" || name === "binance" || name === "edgedepth") return true;
   const p = state.providers.find((x) => x.name === name);
   return !!(p && (p.custom || p.broker));
 }
@@ -1247,23 +1377,26 @@ async function openConnMenu() {
     if (e.key === "Enter") saveLse();
   });
 
-  // Binance row: the built-in keyless source, one click away. Shown only
-  // when the engine lists it (the fleet directory can withhold it, in
-  // which case the section never appears — same rule as the sidebar's
-  // partner section). Switching is a plain enterLiveSource: its universe
-  // needs no key to prove.
-  if (state.providers.some((p) => p.name === "binance")) {
-    const bnRow = document.createElement("div");
-    bnRow.className = "conn-row";
-    const inUse = state.provider === "binance";
-    bnRow.innerHTML =
-      `<span class="conn-name">Binance USD-M Futures</span>` +
+  // Built-in keyless sources, one click away (Binance, and the EdgeDepth
+  // gateway book when the engine lists it). Shown only when the engine
+  // lists each (the fleet directory can withhold a book, in which case its
+  // row never appears — same rule as the sidebar's partner section).
+  // Switching is a plain enterLiveSource: their universes need no key to
+  // prove. Rows share SOURCE_BOOKS copy with the toolbar dropdown, so a
+  // book reads the same in every surface.
+  for (const key of ["binance", "edgedepth"]) {
+    if (!SOURCE_BOOKS[key] || !state.providers.some((p) => p.name === key)) continue;
+    const row = document.createElement("div");
+    row.className = "conn-row";
+    const inUse = state.provider === key;
+    row.innerHTML =
+      `<span class="conn-name">${SOURCE_BOOKS[key].label}</span>` +
       `<span class="conn-key">keyless</span>` +
       `<button class="conn-act"${inUse ? " disabled" : ""}>${inUse ? "In use" : "Use"}</button>`;
-    menu.appendChild(bnRow);
-    const go = () => { closeConnMenu(); enterLiveSource("binance"); };
-    bnRow.querySelector(".conn-act").onclick = go;
-    bnRow.onclick = (e) => { if (e.target.closest("button")) return; go(); };
+    menu.appendChild(row);
+    const go = () => { closeConnMenu(); enterLiveSource(key); };
+    row.querySelector(".conn-act").onclick = go;
+    row.onclick = (e) => { if (e.target.closest("button")) return; go(); };
   }
 
   // No other-vendor line here: bring-your-own-key was pulled (different
@@ -2668,14 +2801,16 @@ async function runSwitchProvider(name) {
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
   renderTimeframes();
-  if (name === "binance") {
-    // The crypto book is zero-config, so its chart must NOT wait for the
-    // catalog: the exchange's own book is the slowest fetch on this page
+  if (name === "binance" || name === "edgedepth") {
+    // The crypto books are zero-config, so their chart must NOT wait for
+    // the catalog: the exchange's own book is the slowest fetch on this page
     // (a multi-megabyte cold download, raced small->large server-side,
-    // prewarmed at boot — but still async). Chart the flagship pair NOW
-    // and let the sidebar fill in behind it when the catalog lands. LSE
-    // keeps the catalog-first boot: its first row is the natural default
-    // and its catalog is small and key-gated.
+    // prewarmed at boot — but still async; the gateway book's curated list
+    // is small, but its first-candles call can be spawning the Go child, so
+    // charting FIRST there matters at least as much). Chart the flagship
+    // pair NOW and let the sidebar fill in behind it when the catalog
+    // lands. LSE keeps the catalog-first boot: its first row is the natural
+    // default and its catalog is small and key-gated.
     state.symbol = "BTCUSDT";
     // Never paint the previous provider's rows under this source: clear
     // the list, show the (empty) watchlist, and let the real book land.
@@ -14818,6 +14953,7 @@ async function boot() {
   setupIndicatorPanel();
   setupPanesPanel();
   setupSourcePanel();
+  setupGatewayChip();
   setupEditor();
   setupBacktest();
   setupAiPanel(!!config.hosted);

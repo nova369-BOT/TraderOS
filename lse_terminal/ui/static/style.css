@@ -2140,14 +2140,14 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
 .bt-chip.neg { color: var(--down); }
 
 /* indicator browser + parameter editor (JS-positioned dropdown cards) */
-#ind-panel, #ind-cfg, #tpl-panel, #panes-panel, #src-panel {
+#ind-panel, #ind-cfg, #tpl-panel, #panes-panel, #src-panel, #gw-panel {
   position: fixed; z-index: 60; width: 280px;
   background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
   box-shadow: 0 6px 20px var(--shadow); padding: 6px;
   display: flex; flex-direction: column; gap: 5px;
 }
 #ind-panel.hidden, #ind-cfg.hidden, #tpl-panel.hidden,
-#panes-panel.hidden, #src-panel.hidden { display: none; }
+#panes-panel.hidden, #src-panel.hidden, #gw-panel.hidden { display: none; }
 /* Panes dropdown rows: label left, what-it-does right, current kind checked */
 .panes-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
@@ -2157,6 +2157,37 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
 .panes-row:hover { background: var(--edge); }
 .panes-row.on { font-weight: 600; }
 .panes-hint { color: var(--dim); font-size: 11px; flex: none; text-align: right; }
+
+/* EdgeDepth gateway chip + status panel (toolbar "ED") */
+.gw-dot {
+  display: inline-block; width: 7px; height: 7px; margin-left: 4px;
+  border-radius: 50%; background: var(--dim); vertical-align: 1px;
+}
+.gw-dot.run { background: #3fb950; }
+.gw-dot.up { background: #d29922; animation: gw-pulse 1.2s ease-in-out infinite; }
+.gw-dot.down { background: #e5484d; }
+@keyframes gw-pulse { 50% { opacity: 0.3; } }
+#gw-panel { width: 340px; max-height: 70vh; overflow-y: auto; font-size: 12px; }
+#gw-panel .gw-sec {
+  color: var(--dim); font-size: 10px; letter-spacing: 0.08em;
+  padding: 4px 4px 0; border-top: 1px solid var(--edge);
+}
+#gw-panel .gw-sec:first-child { border-top: none; }
+.gw-kv { display: flex; justify-content: space-between; gap: 12px; padding: 1px 4px; }
+.gw-kv span { color: var(--dim); flex: none; }
+.gw-kv b { font-weight: normal; text-align: right; word-break: break-all; }
+.gw-err {
+  color: #e5484d; background: rgba(229, 72, 77, 0.08);
+  padding: 5px 6px; border-radius: 2px; word-break: break-word;
+}
+.gw-log {
+  margin: 0; padding: 5px 6px; max-height: 140px; overflow: auto;
+  font-size: 10.5px; line-height: 1.45; white-space: pre-wrap;
+  background: var(--bg); border: 1px solid var(--edge); border-radius: 2px;
+}
+.gw-actions { display: flex; gap: 6px; align-items: center; padding: 2px 4px 4px; }
+.gw-actions button { font-size: 12px; }
+.gw-note { color: var(--dim); font-size: 11px; margin-left: auto; }
 /* Partner-source divider in the MARKETS sidebar (Binance next to LSE):
    names the book; not collapsible (the folders under it are). */
 .wgroup-src {

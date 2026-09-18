@@ -82,3 +82,26 @@ silent-gateway behavior is pinned by
 `tests/test_gateway_e2e.py` invalid-symbol assertions.
 Reverse: if upstream starts normalizing (or erroring visibly), remove
 `_norm` and its doc comment; the e2e will tell immediately.
+
+## D7 — provider switch UI: extend the existing books, not a new control (2026-09-18)
+
+The terminal already had ONE data-provider switch surface (toolbar
+"Source" dropdown + the connection menu's keyless rows) hardcoded to the
+two books `lse`/`binance`, and a question from the owner surfaced that the
+gateway book was unreachable from the UI.
+
+**Decision.** The gateway book joins the existing surfaces rather than
+getting its own door: book rows are now data (`SOURCE_BOOKS`), the
+Edgedepth provider rides the same zero-config
+BTCUSDT-first switch branch as Binance (comment explains why that branch
+matters MORE here: its first call can be spawning the Go child), and a new
+toolbar chip ("ED" + state dot) makes the managed service's lifecycle
+always observable: green RUNNING, amber STARTING/STOPPING, red FAILED,
+grey stopped. Click → panel with the supervisor's status payload
+(verbatim, incl. mirrors and log tail) and start/stop over the management
+API. Hidden exactly when the engine does not list the provider — the same
+listing rule the rest of the terminal uses, so hosted/fleet policy controls
+visibility with zero code. Nothing about the switch guesses: every state
+comes from `/api/providers` and `/api/edgedepth/gateway/*`.
+Reverse: remove `setupGatewayChip`, the SOURCE_BOOKS row, and the
+`edgedepth` literals in `isLiveSource`/`runSwitchProvider`.

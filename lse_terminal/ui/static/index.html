@@ -118,6 +118,14 @@ document.documentElement.setAttribute("data-theme",
        The MARKETS sidebar shows both books side by side; this is the
        button form of the same switch. -->
   <button id="src-open" title="Switch data source">Source</button>
+  <!-- EdgeDepth gateway health: the crypto-of-futures book is served by a
+       REAL Go service the engine owns (spawns/monitors/restarts it itself).
+       The data path must ALWAYS be observable without a terminal: an amber
+       chip says the feed is coming up, red says it stopped or never could.
+       Click opens state, log tail, and start/stop — management over HTTP,
+       never a shell. Shown only when the engine lists the edgedepth
+       provider (never advertises chrome for a book the host lacks). -->
+  <button id="gw-chip" class="hidden" title="EdgeDepth gateway — the crypto data service">ED&nbsp;&#9679;</button>
   <!-- Text-only toolbar actions: the old &#10022;/&#8683;/&#9638; glyph
        prefixes read as decoration, not chrome.
        The &#402; on Indicators stays: it is the recognised
@@ -164,6 +172,10 @@ document.documentElement.setAttribute("data-theme",
 <div id="panes-panel" class="hidden"></div>
 <!-- Source dropdown (toolbar "Source"): switch between the books. -->
 <div id="src-panel" class="hidden"></div>
+<!-- Gateway chip dropdown (toolbar "ED"): EdgeDepth gateway state, log tail,
+     and start/stop —
+     the ops surface of the engine-owned crypto data service. -->
+<div id="gw-panel" class="hidden"></div>
 <!-- Per-indicator parameter editor, opened from a chip or an active row. -->
 <div id="ind-cfg" class="hidden"></div>
 <!-- Chart templates dropdown (toolbar Templates button): rows apply, x

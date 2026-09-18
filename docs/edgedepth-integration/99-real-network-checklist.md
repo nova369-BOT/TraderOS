@@ -84,6 +84,14 @@ Legend: `[ ] to-do` / `[x] done (date, evidence)`.
       (status shows mode=external, start → 409), and wss:// + auth proxy
       policy is covered at the platform level, not by adding auth to the
       gateway (upstream is keyless by design).
+* [ ] **Fleet directory / hosted listing.** `/api/providers` gates built-in
+      books behind the fleet directory; dev fails open, production doesn't.
+      For the gateway book to appear in the toolbar Source dropdown /
+      connection menu on hosted terminals, either list `edgedepth` in the
+      directory or export `LSE_EXTRA_PROVIDERS=binance,edgedepth` on the
+      host. Without it the book is invisible there BY DESIGN (the UI never
+      advertises what the engine doesn't list) — this is a listing
+      decision, not a bug.
 * [ ] **Restart-budget tuning.** Defaults (3 spawns / 120s, 30s stable
       reset) are desktop-reasonable; on a server make sure an orchestrator
       (systemd/docker) owns restarts instead: set
