@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>TraderOS Workspace (F2)</title>
+  <!-- warm DNS+TLS for every Binance route while the bundle parses, so the
+       first fetch/WS handshake skips a round trip -->
+  <link rel="preconnect" href="https://fapi.binance.com" crossorigin>
+  <link rel="preconnect" href="https://data-api.binance.vision" crossorigin>
+  <link rel="dns-prefetch" href="https://fstream.binance.com">
+  <link rel="dns-prefetch" href="https://data-stream.binance.vision">
   <link rel="stylesheet" href="./workspace.css">
   <style>
     html { background: #05070a; }

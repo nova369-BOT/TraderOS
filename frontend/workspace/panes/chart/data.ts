@@ -22,6 +22,11 @@ export interface LoadResult {
 const FAPI_KLINES = 'https://fapi.binance.com/fapi/v1/klines';
 const MIRROR_KLINES = 'https://data-api.binance.vision/api/v3/klines';
 
+// poll fast path remembers the winning hop; run(tf) so a timeframe switch
+// never reuses a stale closure
+let lastWinner: { tag: string; run: (tf: Timeframe) => Promise<LoadResult> }
+  | null = null;
+
 /** First fulfilled wins (Promise.any without the ES2021 dependency). */
 function firstWin(jobs: Promise<LoadResult>[]): Promise<LoadResult> {
   return new Promise((resolve, reject) => {
@@ -33,10 +38,10 @@ function firstWin(jobs: Promise<LoadResult>[]): Promise<LoadResult> {
   });
 }
 
-/** Browser-direct hops: 6s abort so a blocked network fails fast onward. */
+/** Browser-direct hops: 4s abort so a blocked network fails fast onward. */
 async function browserKlines(base: string, tf: Timeframe): Promise<Candle[]> {
   const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 6000);
+  const to = setTimeout(() => ctrl.abort(), 4000);
   try {
     const r = await fetch(
       `${base}?symbol=BTCUSDT&interval=${tf}&limit=400`,
@@ -69,33 +74,37 @@ export async function loadCandles(source: Source,
   };
 
   if (source === 'binance') {
-    const hops: string[] = [];
+    const failed: string[] = [];
+    type Hop = { tag: string; run: (tf: Timeframe) => Promise<LoadResult> };
+    const hops: Hop[] = [
+      { tag: 'srv', run: (tf) => attempt('binance', 'BTCUSDT').then((r) => ({
+          candles: r.rows, source: 'binance' as Source,
+          badge: r.venue === 'binance-spot' ? 'BINANCE SPOT · LIVE'
+                                            : 'BINANCE · LIVE' })) },
+      { tag: 'brw', run: (tf) => browserKlines(FAPI_KLINES, tf).then((c) => ({
+          candles: c, source: 'binance' as Source,
+          badge: 'BINANCE · LIVE (browser)' })) },
+      { tag: 'mir', run: (tf) => browserKlines(MIRROR_KLINES, tf).then((c) => ({
+          candles: c, source: 'binance' as Source,
+          badge: 'BINANCE SPOT · LIVE (browser)' })) },
+      { tag: 'gw', run: (tf) => attempt('edgedepth', 'BTCUSDT').then((r) => ({
+          candles: r.rows, source: 'binance' as Source,
+          badge: 'BINANCE · VIA GATEWAY' })) },
+    ];
+    // poll fast path: last round's winner goes direct, no re-race
+    if (lastWinner) {
+      try { return await lastWinner.run(tf); } catch { /* re-race below */ }
+    }
     // race, don't queue: first honest hop to answer wins, so first paint
     // never waits behind a blocked network's timeout
-    const jobs: Promise<LoadResult>[] = [
-      attempt('binance', 'BTCUSDT').then((r) => ({
-        candles: r.rows, source: 'binance' as Source,
-        badge: r.venue === 'binance-spot' ? 'BINANCE SPOT · LIVE'
-                                          : 'BINANCE · LIVE',
-      })).catch((e) => { hops.push('srv✗'); throw e; }),
-      browserKlines(FAPI_KLINES, tf).then((c) => ({
-        candles: c, source: 'binance' as Source,
-        badge: 'BINANCE · LIVE (browser)',
-      })).catch((e) => { hops.push('brw✗'); throw e; }),
-      browserKlines(MIRROR_KLINES, tf).then((c) => ({
-        candles: c, source: 'binance' as Source,
-        badge: 'BINANCE SPOT · LIVE (browser)',
-      })).catch((e) => { hops.push('mir✗'); throw e; }),
-      attempt('edgedepth', 'BTCUSDT').then((r) => ({
-        candles: r.rows, source: 'binance' as Source,
-        badge: 'BINANCE · VIA GATEWAY',
-      })).catch((e) => { hops.push('gw✗'); throw e; }),
-    ];
+    const jobs = hops.map((h) =>
+      h.run(tf).then((r) => { lastWinner = h; return r; })
+        .catch((e) => { failed.push(`${h.tag}✗`); throw e; }));
     try {
       return await firstWin(jobs);
     } catch { /* every hop failed — honest demo with the post-mortem */ }
     return { candles: (await attempt('demo', 'DEMO:BTC')).rows,
-             badge: `BINANCE OFFLINE → DEMO · ${hops.join(' ')}`,
+             badge: `BINANCE OFFLINE → DEMO · ${failed.join(' ')}`,
              source: 'demo' };
   }
   return { candles: (await attempt('demo', 'DEMO:BTC')).rows,

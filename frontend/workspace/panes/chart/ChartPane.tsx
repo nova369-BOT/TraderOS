@@ -101,7 +101,7 @@ export default function ChartPane({ theme }: Props) {
       }
     };
     load();
-    const t = setInterval(load, 5000);
+    const t = setInterval(load, 3000);
     return () => { dead = true; clearInterval(t); };
   }, [source, tf]);
 

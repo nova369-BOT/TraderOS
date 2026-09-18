@@ -32,6 +32,7 @@ import os
 import random
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import AsyncIterator, Callable, Dict, List, Optional
 
 from lse_terminal.contracts import (
@@ -90,20 +91,31 @@ def _get_json(base: str, path: str, params: Dict[str, str]) -> dict:
         return json.loads(r.read())
 
 
-# primary -> mirror, same wire format on both
-_DEPTH_PATHS = ((REST_BASE, "/fapi/v1/depth"), (MIRROR_REST, "/api/v3/depth"))
-_KLINE_PATHS = ((REST_BASE, "/fapi/v1/klines"), (MIRROR_REST, "/api/v3/klines"))
+# primary -> mirror, same wire format on both; tried CONCURRENTLY so a
+# WAF'd or ISP-blocked base costs zero latency when the other answers
+_DEPTH_CALLS = (("futures", REST_BASE, "/fapi/v1/depth"),
+                ("spot", MIRROR_REST, "/api/v3/depth"))
+_KLINE_CALLS = (("futures", REST_BASE, "/fapi/v1/klines"),
+                ("spot", MIRROR_REST, "/api/v3/klines"))
+
+
+def _first_json(calls, params: Dict[str, str]):
+    err: Optional[Exception] = None
+    with ThreadPoolExecutor(max_workers=len(calls)) as ex:
+        futs = {ex.submit(_get_json, base, path, params): label
+                for label, base, path in calls}
+        for f in as_completed(futs):
+            try:
+                return f.result(), futs[f]
+            except Exception as exc:  # noqa: BLE001 — wait for the other base
+                err = exc
+    raise err
 
 
 def rest_depth(symbol: str, limit: int = SNAPSHOT_LIMIT) -> dict:
-    err: Optional[Exception] = None
-    for base, path in _DEPTH_PATHS:
-        try:
-            return _get_json(base, path, {"symbol": symbol.upper(),
-                                          "limit": str(limit)})
-        except Exception as exc:  # noqa: BLE001 — try the mirror
-            err = exc
-    raise err
+    data, _ = _first_json(_DEPTH_CALLS, {"symbol": symbol.upper(),
+                                         "limit": str(limit)})
+    return data
 
 
 def rest_klines(symbol: str, tf_sec: int, count: int,
@@ -112,13 +124,8 @@ def rest_klines(symbol: str, tf_sec: int, count: int,
               "limit": str(count)}
     if end_ms:
         params["endTime"] = str(int(end_ms))
-    err: Optional[Exception] = None
-    for base, path in _KLINE_PATHS:
-        try:
-            return _get_json(base, path, params)
-        except Exception as exc:  # noqa: BLE001 — try the mirror
-            err = exc
-    raise err
+    data, _ = _first_json(_KLINE_CALLS, params)
+    return data
 
 
 def parse_klines(rows: list) -> list:
@@ -324,12 +331,7 @@ class BinancePerpProvider(Provider):
         if end is not None and str(end).isdigit():
             params["endTime"] = str(int(end))
         try:
-            try:
-                rows = _get_json(REST_BASE, "/fapi/v1/klines", params)
-                venue = "binance-futures"
-            except Exception:  # noqa: BLE001 — WAF/ISP-blocked: the mirror
-                rows = _get_json(MIRROR_REST, "/api/v3/klines", params)
-                venue = "binance-spot"
+            rows, venue = _first_json(_KLINE_CALLS, params)
         except Exception as exc:  # noqa: BLE001
             raise NotSupported(f"binance REST unreachable: {exc}") from exc
         if not rows:
