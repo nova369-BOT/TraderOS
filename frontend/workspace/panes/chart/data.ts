@@ -22,6 +22,17 @@ export interface LoadResult {
 const FAPI_KLINES = 'https://fapi.binance.com/fapi/v1/klines';
 const MIRROR_KLINES = 'https://data-api.binance.vision/api/v3/klines';
 
+/** First fulfilled wins (Promise.any without the ES2021 dependency). */
+function firstWin(jobs: Promise<LoadResult>[]): Promise<LoadResult> {
+  return new Promise((resolve, reject) => {
+    let left = jobs.length;
+    if (!left) return reject(new Error('no hops'));
+    for (const j of jobs) {
+      j.then(resolve).catch(() => { left -= 1; if (left === 0) reject(new Error('all hops failed')); });
+    }
+  });
+}
+
 /** Browser-direct hops: 6s abort so a blocked network fails fast onward. */
 async function browserKlines(base: string, tf: Timeframe): Promise<Candle[]> {
   const ctrl = new AbortController();
@@ -59,24 +70,30 @@ export async function loadCandles(source: Source,
 
   if (source === 'binance') {
     const hops: string[] = [];
+    // race, don't queue: first honest hop to answer wins, so first paint
+    // never waits behind a blocked network's timeout
+    const jobs: Promise<LoadResult>[] = [
+      attempt('binance', 'BTCUSDT').then((r) => ({
+        candles: r.rows, source: 'binance' as Source,
+        badge: r.venue === 'binance-spot' ? 'BINANCE SPOT · LIVE'
+                                          : 'BINANCE · LIVE',
+      })).catch((e) => { hops.push('srv✗'); throw e; }),
+      browserKlines(FAPI_KLINES, tf).then((c) => ({
+        candles: c, source: 'binance' as Source,
+        badge: 'BINANCE · LIVE (browser)',
+      })).catch((e) => { hops.push('brw✗'); throw e; }),
+      browserKlines(MIRROR_KLINES, tf).then((c) => ({
+        candles: c, source: 'binance' as Source,
+        badge: 'BINANCE SPOT · LIVE (browser)',
+      })).catch((e) => { hops.push('mir✗'); throw e; }),
+      attempt('edgedepth', 'BTCUSDT').then((r) => ({
+        candles: r.rows, source: 'binance' as Source,
+        badge: 'BINANCE · VIA GATEWAY',
+      })).catch((e) => { hops.push('gw✗'); throw e; }),
+    ];
     try {
-      const { rows, venue } = await attempt('binance', 'BTCUSDT');
-      return { candles: rows, source: 'binance',
-               badge: venue === 'binance-spot'
-                 ? 'BINANCE SPOT · LIVE' : 'BINANCE · LIVE' };
-    } catch { hops.push('srv✗'); }
-    try {
-      return { candles: await browserKlines(FAPI_KLINES, tf),
-               badge: 'BINANCE · LIVE (browser)', source: 'binance' };
-    } catch { hops.push('brw✗'); }
-    try {
-      return { candles: await browserKlines(MIRROR_KLINES, tf),
-               badge: 'BINANCE SPOT · LIVE (browser)', source: 'binance' };
-    } catch { hops.push('mir✗'); }
-    try {
-      return { candles: (await attempt('edgedepth', 'BTCUSDT')).rows,
-               badge: 'BINANCE · VIA GATEWAY', source: 'binance' };
-    } catch { hops.push('gw✗'); }
+      return await firstWin(jobs);
+    } catch { /* every hop failed — honest demo with the post-mortem */ }
     return { candles: (await attempt('demo', 'DEMO:BTC')).rows,
              badge: `BINANCE OFFLINE → DEMO · ${hops.join(' ')}`,
              source: 'demo' };

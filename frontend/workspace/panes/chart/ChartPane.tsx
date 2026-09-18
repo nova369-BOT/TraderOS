@@ -6,6 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Tokens } from '../../tokens';
 import { loadCandles } from './data';
+import { openLiveFeed } from './live';
 import { AXIS_W, paintChart } from './render';
 import {
   MAX_PX, MIN_PX, Source, TIMEFRAMES, Timeframe, ViewState,
@@ -30,10 +31,14 @@ export default function ChartPane({ theme }: Props) {
   const [source, setSource] = useState<Source>('binance');
   const [tf, setTf] = useState<Timeframe>('1m');
   const [badge, setBadge] = useState('BINANCE');
+  // realtime: a browser-direct WS is ticking the forming candle right now
+  const [rtOn, setRtOn] = useState(false);
+  const rtRef = useRef(false); rtRef.current = rtOn;
 
   // paint-path inputs, always current
   const themeRef = useRef(theme); themeRef.current = theme;
-  const badgeRef = useRef(badge); badgeRef.current = badge;
+  const shownBadge = rtOn ? `${badge} · RT` : badge;
+  const badgeRef = useRef(shownBadge); badgeRef.current = shownBadge;
   const tfRef = useRef(tf); tfRef.current = tf;
 
   const paint = () => {
@@ -83,6 +88,7 @@ export default function ChartPane({ theme }: Props) {
     let dead = false;
     const load = async () => {
       if (busyRef.current) return;
+      if (rtRef.current) return;   // WS is authoritative while it is live
       busyRef.current = true;
       try {
         const r = await loadCandles(source, tf).catch(() => null);
@@ -97,6 +103,41 @@ export default function ChartPane({ theme }: Props) {
     load();
     const t = setInterval(load, 5000);
     return () => { dead = true; clearInterval(t); };
+  }, [source, tf]);
+
+  // realtime ticks — browser-direct WS (fstream, .vision mirror fallback).
+  // kline events carry authoritative OHLCV and candle rolls; aggTrade ticks
+  // the close between kline frames so every print moves the price tag.
+  // Mutates refs and lets the existing rAF paint — no React in the hot path.
+  useEffect(() => {
+    if (source !== 'binance') { setRtOn(false); return; }
+    return openLiveFeed('BTCUSDT', tf,
+      (k) => {
+        const cs = candlesRef.current;
+        const last = cs[cs.length - 1];
+        if (!last) return;
+        if (k.openTime === last.ts) {
+          last.open = k.o; last.high = k.h; last.low = k.l;
+          last.close = k.c; last.volume = k.v;
+        } else if (k.openTime > last.ts) {
+          cs.push({ ts: k.openTime, open: k.o, high: k.h, low: k.l,
+                    close: k.c, volume: k.v });
+          if (cs.length > 800) cs.shift();
+        } else {
+          return;                              // stale frame
+        }
+        scheduleRef.current();
+      },
+      (t) => {
+        const cs = candlesRef.current;
+        const last = cs[cs.length - 1];
+        if (!last) return;
+        last.close = t.price;
+        if (t.price > last.high) last.high = t.price;
+        if (t.price < last.low) last.low = t.price;
+        scheduleRef.current();
+      },
+      setRtOn);
   }, [source, tf]);
 
   // resize
