@@ -298,9 +298,84 @@ def test_parse_klines_shape():
     assert out[0] == (1750000000.0, 100.0, 101.0, 99.0, 101.0, 8.0)
 
 
+# ── catalog (the exchange's own exchangeInfo, not a hand-picked list) ────
+
+def _offline(monkeypatch):
+    """No egress: exchangeInfo raises, the provider must keep serving the
+    offline core without touching the network again inside the negative
+    TTL. Returns a call counter for rest_exchange_symbols."""
+    import lse_terminal.providers.binance_perp as bp
+    calls = []
+
+    def dead_exchange(*a, **kw):
+        calls.append(1)
+        raise RuntimeError("egress walled")
+
+    monkeypatch.setattr(bp, "rest_exchange_symbols", dead_exchange)
+    return calls
+
+
+def test_catalog_prefers_futures_when_reachable(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    monkeypatch.setattr(bp, "rest_exchange_symbols",
+                        lambda: (["BTCUSDT", "ETHUSDT"], "futures"))
+    venue, syms = BinancePerpProvider().catalog()
+    assert venue == "futures"
+    assert syms == ["BTCUSDT", "ETHUSDT"]
+    # the catalog is the validation source: a listed symbol resolves,
+    # an unlisted one does not
+    p = BinancePerpProvider()
+    assert p._resolve_symbol("BTCUSDT") == "BTCUSDT"
+    assert p._resolve_symbol("BETAUSDT") is None
+
+
+def test_catalog_spot_fallback(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    monkeypatch.setattr(bp, "rest_exchange_symbols",
+                        lambda: (["BETAUSDT", "BTCUSDT"], "spot"))
+    p = BinancePerpProvider()
+    venue, syms = p.catalog()
+    assert venue == "spot"
+    assert "BETAUSDT" in syms
+    hits = p.search("BETA")
+    assert [h.symbol for h in hits] == ["BETAUSDT"]
+    assert hits[0].category == "Binance Spot"
+
+
+def test_catalog_offline_keeps_core_and_retries(monkeypatch):
+    calls = _offline(monkeypatch)
+    p = BinancePerpProvider()
+    venue, syms = p.catalog()
+    assert venue == "core"
+    assert list(SYMBOLS) == syms
+    p.catalog()                      # inside the 60s negative TTL
+    p.catalog()
+    assert len(calls) == 1           # one probe, not one per render
+
+
+def test_resolve_symbol_bare_base():
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT", "BETAUSDT"])
+    assert p._resolve_symbol("BETA") == "BETAUSDT"
+    assert p._resolve_symbol("beta") == "BETAUSDT"
+    assert p._resolve_symbol("BETAUSDT") == "BETAUSDT"
+    assert p._resolve_symbol("NOPE") is None
+    assert p._resolve_symbol("") is None
+
+
+def test_search_bare_base_and_case():
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT", "BETAUSDT"])
+    assert [h.symbol for h in p.search("beta")] == ["BETAUSDT"]
+    assert [h.symbol for h in p.search("BTC")] == ["BTCUSDT"]
+
+
 # ── provider contract ────────────────────────────────────────────────────
 
-def test_provider_validates_and_honest_history():
+def test_provider_validates_and_honest_history(monkeypatch):
+    _offline(monkeypatch)            # deterministic: the offline core
     provider = BinancePerpProvider()
     assert provider.configured() is True
     assert provider.name == "binance"
@@ -314,16 +389,19 @@ def test_provider_validates_and_honest_history():
         provider.depth_stream(["NOTREAL"])
     with pytest.raises(ValueError):
         provider.stream(["NOTREAL"])
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ei:
         provider.candles("NOTREAL", "1m")
-    with pytest.raises(ValueError):
+    # the error must say WHAT is wrong, not just that it is
+    assert "no instrument named NOTREAL" in str(ei.value)
+    with pytest.raises(ValueError) as et:
         provider.candles("BTCUSDT", "7m")
+    assert "unsupported timeframe" in str(et.value)
 
     with pytest.raises(NotSupported):
         provider.depth_history("BTCUSDT", 0, 1)
     assert "depth_history" not in provider.capabilities()
 
-    # every symbol in the whitelist is streamable without any keys;
-    # the async generator starts no I/O until iterated, so building it
-    # offline must simply succeed
+    # every symbol in the core is streamable without any keys; the async
+    # generator starts no I/O until iterated, so building it offline must
+    # simply succeed
     assert hasattr(provider.depth_stream(list(SYMBOLS)), "__anext__")

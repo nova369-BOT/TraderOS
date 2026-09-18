@@ -57,8 +57,12 @@ WS_BASE = os.environ.get("BINANCE_WS", "wss://fstream.binance.com")
 # (Nigeria), but the .vision mirror is published exactly for third-party
 # consumption: same kline/depth/aggTrade wire format, spot book. Every REST
 # call and WS route tries the primary first and falls back to this.
-MIRROR_REST = "https://data-api.binance.vision"
-MIRROR_WS = "wss://data-stream.binance.vision"
+# Env overrides exist so the whole spine can be pointed at a stand-in
+# exchange for offline e2e.
+MIRROR_REST = os.environ.get("BINANCE_MIRROR_REST",
+                             "https://data-api.binance.vision")
+MIRROR_WS = os.environ.get("BINANCE_MIRROR_WS",
+                           "wss://data-stream.binance.vision")
 
 INTERVALS = {60: "1m", 300: "5m", 900: "15m", 3600: "1h", 14400: "4h",
              86400: "1d"}
@@ -78,6 +82,12 @@ SYMBOLS = {
 PENDING_CAP = 5000          # feed.go: buffered diffs cap
 RESYNC_COOLDOWN = 1.0       # feed.go: nextResync collapse window
 SNAPSHOT_LIMIT = 1000       # feed.go: Depth(symbol, 1000)
+
+# Catalog freshness: a real book caches 1h (exchangeInfo moves on listings,
+# not ticks); the offline core re-tries after 60s so a cold boot on dead
+# egress heals the moment egress returns, without re-hammering the exchange.
+CATALOG_TTL = 3600.0
+CATALOG_NEG_TTL = 60.0
 
 
 # ── REST (sync, run in threadpool from async) ────────────────────────────
@@ -137,6 +147,36 @@ def rest_ticker24h() -> tuple[list, str]:
     calls = (("futures", REST_BASE, "/fapi/v1/ticker/24hr"),
              ("spot", MIRROR_REST, "/api/v3/ticker/24hr"))
     return _first_json(calls, {})
+
+
+# The exchange's OWN symbol list, not a hand-picked one. The catalog is what
+# makes an instrument discoverable and chartable; a fixed 8-symbol list is
+# how a real pair like BETA becomes an opaque "bad request".
+_EXCHANGE_INFO_CALLS = ((
+    "futures", REST_BASE, "/fapi/v1/exchangeInfo"),
+    ("spot", MIRROR_REST, "/api/v3/exchangeInfo"))
+
+
+def rest_exchange_symbols() -> tuple[list, str]:
+    """Trading USDT symbols from exchangeInfo, futures first then the
+    reachable spot mirror, same primary->fallback race as every other call.
+
+    Futures keeps only perpetuals (delivery contracts are not what this
+    terminal charts); the spot mirror carries its own book. The venue
+    label rides back so the catalog can name its own source honestly."""
+    data, venue = _first_json(_EXCHANGE_INFO_CALLS, {})
+    out: list[str] = []
+    for s in data.get("symbols", []):
+        if s.get("quoteAsset") != "USDT" or s.get("status") != "TRADING":
+            continue
+        if venue == "futures" and s.get("contractType") != "PERPETUAL":
+            continue
+        if str(s.get("baseAsset", "")).upper() == "USDT":
+            continue                     # self-pair junk, not an instrument
+        sym = str(s.get("symbol", "")).upper()
+        if sym:
+            out.append(sym)
+    return sorted(set(out)), venue
 
 
 def parse_klines(rows: list) -> list:
@@ -314,7 +354,11 @@ class BookFeed:
 
 class BinancePerpProvider(Provider):
     name = "binance"
-    title = "Binance USD-M Futures (direct, keyless)"
+    # The book the deployment actually serves can be the futures edge or the
+    # spot mirror (whichever answers this egress), so the title names the
+    # exchange, not the book — the venue badge and the catalog's categories
+    # carry the book per symbol.
+    title = "Binance (direct, keyless)"
     timeframes = TIMEFRAMES
     deterministic = False
 
@@ -324,24 +368,91 @@ class BinancePerpProvider(Provider):
         # once a second; Binance needs one 2s TTL between them, not one
         # REST call per poll.
         self._ticker: tuple[float, list, str] = (0.0, [], "")
+        # Catalog cache: (epoch, venue, [symbols]). A real book caches 1h;
+        # the offline core re-tries after 60s so a cold boot on dead egress
+        # heals the moment egress comes back.
+        self._catalog: tuple[float, str, list] = (0.0, "core",
+                                                  list(SYMBOLS))
+
+    def catalog(self) -> tuple[str, list]:
+        """(venue, trading USDT symbols), from the exchange's own
+        exchangeInfo when reachable, else the offline core. Everything
+        listed here is fetchable by the same bases that serve klines/depth
+        — the catalog never advertises what the wire will not carry."""
+        now = time.time()
+        ts, venue, syms = self._catalog
+        ttl = CATALOG_TTL if venue in ("futures", "spot") else CATALOG_NEG_TTL
+        if now - ts < ttl:
+            return venue, syms
+        try:
+            fresh, fresh_venue = rest_exchange_symbols()
+            if fresh:
+                self._catalog = (now, fresh_venue, fresh)
+                return fresh_venue, fresh
+        except Exception:  # noqa: BLE001 — offline: keep serving the core
+            pass
+        # Stamp the fallback so the negative TTL actually holds (a render
+        # loop must not re-probe the dead exchange on every pass).
+        self._catalog = (now, venue, syms)
+        return venue, syms
+
+    def _resolve_symbol(self, symbol: str) -> Optional[str]:
+        """The exchange's own spelling of `symbol`, or None.
+
+        Traders type the base asset ("BETA" for BETAUSDT); an exact miss
+        plus a USDT/USDC-suffixed hit in the catalog is the exchange's
+        spelling of the same instrument, so it resolves silently."""
+        s = (symbol or "").strip().upper()
+        if not s:
+            return None
+        _, have = self.catalog()
+        have = set(have)
+        if s in have:
+            return s
+        for suf in ("USDT", "USDC"):
+            if s + suf in have:
+                return s + suf
+        return None
 
     def search(self, query: str = "", limit: int = 50) -> List[Instrument]:
-        q = (query or "").strip().upper().replace(" ", "")
+        venue, syms = self.catalog()
+        q = (query or "").strip().upper().replace(" ", "").replace("/", "")
+        core = {s: n for s, n in SYMBOLS.items()}
         out = []
-        for sym, name in SYMBOLS.items():
-            if not q or q in sym or q in name.upper().split()[0]:
+        for sym in syms:
+            # A query that is a bare base ("BETA") matches the suffixed
+            # symbol (BETAUSDT) the way traders search.
+            if not q or q in sym or sym.startswith(q + "USDT"):
+                name = core.get(sym)
+                if name is None:
+                    base = sym[:-4] if sym.endswith("USDT") else sym
+                    name = (f"{base} / Tether (USD-M perp)"
+                            if venue == "futures"
+                            else f"{base} / Tether (spot)")
                 out.append(Instrument(
-                    symbol=sym, name=name, category="Binance USD-M Futures",
+                    symbol=sym, name=name,
+                    category=("Binance Spot" if venue == "spot"
+                              else "Binance USD-M Futures"),
                     provider=self.name, meta={"live": True,
-                                              "venue": "binance-futures"}))
-        return out[: max(1, limit)]
+                                              "venue": ("binance-spot"
+                                                        if venue == "spot"
+                                                        else
+                                                        "binance-futures")}))
+            if len(out) >= max(1, limit):
+                break
+        return out
 
     def candles(self, symbol, timeframe, limit=500, start=None, end=None):
         import pandas as pd
         tf = {v: k for k, v in INTERVALS.items()}.get(timeframe)
-        if tf is None or symbol.upper() not in SYMBOLS:
-            raise ValueError(f"binance: bad request {symbol}/{timeframe}")
-        params = {"symbol": symbol.upper(), "interval": INTERVALS[tf],
+        if tf is None:
+            raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
+        sym = self._resolve_symbol(symbol)
+        if sym is None:
+            raise ValueError(
+                f"binance: no instrument named {symbol} in the catalog — "
+                "search it in the sidebar's Binance book")
+        params = {"symbol": sym, "interval": INTERVALS[tf],
                   "limit": str(int(limit))}
         if end is not None and str(end).isdigit():
             params["endTime"] = str(int(end))
@@ -393,18 +504,24 @@ class BinancePerpProvider(Provider):
         return out
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
-        bad = [s for s in symbols if s.upper() not in SYMBOLS]
-        if bad:
-            raise ValueError(f"binance: unknown symbols {bad}")
-        return self._pump([s.upper() for s in symbols])
+        resolved = []
+        for s in symbols:
+            r = self._resolve_symbol(s)
+            if r is None:
+                raise ValueError(f"binance: unknown symbol {s!r}")
+            resolved.append(r)
+        return self._pump(resolved)
 
     def stream(self, symbols: List[str]) -> AsyncIterator[dict]:
-        bad = [s for s in symbols if s.upper() not in SYMBOLS]
-        if bad:
-            raise ValueError(f"binance: unknown symbols {bad}")
+        resolved = []
+        for s in symbols:
+            r = self._resolve_symbol(s)
+            if r is None:
+                raise ValueError(f"binance: unknown symbol {s!r}")
+            resolved.append(r)
 
         async def _ticks():
-            async for ev in self._pump([s.upper() for s in symbols]):
+            async for ev in self._pump(resolved):
                 if isinstance(ev, TradeEvent):
                     yield {"symbol": ev.symbol, "price": ev.price,
                            "ts": ev.ts, "volume": ev.size, "side": ev.side}

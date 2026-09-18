@@ -720,7 +720,7 @@ function setupSourcePanel() {
       const isBn = p.name === "binance";
       return `<div class="panes-row${p.name === state.provider ? " on" : ""}" data-src="${p.name}">` +
         `<span class="panes-name">${p.name === state.provider ? "✓ " : ""}` +
-        `${isBn ? "Binance USD-M Futures" : "London Strategic Edge"}</span>` +
+        `${isBn ? "Binance (futures & spot)" : "London Strategic Edge"}</span>` +
         `<span class="panes-hint">${isBn ? "crypto · keyless" : "equities · FX · indices"}</span></div>`;
     }).join("");
     for (const el of panel.querySelectorAll(".panes-row")) {
@@ -14820,19 +14820,38 @@ async function boot() {
 
   $("symbol").addEventListener("input", (e) => loadInstruments(e.target.value));
   $("symbol").addEventListener("change", (e) => {
-    const v = (e.target.value || "").trim().toUpperCase();
-    if (!v) return;
-    // The search box serves BOTH books: a pick that resolves to the partner
-    // section's catalog (not the active source's) crosses the source,
-    // exactly as clicking that row in the sidebar would.
-    const inActive = state.instruments.some(
-      (i) => i.symbol.toUpperCase() === v);
-    const alt = altSourceName();
-    if (!inActive && alt && state.catalog[alt] &&
-        state.catalog[alt].some((i) => i.symbol.toUpperCase() === v)) {
-      pickFromSource(alt, v);
+    const v0 = (e.target.value || "").trim().toUpperCase();
+    if (!v0) return;
+    // Traders type the base asset ("BETA" for BETAUSDT); the exchange's own
+    // spelling wins — resolve against whichever book lists the symbol:
+    // the active one first, then the partner (a partner hit crosses the
+    // source, exactly as clicking that row in the sidebar would).
+    const resolve = (v) => {
+      const alt = altSourceName();
+      const books = [[state.instruments, state.provider]];
+      if (alt && state.catalog[alt]) books.push([state.catalog[alt], alt]);
+      for (const [items, src] of books) {
+        if (!items) continue;
+        if (items.some((i) => i.symbol.toUpperCase() === v))
+          return { sym: v, src };
+        for (const suf of ["USDT", "USDC"]) {
+          if (items.some((i) => i.symbol.toUpperCase() === v + suf))
+            return { sym: v + suf, src };
+        }
+      }
+      return null;
+    };
+    const hit = resolve(v0);
+    if (hit) {
+      if (hit.sym !== v0) e.target.value = hit.sym;
+      if (hit.src !== state.provider) pickFromSource(hit.src, hit.sym);
+      else setSymbol(hit.sym);
+    } else if (state.provider === "binance") {
+      // The Binance book is fully in memory here, so a miss is certain —
+      // say so inline instead of burning the chart on a 404 round trip.
+      status(`no Binance instrument named ${v0} — search the sidebar book`);
     } else {
-      setSymbol(v);
+      setSymbol(v0);
     }
     e.target.blur();
   });
