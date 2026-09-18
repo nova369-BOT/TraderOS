@@ -59,5 +59,12 @@ EdgeDepth properly; be the professional this project needs.
       `height: 100%` on `.ws-root`; plus `sanitizeState` now normalises the
       theme id and `repairPane` clamps x/y to `1−MIN`. Awaiting user confirm
       on the auto-redeployed traderos-w service.
+- [x] sandbox preview 403s: host guard trusts loopback only; the e2b proxy
+      Host was rejected. Preview now starts with
+      `LSE_TRUSTED_HOST_SUFFIXES=e2b.app`; Render blueprint already sets
+      `onrender.com`. Hardening shipped same commit: `/w/` shell + bundle
+      served `Cache-Control: no-store` so redeploys never show stale bytes;
+      Binance REST timeout 15s→6s and parallel initial snapshots so blocked
+      egress fails fast; ChartPane poll has an in-flight guard.
 - [ ] Phase 2 chart pane never visually confirmed by user.
 - [ ] Gateway live proof (E3 against real Binance) still pending.

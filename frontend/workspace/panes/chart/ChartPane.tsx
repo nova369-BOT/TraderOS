@@ -75,15 +75,24 @@ export default function ChartPane({ theme }: Props) {
   };
   const scheduleRef = useRef(schedule); scheduleRef.current = schedule;
 
-  // data poll — reads only refs, immune to re-renders
+  // data poll — reads only refs, immune to re-renders. The in-flight guard
+  // matters on blocked egress: a slow fallback chain must never stack up
+  // behind the 5s poll and bury the server in duplicate requests.
+  const busyRef = useRef(false);
   useEffect(() => {
     let dead = false;
     const load = async () => {
-      const r = await loadCandles(source, tf).catch(() => null);
-      if (dead || !r) return;
-      candlesRef.current = r.candles;
-      setBadge(r.badge);
-      scheduleRef.current();
+      if (busyRef.current) return;
+      busyRef.current = true;
+      try {
+        const r = await loadCandles(source, tf).catch(() => null);
+        if (dead || !r) return;
+        candlesRef.current = r.candles;
+        setBadge(r.badge);
+        scheduleRef.current();
+      } finally {
+        busyRef.current = false;
+      }
     };
     load();
     const t = setInterval(load, 5000);

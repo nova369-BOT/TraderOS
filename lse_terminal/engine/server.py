@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -7829,6 +7829,28 @@ def create_app() -> FastAPI:
     @app.on_event("shutdown")
     def _broker_shutdown():
         hub.shutdown()
+
+    # /w/ workspace: no-store on the shell + bundle so a redeploy can never
+    # show a stale cached page (the black-screen era taught us that the
+    # served bytes must always be the deployed bytes). Tiny files; cache is
+    # worth nothing here.
+    @app.get("/w/")
+    @app.get("/w/index.html")
+    def w_index():
+        return FileResponse(_STATIC / "w" / "index.html",
+                            headers={"Cache-Control": "no-store"})
+
+    @app.get("/w/workspace.js")
+    def w_js():
+        return FileResponse(_STATIC / "w" / "workspace.js",
+                            media_type="text/javascript",
+                            headers={"Cache-Control": "no-store"})
+
+    @app.get("/w/workspace.css")
+    def w_css():
+        return FileResponse(_STATIC / "w" / "workspace.css",
+                            media_type="text/css",
+                            headers={"Cache-Control": "no-store"})
 
     app.mount("/", StaticFiles(directory=str(_STATIC), html=True), name="ui")
     return app

@@ -76,7 +76,9 @@ SNAPSHOT_LIMIT = 1000       # feed.go: Depth(symbol, 1000)
 def _get_json(path: str, params: Dict[str, str]) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = REST_BASE + path + ("?" + q if q else "")
-    with urllib.request.urlopen(url, timeout=15) as r:
+    # 6s, not 15: a WAF-blackholed egress must fail FAST so the pane's
+    # honest fallback chain resolves quickly instead of stacking polls.
+    with urllib.request.urlopen(url, timeout=6) as r:
         return json.loads(r.read())
 
 
@@ -390,9 +392,11 @@ class BinancePerpProvider(Provider):
                                       [f"{s}@depth@100ms" for s in lower],
                                       on_public)),
         ]
-        # initial snapshots
+        # initial snapshots — in parallel: 8 symbols x serial REST would
+        # block the first yield for minutes on a slow egress
+        await asyncio.gather(*[f._trigger_resync("initial sync", 0, 0)
+                               for f in feeds.values()])
         for f in feeds.values():
-            await f._trigger_resync("initial sync", 0, 0)
             drain_into_queue(f)
         try:
             while True:
