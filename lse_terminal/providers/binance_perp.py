@@ -51,6 +51,14 @@ log = logging.getLogger("lse_terminal")
 REST_BASE = os.environ.get("BINANCE_REST", "https://fapi.binance.com")
 WS_BASE = os.environ.get("BINANCE_WS", "wss://fstream.binance.com")
 
+# Binance's public market-data mirror on a separate TLD. The main domains are
+# WAF-418 from datacenter egress and ISP-blocked in several countries
+# (Nigeria), but the .vision mirror is published exactly for third-party
+# consumption: same kline/depth/aggTrade wire format, spot book. Every REST
+# call and WS route tries the primary first and falls back to this.
+MIRROR_REST = "https://data-api.binance.vision"
+MIRROR_WS = "wss://data-stream.binance.vision"
+
 INTERVALS = {60: "1m", 300: "5m", 900: "15m", 3600: "1h", 14400: "4h",
              86400: "1d"}
 TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h", "1d"]
@@ -73,18 +81,29 @@ SNAPSHOT_LIMIT = 1000       # feed.go: Depth(symbol, 1000)
 
 # ── REST (sync, run in threadpool from async) ────────────────────────────
 
-def _get_json(path: str, params: Dict[str, str]) -> dict:
+def _get_json(base: str, path: str, params: Dict[str, str]) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
-    url = REST_BASE + path + ("?" + q if q else "")
+    url = base + path + ("?" + q if q else "")
     # 6s, not 15: a WAF-blackholed egress must fail FAST so the pane's
     # honest fallback chain resolves quickly instead of stacking polls.
     with urllib.request.urlopen(url, timeout=6) as r:
         return json.loads(r.read())
 
 
+# primary -> mirror, same wire format on both
+_DEPTH_PATHS = ((REST_BASE, "/fapi/v1/depth"), (MIRROR_REST, "/api/v3/depth"))
+_KLINE_PATHS = ((REST_BASE, "/fapi/v1/klines"), (MIRROR_REST, "/api/v3/klines"))
+
+
 def rest_depth(symbol: str, limit: int = SNAPSHOT_LIMIT) -> dict:
-    return _get_json("/fapi/v1/depth", {"symbol": symbol.upper(),
-                                        "limit": str(limit)})
+    err: Optional[Exception] = None
+    for base, path in _DEPTH_PATHS:
+        try:
+            return _get_json(base, path, {"symbol": symbol.upper(),
+                                          "limit": str(limit)})
+        except Exception as exc:  # noqa: BLE001 — try the mirror
+            err = exc
+    raise err
 
 
 def rest_klines(symbol: str, tf_sec: int, count: int,
@@ -93,7 +112,13 @@ def rest_klines(symbol: str, tf_sec: int, count: int,
               "limit": str(count)}
     if end_ms:
         params["endTime"] = str(int(end_ms))
-    return _get_json("/fapi/v1/klines", params)
+    err: Optional[Exception] = None
+    for base, path in _KLINE_PATHS:
+        try:
+            return _get_json(base, path, params)
+        except Exception as exc:  # noqa: BLE001 — try the mirror
+            err = exc
+    raise err
 
 
 def parse_klines(rows: list) -> list:
@@ -294,13 +319,25 @@ class BinancePerpProvider(Provider):
         tf = {v: k for k, v in INTERVALS.items()}.get(timeframe)
         if tf is None or symbol.upper() not in SYMBOLS:
             raise ValueError(f"binance: bad request {symbol}/{timeframe}")
+        params = {"symbol": symbol.upper(), "interval": INTERVALS[tf],
+                  "limit": str(int(limit))}
+        if end is not None and str(end).isdigit():
+            params["endTime"] = str(int(end))
         try:
-            rows = rest_klines(symbol, tf, int(limit))
+            try:
+                rows = _get_json(REST_BASE, "/fapi/v1/klines", params)
+                venue = "binance-futures"
+            except Exception:  # noqa: BLE001 — WAF/ISP-blocked: the mirror
+                rows = _get_json(MIRROR_REST, "/api/v3/klines", params)
+                venue = "binance-spot"
         except Exception as exc:  # noqa: BLE001
             raise NotSupported(f"binance REST unreachable: {exc}") from exc
         if not rows:
             raise NotSupported("binance served no klines")
-        return pd.DataFrame(parse_klines(rows), columns=CANDLE_COLUMNS)
+        df = pd.DataFrame(parse_klines(rows), columns=CANDLE_COLUMNS)
+        # honesty: the badge downstream must say spot when the mirror won
+        df.attrs["venue"] = venue
+        return df
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
         bad = [s for s in symbols if s.upper() not in SYMBOLS]
@@ -344,11 +381,23 @@ class BinancePerpProvider(Provider):
             while feed.events:
                 out_q.put_nowait(feed.events.pop(0))
 
+        # fstream routes: /market + /public; the .vision mirror serves
+        # combined streams under /stream on one socket. Cycle candidates on
+        # every failed connect so a WAF'd or ISP-blocked primary heals to the
+        # mirror without any operator action.
+        ROUTES = {
+            "market": [(WS_BASE, "/market"), (MIRROR_WS, "/stream")],
+            "public": [(WS_BASE, "/public"), (MIRROR_WS, "/stream")],
+        }
+
         async def watch(route: str, names: List[str],
                         handler) -> None:
-            url = f"{WS_BASE}{route}?streams=" + ",".join(names)
+            candidates = ROUTES[route]
+            ci = 0
             backoff = 1.0
             while True:
+                base, path = candidates[ci]
+                url = f"{base}{path}?streams=" + ",".join(names)
                 try:
                     async with websockets.connect(
                             url, max_size=8 * 1024 * 1024,
@@ -368,7 +417,9 @@ class BinancePerpProvider(Provider):
                 except asyncio.CancelledError:
                     raise
                 except Exception as exc:  # noqa: BLE001
-                    log.warning("binance %s stream error: %s", route, exc)
+                    log.warning("binance %s stream error (%s): %s",
+                                route, base, exc)
+                    ci = (ci + 1) % len(candidates)   # primary -> mirror
                 await asyncio.sleep(backoff + random.random() * 0.5)
                 backoff = min(30.0, backoff * 2)
 
@@ -385,10 +436,10 @@ class BinancePerpProvider(Provider):
 
         lower = [s.lower() for s in symbols]
         tasks = [
-            asyncio.create_task(watch("/market",
+            asyncio.create_task(watch("market",
                                       [f"{s}@aggTrade" for s in lower],
                                       on_market)),
-            asyncio.create_task(watch("/public",
+            asyncio.create_task(watch("public",
                                       [f"{s}@depth@100ms" for s in lower],
                                       on_public)),
         ]

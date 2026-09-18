@@ -60,6 +60,12 @@ EdgeDepth properly; be the professional this project needs.
       `height: 100%` on `.ws-root`; plus `sanitizeState` now normalises the
       theme id and `repairPane` clamps x/y to `1−MIN`. Awaiting user confirm
       on the auto-redeployed traderos-w service.
+- [ ] real Binance data: main domains are WAF-418 from datacenters AND
+      ISP-blocked in Nigeria (user). Added the .vision public mirror
+      (data-api/data-stream.binance.vision, same wire format) as fallback on
+      BOTH server REST/WS and browser hops; venue honestly badged (futures vs
+      spot); demo badge now names the failed hops (srv✗ brw✗ mir✗ gw✗).
+      Awaiting user confirm of a LIVE badge.
 - [x] sandbox preview 403s: host guard trusts loopback only; the e2b proxy
       Host was rejected. Preview now starts with
       `LSE_TRUSTED_HOST_SUFFIXES=e2b.app`; Render blueprint already sets

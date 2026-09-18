@@ -817,6 +817,9 @@ def create_app() -> FastAPI:
 
         out = {
             "provider": provider, "symbol": symbol, "timeframe": timeframe,
+            # venue honesty: binance futures vs the spot mirror, so the pane
+            # badge can say exactly which book the candles came from
+            "venue": getattr(df, "attrs", {}).get("venue", provider),
             # Explicit int ts: .values.tolist() would upcast the whole frame
             # to float64 and ship epoch seconds as floats.
             "candles": [[int(r.ts), r.open, r.high, r.low, r.close, r.volume]
