@@ -845,6 +845,8 @@ def test_tape_to_candles_malformed_rows_skipped():
 
 
 def test_candles_subminute_serves_tape_honestly(monkeypatch):
+    """Mirror unreachable (no 1s klines): tick/1s/30s fall back to the
+    exchange's own trade tape, labelled with the book it came from."""
     import lse_terminal.providers.binance_perp as bp
     p = BinancePerpProvider()
     p._catalog = (0.0, "spot", ["BTCUSDT"])
@@ -852,6 +854,10 @@ def test_candles_subminute_serves_tape_honestly(monkeypatch):
     monkeypatch.setattr(bp, "rest_agg_trades",
                         lambda s, limit=1000: (calls.append(s) or
                                                (_tape_rows(), "spot")))
+
+    def no_klines(params, tf_sec):
+        raise RuntimeError("mirror down")
+    monkeypatch.setattr(bp, "fetch_klines_paged", no_klines)
     for tf in ("tick", "1s", "30s"):
         df = p.candles("BTCUSDT", tf, limit=10)
         assert len(df) <= 10
@@ -1151,3 +1157,55 @@ def test_depth_stream_trades_flow_while_snapshot_in_flight(monkeypatch):
     assert first_trade is not None and first_trade < 0.5, first_trade
     assert first_snap is not None and first_snap >= 1.0
     assert n_delta >= 5
+
+
+# ── B3: 1s / 30s from REAL 1s klines (spot mirror), tape only as fallback ──
+
+def test_subminute_prefers_real_1s_klines(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    seen = []
+
+    def klines(params, tf_sec):
+        seen.append((dict(params), tf_sec))
+        n = int(params["limit"])
+        base = 1_699_999_980_000
+        return ([[base + i * 1000, "1", "2", "0.5", "1.5", "1"]
+                 for i in range(n)], "spot")
+    monkeypatch.setattr(bp, "fetch_klines_paged", klines)
+    monkeypatch.setattr(bp, "rest_agg_trades",
+                        lambda *a, **k: pytest.fail("tape must not be hit"))
+
+    df = p.candles("BTCUSDT", "1s", limit=120)
+    assert len(df) == 120 and seen[-1][0]["interval"] == "1s"
+    assert seen[-1][1] == 1                       # paged at 1s steps
+    assert (df["ts"].diff().dropna() == 1).all()
+
+    df30 = p.candles("BTCUSDT", "30s", limit=4)
+    assert seen[-1][0]["limit"] == "120"          # 4 x 30 real seconds
+    assert len(df30) == 4
+    assert (df30["ts"] % 30 == 0).all()
+    assert (df30["volume"] == 30).all()           # folded sums, not fabricated
+    assert df30.attrs["venue"] == "spot"
+
+    # only the spot mirror carries 1s: the futures leg is never asked
+    assert all(c[0] == "spot" for c in bp._KLINE_1S_CALLS)
+
+
+def test_fold_candles_is_vectorised_and_gap_honest():
+    import numpy as np
+    import pandas as pd
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    ts = np.concatenate([np.arange(0, 60), np.arange(120, 150)]).astype(float)
+    df = pd.DataFrame({"ts": ts, "open": 1.0, "high": 2.0, "low": 0.5,
+                       "close": 1.5, "volume": 1.0})
+    out = bp.fold_candles(df, 30, pd)
+    assert out["ts"].tolist() == [0.0, 30.0, 120.0]   # 60-119: no bar, no fill
+    assert out["volume"].tolist() == [30.0, 30.0, 30.0]
+    big = pd.DataFrame({"ts": np.arange(0, 5000, dtype=float), "open": 1.0,
+                        "high": 2.0, "low": 0.5, "close": 1.5, "volume": 1.0})
+    t0 = _time.perf_counter()
+    bp.fold_candles(big, 30, pd)
+    assert _time.perf_counter() - t0 < 0.05            # budget: 50ms / 5000 bars

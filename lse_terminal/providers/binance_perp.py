@@ -228,6 +228,9 @@ _DEPTH_CALLS = (("futures", REST_BASE, "/fapi/v1/depth"),
                 ("spot", MIRROR_REST, "/api/v3/depth"))
 _KLINE_CALLS = (("futures", REST_BASE, "/fapi/v1/klines"),
                 ("spot", MIRROR_REST, "/api/v3/klines"))
+# 1s klines exist on SPOT only (futures publishes nothing below 1m); the
+# 1s/30s charts take them from the mirror and fall back to the trade tape.
+_KLINE_1S_CALLS = (("spot", MIRROR_REST, "/api/v3/klines"),)
 
 
 def _first_json(calls, params: Dict[str, str]):
@@ -413,6 +416,25 @@ def tape_to_candles(rows: list, timeframe: str,
     return out[-max(1, int(limit)):], newest
 
 
+def fold_candles(df, step_sec: int, pd):
+    """Fold finer bars into `step_sec` buckets — vectorised groupby, one
+    pass. Only buckets that hold at least one bar are emitted (no
+    fabricated fill), open/close by first/last bar time."""
+    if not len(df):
+        return df
+    key = (df["ts"] // step_sec) * step_sec
+    g = df.groupby(key, sort=True)
+    out = pd.DataFrame({
+        "open": g["open"].first(), "high": g["high"].max(),
+        "low": g["low"].min(), "close": g["close"].last(),
+        "volume": g["volume"].sum(),
+    })
+    out.index.name = None
+    out = out.reset_index().rename(columns={"index": "ts"})
+    out["ts"] = out["ts"].astype(float)
+    return out[CANDLE_COLUMNS]
+
+
 def parse_klines(rows: list) -> list:
     """Kline row: [openTime, o, h, l, c, v, closeTime, ...] as strings."""
     out = []
@@ -452,9 +474,10 @@ def fetch_klines_paged(params: Dict[str, str], tf_sec: int):
     else on "now"; startTime (when given) trims the oldest page."""
     limit = max(1, int(params.get("limit", "500")))
     base = {k: v for k, v in params.items() if k != "limit"}
+    calls = _KLINE_1S_CALLS if base.get("interval") == "1s" else _KLINE_CALLS
     if limit <= KLINE_PAGE:
         base["limit"] = str(limit)
-        return _first_json(_KLINE_CALLS, base)
+        return _first_json(calls, base)
     step_ms = tf_sec * 1000
     end_ms = int(base.pop("endTime", 0)) or int(time.time() * 1000)
     start_ms = int(base.pop("startTime", 0)) or None
@@ -473,7 +496,7 @@ def fetch_klines_paged(params: Dict[str, str], tf_sec: int):
     def one(lo, hi):
         p = dict(base, startTime=str(lo), endTime=str(hi),
                  limit=str(KLINE_PAGE))
-        return _first_json(_KLINE_CALLS, p)
+        return _first_json(calls, p)
 
     with ThreadPoolExecutor(max_workers=len(windows)) as ex:
         results = list(ex.map(lambda w: one(*w), windows))
@@ -844,10 +867,39 @@ class BinancePerpProvider(Provider):
         return df
 
     def _candles_tape(self, sym, timeframe, limit, start, pd):
-        fetch = lambda: self._fetch_tape(sym, timeframe, limit, pd)
+        fetch = lambda: self._fetch_subminute(sym, timeframe, limit, start,
+                                              pd)
         if start is not None:
             return self._live_tail((sym, timeframe), fetch)
         return self._swr_candles((sym, timeframe, limit, start), fetch)
+
+    def _fetch_subminute(self, sym, timeframe, limit, start, pd):
+        """1s / 30s: real 1s klines from the spot mirror first (paged, so
+        a 5000-bar 1s chart is 83 real minutes, 30s folded from them =
+        ~41 hours), the trade tape (last 1000 prints) only when the mirror
+        is unreachable. tick: always the tape (one bar per print)."""
+        if timeframe in ("1s", "30s"):
+            try:
+                return self._fetch_1s_klines(sym, timeframe, limit, start, pd)
+            except Exception as exc:  # noqa: BLE001 — mirror down: tape
+                log.info("binance 1s klines unavailable (%s); tape", exc)
+        return self._fetch_tape(sym, timeframe, limit, pd)
+
+    def _fetch_1s_klines(self, sym, timeframe, limit, start, pd):
+        fold = 30 if timeframe == "30s" else 1
+        want = min(5000, int(limit) * fold)
+        params = {"symbol": sym, "interval": "1s", "limit": str(want)}
+        s_ms = _to_ms(start)
+        if s_ms is not None:
+            params["startTime"] = str(s_ms)
+        rows, venue = fetch_klines_paged(params, 1)
+        if not rows:
+            raise NotSupported("binance served no 1s klines")
+        df = pd.DataFrame(parse_klines(rows), columns=CANDLE_COLUMNS)
+        if fold > 1:
+            df = fold_candles(df, fold, pd)
+        df.attrs["venue"] = venue
+        return df, venue
 
     def _fetch_tape(self, sym, timeframe, limit, pd):
         rows, venue = rest_agg_trades(sym, limit=1000)

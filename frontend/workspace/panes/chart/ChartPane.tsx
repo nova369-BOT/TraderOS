@@ -112,16 +112,27 @@ export default function ChartPane({ theme }: Props) {
   // matters on blocked egress: a slow fallback chain must never stack up
   // behind the poll and bury the server in duplicate requests.
   const busyRef = useRef(false);
+  // which (source, tf) the candle array belongs to: a WS frame for the new
+  // timeframe must never be merged into the old timeframe's bars while the
+  // history load for the switch is still in flight
+  const keyRef = useRef('');
   useEffect(() => {
     let dead = false;
+    const key = `${source}:${tf}`;
+    keyRef.current = '';
+    candlesRef.current = [];
+    scheduleRef.current();                 // skeleton frame, not a stale chart
     const load = async () => {
       if (busyRef.current) return;
-      if (rtRef.current) return;   // WS is authoritative while it is live
+      // WS is authoritative while live — but the FIRST load of a key must
+      // always run (the WS only ticks the forming bar, history comes here)
+      if (rtRef.current && keyRef.current === key) return;
       busyRef.current = true;
       try {
         const r = await loadCandles(source, tf).catch(() => null);
         if (dead || !r) return;
         candlesRef.current = r.candles;
+        keyRef.current = key;
         setBadge(r.badge);
         applyFollow();
         scheduleRef.current();
@@ -139,8 +150,10 @@ export default function ChartPane({ theme }: Props) {
   // the close between kline frames so every print moves the price tag.
   useEffect(() => {
     if (source !== 'binance') { setRtOn(false); return; }
+    const key = `${source}:${tf}`;
     return openLiveFeed('BTCUSDT', tf,
       (k) => {
+        if (keyRef.current !== key) return;   // history not loaded yet
         const cs = candlesRef.current;
         const last = cs[cs.length - 1];
         if (!last) return;
@@ -158,6 +171,7 @@ export default function ChartPane({ theme }: Props) {
         scheduleRef.current();
       },
       (t) => {
+        if (keyRef.current !== key) return;
         const cs = candlesRef.current;
         const last = cs[cs.length - 1];
         if (!last) return;
