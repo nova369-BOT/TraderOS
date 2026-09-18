@@ -8,7 +8,10 @@ const LAYOUT_KEY = 'f2.layout.v1';
 const WS_PREFIX = 'f2.workspace.';
 
 export function defaultState(): WorkspaceState {
-  return { panes: presetPanes(4), theme: 'charcoal' };
+  // First visit = ONE full-screen chart pane trying live Binance data.
+  // Empty placeholder panes used to greet visitors with three blank boxes,
+  // which read as "nothing works"; more panes are one click away (Add).
+  return { panes: presetPanes(1), theme: 'charcoal' };
 }
 
 /** Equal-split presets; kinds cycle through the v1 inventory. */

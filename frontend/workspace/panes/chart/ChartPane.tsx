@@ -24,9 +24,12 @@ export default function ChartPane({ theme }: Props) {
   const rafRef = useRef(0);
   const dragRef = useRef<{ x: number; offset: number } | null>(null);
 
-  const [source, setSource] = useState<Source>('demo');
+  // Real data by default: the pane tries the Binance spine first and only
+  // falls back to DEMO if nothing live is reachable — and the badge always
+  // says which one you are actually looking at.
+  const [source, setSource] = useState<Source>('binance');
   const [tf, setTf] = useState<Timeframe>('1m');
-  const [badge, setBadge] = useState('DEMO');
+  const [badge, setBadge] = useState('BINANCE');
 
   // paint-path inputs, always current
   const themeRef = useRef(theme); themeRef.current = theme;
@@ -160,7 +163,7 @@ export default function ChartPane({ theme }: Props) {
                     display: 'flex', gap: 4 }}>
         <button
           className="ws-chip"
-          title="Data source: DEMO now, your edgedepth-gateway (BTCUSDT) when live"
+          title="Data source: BINANCE (direct spine, falls back to gateway, then honest DEMO)"
           onClick={() => setSource((s) => (s === 'demo' ? 'binance' : 'demo'))}
         >{source === 'demo' ? 'SRC: DEMO' : 'SRC: BINANCE'}</button>
         {TIMEFRAMES.map((t) => (
