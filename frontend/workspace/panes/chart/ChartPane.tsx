@@ -1,16 +1,22 @@
-// F2 · candle·footprint pane shell. React owns ONLY lifecycle and input;
-// every pixel lives in render.ts, every cell in footprint.ts, every fetch in
-// data.ts. Paint inputs (theme/badge/tf) flow through refs so rAF callbacks
-// and long-lived intervals can NEVER paint a stale closure.
+// F2 · candle·footprint pane shell. React owns ONLY lifecycle; every pixel
+// lives in render.ts, every cell in footprint.ts, every fetch in data.ts.
+// Navigation feel is the LSE ProChart recipe, ported exactly:
+//  - FLOAT startIndex + fractional-pixel render (sub-candle smooth pan)
+//  - wheel zoom = geometric levels, RIGHT edge anchored, instant (no jitter)
+//  - horizontal wheel / shift+wheel = fractional pan
+//  - drag pan is pixel-exact
+//  - refs + one rAF; React state never touches the paint path
+//  - double-buffered: draw offscreen, single blit (no ghosting)
+//  - DPR capped at 2 (consistent frame time on hi-dpi)
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Tokens } from '../../tokens';
 import { loadCandles } from './data';
-import { openLiveFeed } from './live';
 import { AXIS_W, paintChart } from './render';
+import { openLiveFeed } from './live';
 import {
   MAX_PX, MIN_PX, Source, TIMEFRAMES, Timeframe, ViewState,
-  defaultView, morphTargetFor,
+  defaultView, morphTargetFor, nextZoomLevel,
 } from './types';
 import type { Candle } from './types';
 
@@ -19,15 +25,13 @@ interface Props { theme: Tokens }
 export default function ChartPane({ theme }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const offRef = useRef<HTMLCanvasElement | null>(null);
   const candlesRef = useRef<Candle[]>([]);
   const viewRef = useRef<ViewState>(defaultView());
   const hoverRef = useRef<{ x: number; y: number } | null>(null);
   const rafRef = useRef(0);
-  const dragRef = useRef<{ x: number; offset: number } | null>(null);
+  const dragRef = useRef<{ x: number; start: number } | null>(null);
 
-  // Real data by default: the pane tries the Binance spine first and only
-  // falls back to DEMO if nothing live is reachable — and the badge always
-  // says which one you are actually looking at.
   const [source, setSource] = useState<Source>('binance');
   const [tf, setTf] = useState<Timeframe>('1m');
   const [badge, setBadge] = useState('BINANCE');
@@ -41,24 +45,43 @@ export default function ChartPane({ theme }: Props) {
   const badgeRef = useRef(shownBadge); badgeRef.current = shownBadge;
   const tfRef = useRef(tf); tfRef.current = tf;
 
+  const plotWOf = () => (wrapRef.current?.clientWidth ?? 0) - AXIS_W;
+
+  // LSE follow-the-edge: while following, the right edge stays pinned as
+  // live candles stream in
+  const applyFollow = () => {
+    const v = viewRef.current;
+    const len = candlesRef.current.length;
+    if (!v.follow || !len) return;
+    const visCount = Math.max(8, Math.floor(plotWOf() / v.pxPer));
+    v.startIndex = Math.max(0, len - visCount + 2);
+  };
+  const refollow = () => {
+    const v = viewRef.current;
+    const len = candlesRef.current.length;
+    const visCount = Math.floor(plotWOf() / v.pxPer);
+    v.follow = v.startIndex >= len - visCount - 1;
+  };
+
   const paint = () => {
     const canvas = canvasRef.current, wrap = wrapRef.current;
     if (!canvas || !wrap) return;
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);   // LSE cap
     const W = wrap.clientWidth, H = wrap.clientHeight;
     if (!W || !H) return;
-    if (canvas.width !== Math.round(W * dpr) ||
-        canvas.height !== Math.round(H * dpr)) {
-      canvas.width = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
-      canvas.style.width = `${W}px`;
-      canvas.style.height = `${H}px`;
+    const bw = Math.round(W * dpr), bh = Math.round(H * dpr);
+    if (canvas.width !== bw || canvas.height !== bh) {
+      canvas.width = bw; canvas.height = bh;
+      canvas.style.width = `${W}px`; canvas.style.height = `${H}px`;
     }
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (!offRef.current) offRef.current = document.createElement('canvas');
+    const off = offRef.current;
+    if (off.width !== bw || off.height !== bh) { off.width = bw; off.height = bh; }
+    const octx = off.getContext('2d');
+    if (!octx) return;
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
     paintChart({
-      ctx, W, H,
+      ctx: octx, W, H,
       candles: candlesRef.current,
       view: viewRef.current,
       hover: hoverRef.current,
@@ -67,6 +90,11 @@ export default function ChartPane({ theme }: Props) {
       tf: tfRef.current,
       modelled: true,  // real print aggregation lands with phase 6
     });
+    // DOUBLE-BUFFER BLIT: one copy, never a half-drawn frame on screen
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(off, 0, 0);
     const v = viewRef.current;
     if (Math.abs(v.morph - v.morphTarget) > 0.01) {
       v.morph += (v.morphTarget - v.morph) * 0.22;
@@ -80,9 +108,9 @@ export default function ChartPane({ theme }: Props) {
   };
   const scheduleRef = useRef(schedule); scheduleRef.current = schedule;
 
-  // data poll — reads only refs, immune to re-renders. The in-flight guard
+  // data poll — reads only refs, immune to re-renders. In-flight guard
   // matters on blocked egress: a slow fallback chain must never stack up
-  // behind the 5s poll and bury the server in duplicate requests.
+  // behind the poll and bury the server in duplicate requests.
   const busyRef = useRef(false);
   useEffect(() => {
     let dead = false;
@@ -95,6 +123,7 @@ export default function ChartPane({ theme }: Props) {
         if (dead || !r) return;
         candlesRef.current = r.candles;
         setBadge(r.badge);
+        applyFollow();
         scheduleRef.current();
       } finally {
         busyRef.current = false;
@@ -108,7 +137,6 @@ export default function ChartPane({ theme }: Props) {
   // realtime ticks — browser-direct WS (fstream, .vision mirror fallback).
   // kline events carry authoritative OHLCV and candle rolls; aggTrade ticks
   // the close between kline frames so every print moves the price tag.
-  // Mutates refs and lets the existing rAF paint — no React in the hot path.
   useEffect(() => {
     if (source !== 'binance') { setRtOn(false); return; }
     return openLiveFeed('BTCUSDT', tf,
@@ -126,6 +154,7 @@ export default function ChartPane({ theme }: Props) {
         } else {
           return;                              // stale frame
         }
+        applyFollow();
         scheduleRef.current();
       },
       (t) => {
@@ -142,53 +171,63 @@ export default function ChartPane({ theme }: Props) {
 
   // resize
   useEffect(() => {
-    const ro = new ResizeObserver(() => scheduleRef.current());
+    const ro = new ResizeObserver(() => { applyFollow(); scheduleRef.current(); });
     if (wrapRef.current) ro.observe(wrapRef.current);
     return () => { ro.disconnect(); cancelAnimationFrame(rafRef.current); };
   }, []);
 
   useEffect(() => { scheduleRef.current(); }, [theme]);
 
-  // ── input ─────────────────────────────────────────────────────────────
-  const onWheel = (e: React.WheelEvent) => {
-    const v = viewRef.current;
-    const len = candlesRef.current.length;
-    const wrap = wrapRef.current;
-    if (!wrap || !len) return;
-    const plotW = wrap.clientWidth - AXIS_W;
-    if (e.shiftKey) {
-      v.offset = Math.max(0, Math.min(len - 10,
-        v.offset + Math.sign(e.deltaY) * 6));
-    } else {
-      const r = (e.target as HTMLElement).getBoundingClientRect();
-      const x = e.clientX - r.left;
-      const oldPx = v.pxPer;
-      const next = Math.min(MAX_PX, Math.max(MIN_PX,
-        oldPx * (e.deltaY > 0 ? 0.88 : 1.14)));
-      const countOld = Math.max(8, Math.floor(plotW / oldPx));
-      const lastOld = len - 1 - Math.round(v.offset);
-      const firstOld = Math.max(0, lastOld - countOld + 1);
-      const idxAt = firstOld + x / oldPx;
-      const countNew = Math.max(8, Math.floor(plotW / next));
-      const firstNew = idxAt - x / next;
-      const offsetNew = len - 1 - (firstNew + countNew - 1);
-      v.pxPer = next;
-      v.offset = Math.max(0, Math.min(len - 10, Math.round(offsetNew)));
-      v.morphTarget = morphTargetFor(next);
-    }
-    scheduleRef.current();
-  };
+  // ── LSE navigation: non-passive wheel bound natively ──────────────────
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const v = viewRef.current;
+      const len = candlesRef.current.length;
+      const plotW = plotWOf();
+      if (!len || plotW < 1) return;
+      const spacing = v.pxPer;
+      const horizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.shiftKey;
+      if (horizontal) {
+        // fractional pan, like the LSE trackpad path
+        const amt = e.shiftKey ? e.deltaY : e.deltaX;
+        v.startIndex = Math.max(0, Math.min(len - 10,
+          v.startIndex + (amt * 0.2) / spacing));
+      } else {
+        // discrete geometric level, RIGHT edge anchored, instant
+        const next = Math.min(MAX_PX, Math.max(MIN_PX,
+          nextZoomLevel(v.pxPer, e.deltaY < 0)));
+        if (next !== v.pxPer) {
+          const right = v.startIndex + plotW / spacing;
+          v.startIndex = Math.max(0, right - plotW / next);
+          v.pxPer = next;
+          v.morphTarget = morphTargetFor(next);
+        }
+      }
+      refollow();
+      scheduleRef.current();
+    };
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+    return () => canvas.removeEventListener('wheel', onWheel);
+  }, []);
 
+  // ── input: pixel-exact drag pan + hover crosshair ─────────────────────
   return (
     <div ref={wrapRef} style={{ position: 'absolute', inset: 0 }}>
       <canvas
         ref={canvasRef}
-        onWheel={onWheel}
-        onDoubleClick={() => { viewRef.current = defaultView(); scheduleRef.current(); }}
+        onDoubleClick={() => {
+          viewRef.current = { ...defaultView(), pxPer: 12 };
+          applyFollow();
+          scheduleRef.current();
+        }}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           (e.target as HTMLElement).setPointerCapture(e.pointerId);
-          dragRef.current = { x: e.clientX, offset: viewRef.current.offset };
+          dragRef.current = { x: e.clientX,
+                              start: viewRef.current.startIndex };
         }}
         onPointerMove={(e) => {
           const r = (e.target as HTMLElement).getBoundingClientRect();
@@ -197,8 +236,9 @@ export default function ChartPane({ theme }: Props) {
             const v = viewRef.current;
             const len = candlesRef.current.length;
             const dx = e.clientX - dragRef.current.x;
-            v.offset = Math.max(0, Math.min(len - 10,
-              Math.round(dragRef.current.offset + dx / v.pxPer)));
+            v.startIndex = Math.max(0, Math.min(len - 10,
+              dragRef.current.start - dx / v.pxPer));
+            refollow();
           }
           scheduleRef.current();
         }}
