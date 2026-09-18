@@ -95,12 +95,14 @@ CATALOG_NEG_TTL = 60.0
 
 # ── REST (sync, run in threadpool from async) ────────────────────────────
 
-def _get_json(base: str, path: str, params: Dict[str, str]) -> dict:
+def _get_json(base: str, path: str, params: Dict[str, str],
+              timeout: float = 6.0) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = base + path + ("?" + q if q else "")
-    # 6s, not 15: a WAF-blackholed egress must fail FAST so the pane's
-    # honest fallback chain resolves quickly instead of stacking polls.
-    with urllib.request.urlopen(url, timeout=6) as r:
+    # 6s default, not 15: a WAF-blackholed egress must fail FAST so the
+    # pane's honest fallback chain resolves quickly instead of stacking
+    # polls. Big once-an-hour payloads (exchangeInfo) pass a longer one.
+    with urllib.request.urlopen(url, timeout=timeout) as r:
         return json.loads(r.read())
 
 
@@ -113,10 +115,13 @@ _KLINE_CALLS = (("futures", REST_BASE, "/fapi/v1/klines"),
 
 
 def _first_json(calls, params: Dict[str, str]):
+    """Race candidate (label, base, path[, timeout]) calls concurrently;
+    the first one to answer wins. A blocked base costs zero latency."""
     err: Optional[Exception] = None
     with ThreadPoolExecutor(max_workers=len(calls)) as ex:
-        futs = {ex.submit(_get_json, base, path, params): label
-                for label, base, path in calls}
+        futs = {ex.submit(_get_json, base, path, params,
+                          rest[0] if rest else 6.0): label
+                for label, base, path, *rest in calls}
         for f in as_completed(futs):
             try:
                 return f.result(), futs[f]
@@ -155,20 +160,70 @@ def rest_ticker24h() -> tuple[list, str]:
 # The exchange's OWN symbol list, not a hand-picked one. The catalog is what
 # makes an instrument discoverable and chartable; a fixed 8-symbol list is
 # how a real pair like BETA becomes an opaque "bad request".
-_EXCHANGE_INFO_CALLS = ((
-    "futures", REST_BASE, "/fapi/v1/exchangeInfo"),
-    ("spot", MIRROR_REST, "/api/v3/exchangeInfo"))
+#
+# Two depths, tried small first: the whole-book ticker/24hr (~1MB) lists
+# exactly the symbols trading right now and lands in well under a second.
+# exchangeInfo is the authoritative full book but a MULTI-megabyte payload
+# — on a datacenter line it can exceed the old 6s ceiling, and one slow
+# download used to fall the whole catalog back to the 8-symbol core for a
+# minute. It is now the fallback, with a 20s allowance.
+# (Sequential, not a 4-way race: a racing executor waits for its slowest
+# leg, which would pin the fast ticker answer behind a 20s download.)
+_TICKER_CALLS = (
+    ("futures", REST_BASE, "/fapi/v1/ticker/24hr"),
+    ("spot", MIRROR_REST, "/api/v3/ticker/24hr"),
+)
+_EXCHANGE_INFO_CALLS = (
+    ("futures", REST_BASE, "/fapi/v1/exchangeInfo", 20.0),
+    ("spot", MIRROR_REST, "/api/v3/exchangeInfo", 20.0),
+)
+
+
+def _usdt_rows(payload, venue: str) -> list:
+    """Trading USDT symbols out of EITHER catalog payload shape:
+    exchangeInfo (a dict with 'symbols') or whole-book ticker/24hr (a list
+    of tickers). Self-pairs excluded; a futures book keeps only perpetuals
+    (ticker shape: delivery contracts carry a dash in the symbol)."""
+    out: set = set()
+    if isinstance(payload, dict):                        # exchangeInfo
+        for s in payload.get("symbols", []):
+            if s.get("quoteAsset") != "USDT" or s.get("status") != "TRADING":
+                continue
+            if venue == "futures" and s.get("contractType") \
+                    and s.get("contractType") != "PERPETUAL":
+                continue
+            if str(s.get("baseAsset", "")).upper() == "USDT":
+                continue                     # self-pair junk, not an instrument
+            sym = str(s.get("symbol", "")).upper()
+            if sym and "-" not in sym:       # a dash is a delivery contract
+                out.add(sym)
+    elif isinstance(payload, list):                      # ticker/24hr
+        for t in payload:
+            sym = str((t or {}).get("symbol", "")).upper()
+            if not sym or "-" in sym:                    # delivery/index junk
+                continue
+            if not sym.endswith("USDT") or sym[:-4].upper() == "USDT":
+                continue
+            out.add(sym)
+    return sorted(out)
 
 
 def rest_exchange_symbols() -> tuple[list, str]:
-    """Trading USDT symbols from exchangeInfo, futures first then the
-    reachable spot mirror, same primary->fallback race as every other call.
-
-    Futures keeps only perpetuals (delivery contracts are not what this
-    terminal charts); the spot mirror carries its own book. The venue
-    label rides back so the catalog can name its own source honestly."""
+    """(trading USDT symbols, venue) from the exchange itself: the
+    whole-book ticker first (small, fast, lists exactly what is trading
+    right now), the authoritative exchangeInfo as fallback. The venue
+    label rides back so the catalog can name its own source honestly.
+    Both failing means egress is dead — the caller keeps the offline
+    core and its 60s negative TTL."""
+    try:
+        data, venue = _first_json(_TICKER_CALLS, {})
+        syms = _usdt_rows(data, venue)
+        if syms:
+            return syms, venue
+    except Exception:  # noqa: BLE001 — ticker book unreachable: go deep
+        pass
     data, venue = _first_json(_EXCHANGE_INFO_CALLS, {})
-    return _exchange_rows(data), venue
+    return _usdt_rows(data, venue), venue
 
 
 def rest_agg_trades(symbol: str, limit: int = 1000) -> tuple[list, str]:
@@ -228,25 +283,6 @@ def tape_to_candles(rows: list, timeframe: str,
             v = sum(q for _, q in pts)
         out.append((key, o, h, l, c, v))
     return out[-max(1, int(limit)):], newest
-
-
-def _exchange_rows(data: dict) -> list:
-    """exchangeInfo 'symbols' -> sorted trading USDT symbols. Self-pairs
-    excluded; a futures payload keeps only perpetuals (spot payloads carry
-    no contractType and keep everything)."""
-    out: list[str] = []
-    for s in data.get("symbols", []):
-        if s.get("quoteAsset") != "USDT" or s.get("status") != "TRADING":
-            continue
-        contract = s.get("contractType")
-        if contract and contract != "PERPETUAL":
-            continue
-        if str(s.get("baseAsset", "")).upper() == "USDT":
-            continue                     # self-pair junk, not an instrument
-        sym = str(s.get("symbol", "")).upper()
-        if sym:
-            out.append(sym)
-    return sorted(set(out))
 
 
 def parse_klines(rows: list) -> list:
@@ -658,36 +694,85 @@ class BinancePerpProvider(Provider):
                 w = winner.get(route)
                 return sorted(base_cands,
                               key=lambda c: 0 if c[0] == w else 1)
-            backoff = 1.0
-            while True:
-                cands = ordered()
-                held_any = False
-                for base, path in cands:
-                    url = f"{base}{path}?streams=" + ",".join(names)
+
+            async def _try_connect(base: str, path: str):
+                url = f"{base}{path}?streams=" + ",".join(names)
+                return await websockets.connect(
+                    url, max_size=8 * 1024 * 1024, open_timeout=8)
+
+            async def acquire(cands):
+                """(ws, base) for the next connection to hold, else
+                (None, None). COLD start (no known winner yet): race every
+                candidate IN PARALLEL — a WAF'd or ISP-blocked base must
+                cost zero latency, so the healthy mirror wins the race on
+                the first page load instead of ~8s of serial probing.
+                WARM reconnect: try the last winner first, serially — one
+                healthy connect, no fork."""
+                if winner.get(route) is None and len(base_cands) > 1:
+                    tasks = {}
+                    for base, path in cands:
+                        tasks[asyncio.ensure_future(_try_connect(base, path))] = base
                     try:
-                        async with websockets.connect(
-                                url, max_size=8 * 1024 * 1024,
-                                open_timeout=8) as ws:
-                            backoff = 1.0
-                            winner[route] = base
-                            held_any = True
-                            for f in feeds.values():
-                                f.reset_for_reconnect()
-                            async for raw in ws:
-                                env = json.loads(raw)
-                                stream_name, data = env.get("stream", ""), env.get("data", {})
-                                sym = stream_name.split("@")[0].upper()
-                                feed = feeds.get(sym)
-                                if feed is None:
-                                    continue
-                                await handler(feed, data)
-                                drain_into_queue(feed)
-                            break          # stream ended cleanly; re-pick
+                        while True:
+                            done, pending = await asyncio.wait(
+                                list(tasks),
+                                return_when=asyncio.FIRST_COMPLETED)
+                            for f in done:
+                                try:
+                                    return f.result(), tasks[f]
+                                except asyncio.CancelledError:
+                                    raise
+                                except Exception as exc:  # noqa: BLE001
+                                    log.warning("binance %s connect (%s) failed: %s",
+                                                route, tasks[f], exc)
+                            if not pending:
+                                return None, None
+                    finally:
+                        for f in tasks:
+                            if not f.done():
+                                f.cancel()
+                                # reap without blocking: a blackholed loser
+                                # must not hold the winner hostage
+                                f.add_done_callback(
+                                    lambda t: None
+                                    if t.cancelled() else t.exception())
+                for base, path in cands:
+                    try:
+                        return await _try_connect(base, path), base
                     except asyncio.CancelledError:
                         raise
                     except Exception as exc:  # noqa: BLE001
                         log.warning("binance %s connect (%s) failed: %s",
                                     route, base, exc)
+                return None, None
+
+            backoff = 1.0
+            while True:
+                ws, base = await acquire(ordered())
+                held_any = False
+                if ws is not None:
+                    winner[route] = base
+                    held_any = True
+                    backoff = 1.0
+                    try:
+                        for f in feeds.values():
+                            f.reset_for_reconnect()
+                        async for raw in ws:
+                            env = json.loads(raw)
+                            stream_name, data = env.get("stream", ""), env.get("data", {})
+                            sym = stream_name.split("@")[0].upper()
+                            feed = feeds.get(sym)
+                            if feed is None:
+                                continue
+                            await handler(feed, data)
+                            drain_into_queue(feed)
+                    except asyncio.CancelledError:
+                        raise
+                    finally:
+                        try:
+                            await ws.close()
+                        except Exception:  # noqa: BLE001 — stream is gone anyway
+                            pass
                 if held_any:
                     # A stream held this pass: quick jittered re-pick so a
                     # healthy mirror is re-established in well under a second

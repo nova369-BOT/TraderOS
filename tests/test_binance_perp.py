@@ -407,6 +407,187 @@ def test_provider_validates_and_honest_history(monkeypatch):
     assert hasattr(provider.depth_stream(list(SYMBOLS)), "__anext__")
 
 
+# ── catalog: the exchange's own book, ticker-first ───────────────────────
+
+def test_usdt_rows_both_payload_shapes():
+    from lse_terminal.providers.binance_perp import _usdt_rows
+    info = {"symbols": [
+        {"symbol": "BTCUSDT", "baseAsset": "BTC", "quoteAsset": "USDT",
+         "status": "TRADING"},
+        {"symbol": "ETHUSDT", "baseAsset": "ETH", "quoteAsset": "USDT",
+         "status": "TRADING", "contractType": "PERPETUAL"},
+        {"symbol": "BTCUSDT-250926", "baseAsset": "BTC", "quoteAsset": "USDT",
+         "status": "TRADING", "contractType": "CURRENT_QUARTER"},  # delivery
+        {"symbol": "ETHBTC", "baseAsset": "ETH", "quoteAsset": "BTC",
+         "status": "TRADING"},                                      # no USDT
+        {"symbol": "USDTUSDT", "baseAsset": "USDT", "quoteAsset": "USDT",
+         "status": "TRADING"},                                      # self-pair
+        {"symbol": "OLDUSDT", "baseAsset": "OLD", "quoteAsset": "USDT",
+         "status": "DELISTING"},                                    # not trading
+    ]}
+    assert _usdt_rows(info, "futures") == ["BTCUSDT", "ETHUSDT"]
+    # dashes (delivery contracts) are excluded in either shape
+    assert _usdt_rows(info, "spot") == ["BTCUSDT", "ETHUSDT"]
+    tape = [{"symbol": "SOLUSDT", "lastPrice": "1"},
+            {"symbol": "BTCUSDT-250926", "lastPrice": "1"},   # delivery
+            {"symbol": "DOGEGBP", "lastPrice": "1"},          # not USDT
+            {"symbol": "USDTUSDT", "lastPrice": "1"},         # self-pair
+            {"symbol": ""}, None]
+    assert _usdt_rows(tape, "spot") == ["SOLUSDT"]
+    assert _usdt_rows("garbage", "spot") == []
+    assert _usdt_rows(None, "futures") == []
+
+
+def test_catalog_ticker_first_exchangeinfo_fallback(monkeypatch):
+    import lse_terminal.providers.binance_perp as bp
+    calls = []
+    ticker = [{"symbol": "BTCUSDT", "lastPrice": "1"},
+              {"symbol": "ETHUSDT", "lastPrice": "1"}]
+    info = {"symbols": [{"symbol": "BTCUSDT", "baseAsset": "BTC",
+                         "quoteAsset": "USDT", "status": "TRADING"}]}
+
+    def fake_get(base, path, params, timeout=6.0):
+        calls.append((base, path, timeout))
+        if "/ticker/24hr" in path:
+            if "fapi" in base:
+                raise RuntimeError("WAF 418")
+            return ticker
+        if "fapi" in base:
+            raise RuntimeError("WAF 418")
+        return info
+
+    monkeypatch.setattr(bp, "_get_json", fake_get)
+    syms, venue = bp.rest_exchange_symbols()
+    assert (syms, venue) == (["BTCUSDT", "ETHUSDT"], "spot")
+    # the ticker answered: exchangeInfo (the multi-MB payload) was never
+    # even requested
+    assert all("/ticker/24hr" in p for _, p, _ in calls)
+
+    # ticker book dead -> the deep fallback runs, with its 20s allowance
+    calls.clear()
+
+    def dead_ticker(base, path, params, timeout=6.0):
+        calls.append((base, path, timeout))
+        if "/ticker/24hr" in path:
+            raise RuntimeError("mirror down")
+        if "fapi" in base:
+            raise RuntimeError("WAF 418")
+        return info
+
+    monkeypatch.setattr(bp, "_get_json", dead_ticker)
+    syms, venue = bp.rest_exchange_symbols()
+    assert syms == ["BTCUSDT"] and venue == "spot"
+    deep = [(p, t) for _, p, t in calls if "exchangeInfo" in p]
+    assert deep and all(t == 20.0 for _, t in deep)  # long allowance only here
+
+
+def test_first_json_per_call_timeout():
+    import lse_terminal.providers.binance_perp as bp
+    seen = []
+    import urllib.request
+
+    def fake_urlopen(url, timeout=6.0):
+        seen.append(timeout)
+        raise RuntimeError("stop here")
+
+    import unittest.mock as mock
+    with mock.patch.object(bp.urllib.request, "urlopen", fake_urlopen):
+        try:
+            bp._first_json([("a", "http://x", "/p", 3.5),
+                            ("b", "http://x", "/p", 9.0)], {})
+        except RuntimeError:
+            pass
+    assert 3.5 in seen and 9.0 in seen
+
+
+def test_ws_cold_start_races_bases_in_parallel(monkeypatch):
+    """Cold start (no known winner): the healthy mirror must win a PARALLEL
+    race — a blackholed primary (accepts TCP, never answers the handshake)
+    costs ~0, not its full open_timeout. A serial implementation of the
+    same loop takes >8s here and fails the elapsed check."""
+    import json
+    import socket
+    import threading
+    import time as _time
+    import websockets
+    import lse_terminal.providers.binance_perp as bp
+
+    async def handler(ws):
+        req = getattr(ws, "request", None)
+        path = getattr(req, "path", "") if req is not None else ""
+        if "aggTrade" in path:
+            await ws.send(json.dumps({"stream": "btcusdt@aggTrade",
+                                      "data": {"e": "aggTrade",
+                                               "T": 1750000001000,
+                                               "p": "100.5", "q": "0.2",
+                                               "t": 11, "m": True,
+                                               "s": "BTCUSDT"}}))
+        else:
+            await ws.send(json.dumps({"stream": "btcusdt@depth@100ms",
+                                      "data": {"e": "depth", "E": 1,
+                                               "s": "BTCUSDT",
+                                               "U": 100, "u": 200,
+                                               "b": [["100.4", "1"]],
+                                               "a": [["100.5", "1"]]}}))
+        try:
+            await ws.wait_closed()
+        except Exception:  # noqa: BLE001 — peer went away first
+            pass
+
+    # A blackhole "primary": accepts the TCP connection, then says nothing
+    # — exactly what a WAF'd edge looks like from the inside.
+    dead = socket.socket()
+    dead.bind(("127.0.0.1", 0))
+    dead.listen(8)
+    dead_port = dead.getsockname()[1]
+
+    def soak():
+        while True:
+            try:
+                conn, _ = dead.accept()
+                conn.settimeout(None)      # hold it open forever
+                while True:
+                    conn.recv(65536)       # (and never reply)
+            except OSError:
+                return
+            except Exception:  # noqa: BLE001 — keep soaking
+                continue
+    threading.Thread(target=soak, daemon=True).start()
+
+    def offline(*a, **k):
+        raise RuntimeError("offline test")
+
+    monkeypatch.setattr(bp, "_get_json", offline)
+    monkeypatch.setattr(bp, "WS_BASE", f"ws://127.0.0.1:{dead_port}")
+
+    async def main():
+        server = await websockets.serve(handler, "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        monkeypatch.setattr(bp, "MIRROR_WS", f"ws://127.0.0.1:{port}")
+        p = bp.BinancePerpProvider()
+        p._catalog = (0.0, "spot", ["BTCUSDT"])
+        got = []
+
+        async def collect():
+            async for ev in p.stream(["BTCUSDT"]):
+                got.append(ev)
+                return                      # one trade event is enough
+
+        t0 = _time.monotonic()
+        await asyncio.wait_for(collect(), timeout=5.0)
+        elapsed = _time.monotonic() - t0
+        server.close()
+        await server.wait_closed()
+        dead.close()
+        return got, elapsed
+
+    got, elapsed = run(main(), timeout=15.0)
+    assert got, "no trade event arrived through the mirror stream"
+    assert got[0]["symbol"] == "BTCUSDT" and got[0]["price"] == 100.5
+    assert elapsed < 3.0, \
+        f"cold start serialized on the blackholed base: {elapsed:.1f}s"
+
+
 # ── sub-minute charts: the exchange's own trade tape ─────────────────────
 
 def _tape_rows():

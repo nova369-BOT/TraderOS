@@ -963,7 +963,15 @@ function renderWatchlist() {
     }
     for (const g of buildGroups(instruments)) {
       const key = src ? src + ":" + g.cat : g.cat;
-      const open = !!state.groupsOpen[key];
+      // The Binance book is the whole exchange under one category, so it
+      // opens EXPANDED by default — every pair visible without a click,
+      // the first ~200 rendered, the rest growing in on scroll. LSE's many
+      // small categories stay collapsed. An explicit user close is
+      // remembered and honored (state.groupsOpen[key] = false).
+      const binanceBook = src === "binance" ||
+        (src === null && String(g.cat).startsWith("Binance"));
+      const open = state.groupsOpen[key] === undefined
+        ? binanceBook : !!state.groupsOpen[key];
       const head = document.createElement("div");
       head.className = "wgroup";
       head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
@@ -2648,6 +2656,28 @@ async function runSwitchProvider(name) {
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
   renderTimeframes();
+  if (name === "binance") {
+    // The crypto book is zero-config, so its chart must NOT wait for the
+    // catalog: the exchange's own book is the slowest fetch on this page
+    // (a multi-megabyte cold download, raced small->large server-side,
+    // prewarmed at boot — but still async). Chart the flagship pair NOW
+    // and let the sidebar fill in behind it when the catalog lands. LSE
+    // keeps the catalog-first boot: its first row is the natural default
+    // and its catalog is small and key-gated.
+    state.symbol = "BTCUSDT";
+    // Never paint the previous provider's rows under this source: clear
+    // the list, show the (empty) watchlist, and let the real book land.
+    state.instruments = [];
+    loadLogos();
+    renderWatchlist();
+    loadAltCatalog(); // the OTHER book renders as the partner section
+    const catalogP = loadInstruments();
+    await loadChart();
+    connectStream();
+    if (typeof tpbFollowChart === "function") tpbFollowChart(state.symbol);
+    catalogP.then(() => renderWatchlist()).catch(() => {});
+    return;
+  }
   await loadInstruments();
   loadLogos();
   if (state.instruments.length) state.symbol = state.instruments[0].symbol;

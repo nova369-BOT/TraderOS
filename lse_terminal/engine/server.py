@@ -7587,6 +7587,28 @@ def create_app() -> FastAPI:
     import threading as _threading
     _threading.Thread(target=_directory_loop, daemon=True).start()
 
+    # Binance catalog prewarm, off the startup path (same discipline as the
+    # directory refresh above: the terminal must come up instantly even with
+    # dead egress). The first human click on a cold instance used to pay for
+    # the exchange's multi-megabyte book in the chart's critical path; this
+    # warms the catalog cache (and, with it, the 2s price board) a moment
+    # after boot so that first chart is just a kline fetch.
+    def _prewarm_binance():
+        time.sleep(0.5)
+        try:
+            prov = reg.get("binance")
+            venue, syms = prov.catalog()
+            try:
+                prov.prices(["BTCUSDT"])
+            except Exception:  # noqa: BLE001 — board warms on first poll
+                pass
+            print(f"[binance] prewarm: {len(syms)} symbols via {venue}",
+                  flush=True)
+        except Exception as exc:  # noqa: BLE001 — offline boot stays quiet
+            print(f"[binance] prewarm skipped: {exc}", flush=True)
+
+    _threading.Thread(target=_prewarm_binance, daemon=True).start()
+
     def _hub_call(fn, *a, **kw):
         try:
             return fn(*a, **kw)
