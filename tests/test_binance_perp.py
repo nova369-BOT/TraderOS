@@ -880,4 +880,136 @@ def test_candles_klines_passes_start_end(monkeypatch):
                    end="1700003600")
     assert df.attrs["venue"] == "spot"
     assert seen["startTime"] == "1700000000000"  # s -> ms
-    assert seen["endTime"] == "1700003600"
+    assert seen["endTime"] == "1700003600000"    # s -> ms (both edges)
+
+
+def test_candles_accepts_iso_window(monkeypatch):
+    """The backtest paths pass ISO timestamps; they must reach the
+    exchange as ms, not be silently dropped."""
+    import lse_terminal.providers.binance_perp as bp
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    seen = {}
+
+    def fake_first(calls, params):
+        seen.update(params)
+        return [[1700000000000, "1", "2", "0.5", "1.5", "7"]], "spot"
+
+    monkeypatch.setattr(bp, "_first_json", fake_first)
+    p.candles("BTCUSDT", "1h", limit=10, start="2023-11-14T22:13:20Z",
+              end="2023-11-14T23:13:20+00:00")
+    assert seen["startTime"] == "1700000000000"
+    assert seen["endTime"] == "1700003600000"
+
+
+# ── B1: the exchange's per-request caps (root cause of "only a few
+# timeframes work": the shell opens every chart at limit=5000, Binance caps
+# klines at 1500/1000 and answers 400 -1130 — every kline timeframe 502'd
+# while the aggTrades-backed tick/1s/30s, clamped to 1000, kept working) ──
+
+class _CappedExchange:
+    """Stand-in for _first_json that enforces Binance's real caps and
+    serves a synthetic contiguous kline series anchored on endTime."""
+
+    def __init__(self, cap=1000, venue="spot"):
+        self.cap, self.venue, self.calls = cap, venue, []
+
+    def __call__(self, calls, params):
+        if "interval" not in params:          # catalog/ticker probes
+            return [], self.venue
+        self.calls.append(dict(params))
+        lim = int(params.get("limit", "500"))
+        if lim > self.cap:
+            raise bp_mod().BinanceRESTError(
+                400, -1130, "Data sent for parameter 'limit' is not valid.",
+                "/api/v3/klines")
+        step = 60_000
+        end = int(params.get("endTime", "1800000000000"))
+        end -= end % step
+        start = int(params.get("startTime", "0"))
+        rows, t = [], end
+        while len(rows) < lim and t >= start:
+            rows.append([t, "1", "2", "0.5", "1.5", "7"])
+            t -= step
+        rows.reverse()
+        return rows, self.venue
+
+
+def bp_mod():
+    import lse_terminal.providers.binance_perp as bp
+    return bp
+
+
+def test_klines_5000_is_paged_never_rejected(monkeypatch):
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    df = p.candles("BTCUSDT", "1m", limit=5000)
+    assert len(df) == 5000
+    # every page respected the cap
+    assert all(int(c["limit"]) <= 1000 for c in ex.calls)
+    assert len(ex.calls) == 5
+    # stitched contiguous, ascending, no duplicate open times
+    d = df["ts"].diff().dropna()
+    assert (d == 60).all()
+    assert df["ts"].is_monotonic_increasing and df["ts"].is_unique
+
+
+def test_klines_small_request_is_one_call(monkeypatch):
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    assert len(p.candles("BTCUSDT", "5m", limit=400)) == 400
+    assert len(ex.calls) == 1 and ex.calls[0]["limit"] == "400"
+
+
+def test_klines_paged_window_respects_start(monkeypatch):
+    """start + big limit: pages never reach before start."""
+    bp = bp_mod()
+    ex = _CappedExchange()
+    monkeypatch.setattr(bp, "_first_json", ex)
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    df = p.candles("BTCUSDT", "1m", limit=3000, start="1799999000",
+                   end="1800000000")
+    assert df["ts"].min() >= 1799999000
+    assert df["ts"].max() <= 1800000000
+    assert all(int(c["startTime"]) >= 1799999000000 for c in ex.calls)
+
+
+def test_rest_error_carries_binance_code_and_msg(monkeypatch):
+    """A 400 from the exchange is a diagnosis, not 'unreachable'."""
+    import io
+    import urllib.error
+    bp = bp_mod()
+
+    def boom(url, timeout):
+        raise urllib.error.HTTPError(
+            url, 400, "Bad Request", {},
+            io.BytesIO(b'{"code":-1130,"msg":"Data sent for parameter '
+                       b'\'limit\' is not valid."}'))
+
+    monkeypatch.setattr(bp.urllib.request, "urlopen", boom)
+    with pytest.raises(bp.BinanceRESTError) as ei:
+        bp._get_json("https://x", "/fapi/v1/klines", {"limit": "5000"})
+    assert ei.value.code == -1130
+    assert "limit" in str(ei.value) and "-1130" in str(ei.value)
+
+    p = BinancePerpProvider()
+    p._catalog = (0.0, "spot", ["BTCUSDT"])
+    with pytest.raises(NotSupported) as e2:
+        p.candles("BTCUSDT", "1h", limit=10)
+    assert "-1130" in str(e2.value) and "unreachable" not in str(e2.value)
+
+
+def test_full_ladder_is_native_or_tape():
+    bp = bp_mod()
+    native = set(bp.INTERVALS.values())
+    for tf in bp.TIMEFRAMES:
+        assert tf in native or tf in ("tick", "1s", "30s")
+    for tf in ("30m", "2h", "1w"):
+        assert tf in bp.TIMEFRAMES

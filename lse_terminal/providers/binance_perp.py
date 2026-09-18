@@ -32,6 +32,7 @@ import os
 import random
 import threading
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import AsyncIterator, Callable, Dict, List, Optional
@@ -65,12 +66,25 @@ MIRROR_REST = os.environ.get("BINANCE_MIRROR_REST",
 MIRROR_WS = os.environ.get("BINANCE_MIRROR_WS",
                            "wss://data-stream.binance.vision")
 
-INTERVALS = {60: "1m", 300: "5m", 900: "15m", 3600: "1h", 14400: "4h",
-             86400: "1d"}
-# The ladder mirrors the LSE book's sub-minute set: Binance publishes no
-# sub-minute klines, so tick/1s/30s are built from the exchange's own
-# recent trade tape (aggTrades) — the finest real data the wire carries.
-TIMEFRAMES = ["tick", "1s", "30s", "1m", "5m", "15m", "1h", "4h", "1d"]
+INTERVALS = {60: "1m", 300: "5m", 900: "15m", 1800: "30m", 3600: "1h",
+             7200: "2h", 14400: "4h", 86400: "1d", 604800: "1w"}
+# The ladder mirrors the LSE book: every minute-and-up bar is a native
+# Binance kline on both venues. Below the minute the futures wire carries
+# no klines at all, so 1s/30s are built from the exchange's own recent
+# trade tape (aggTrades) — the finest real data the futures line carries —
+# and tick is one bar per print.
+TIMEFRAMES = ["tick", "1s", "30s", "1m", "5m", "15m", "30m", "1h", "2h",
+              "4h", "1d", "1w"]
+
+# Hard per-request caps published by the exchange: futures klines 1500,
+# spot klines 1000, aggTrades 1000 on both. Anything above is a 400
+# `-1130 limit is not valid` — which is exactly how every kline timeframe
+# used to die (the shell opens charts at limit=5000). History deeper than
+# one page is fetched as PARALLEL windowed pages and stitched (see
+# _fetch_klines_paged).
+KLINE_PAGE_CAP = {"futures": 1500, "spot": 1000}
+KLINE_PAGE = 1000            # one page size valid on EITHER leg of the race
+KLINE_MAX_PAGES = 5          # 5000 bars = the engine's per-request cap
 
 SYMBOLS = {
     "BTCUSDT": "Bitcoin / Tether (USD-M perp)",
@@ -184,8 +198,28 @@ def _get_json(base: str, path: str, params: Dict[str, str],
               timeout: float = REST_TIMEOUT) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = base + path + ("?" + q if q else "")
-    with urllib.request.urlopen(url, timeout=timeout) as r:
-        return json.loads(r.read())
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return json.loads(r.read())
+    except urllib.error.HTTPError as exc:
+        # Binance answers 4xx with {"code": -1130, "msg": "..."}; that text
+        # is the diagnosis (a rejected parameter is NOT "unreachable").
+        try:
+            body = json.loads(exc.read() or b"")
+            msg = body.get("msg") or body
+            code = body.get("code")
+        except Exception:  # noqa: BLE001 — non-JSON error body
+            msg, code = exc.reason, None
+        raise BinanceRESTError(exc.code, code, str(msg), path) from exc
+
+
+class BinanceRESTError(Exception):
+    """An HTTP error the exchange itself answered (not a dead line)."""
+
+    def __init__(self, http: int, code, msg: str, path: str):
+        self.http, self.code, self.msg, self.path = http, code, msg, path
+        super().__init__(f"binance HTTP {http} on {path}: "
+                         f"{'' if code is None else f'{code} '}{msg}")
 
 
 # primary -> mirror, same wire format on both; tried CONCURRENTLY so a
@@ -234,7 +268,7 @@ def rest_depth(symbol: str, limit: int = SNAPSHOT_LIMIT) -> dict:
 def rest_klines(symbol: str, tf_sec: int, count: int,
                 end_ms: Optional[int] = None) -> list:
     params = {"symbol": symbol.upper(), "interval": INTERVALS[tf_sec],
-              "limit": str(count)}
+              "limit": str(max(1, min(int(count), KLINE_PAGE)))}
     if end_ms:
         params["endTime"] = str(int(end_ms))
     data, _ = _first_json(_KLINE_CALLS, params)
@@ -387,6 +421,70 @@ def parse_klines(rows: list) -> list:
                     float(r[3]), float(r[4]), float(r[5])))
     out.sort(key=lambda x: x[0])
     return out
+
+
+def _to_ms(v) -> Optional[int]:
+    """start/end as the exchange wants them: None passthrough; digit
+    strings/numbers are epoch SECONDS (ms if already > 1e12); anything
+    else is parsed as an ISO-8601 timestamp (naive = UTC)."""
+    if v is None or v == "":
+        return None
+    txt = str(v).strip()
+    try:
+        num = float(txt)
+    except ValueError:
+        from datetime import datetime, timezone
+        dt = datetime.fromisoformat(txt.replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return int(dt.timestamp() * 1000)
+    return int(num if num > 1e12 else num * 1000)
+
+
+def fetch_klines_paged(params: Dict[str, str], tf_sec: int):
+    """(rows, venue) for `params` honouring the exchange's per-request
+    caps. One page ≤ KLINE_PAGE goes straight through the primary→mirror
+    race. Deeper history (the shell opens at 5000) is split into
+    consecutive time windows of KLINE_PAGE bars each, fetched IN PARALLEL
+    (bounded: KLINE_MAX_PAGES legs), stitched by open time and de-duplicated
+    — so a 5000-bar chart costs one round-trip of latency, not five, and
+    never a rejected request. Windows are anchored on endTime when given,
+    else on "now"; startTime (when given) trims the oldest page."""
+    limit = max(1, int(params.get("limit", "500")))
+    base = {k: v for k, v in params.items() if k != "limit"}
+    if limit <= KLINE_PAGE:
+        base["limit"] = str(limit)
+        return _first_json(_KLINE_CALLS, base)
+    step_ms = tf_sec * 1000
+    end_ms = int(base.pop("endTime", 0)) or int(time.time() * 1000)
+    start_ms = int(base.pop("startTime", 0)) or None
+    pages = min(KLINE_MAX_PAGES, -(-limit // KLINE_PAGE))
+    windows = []
+    hi = end_ms
+    for _ in range(pages):
+        lo = hi - KLINE_PAGE * step_ms
+        if start_ms is not None and lo < start_ms:
+            lo = start_ms
+        windows.append((lo, hi))
+        hi = lo - 1
+        if start_ms is not None and hi <= start_ms:
+            break
+
+    def one(lo, hi):
+        p = dict(base, startTime=str(lo), endTime=str(hi),
+                 limit=str(KLINE_PAGE))
+        return _first_json(_KLINE_CALLS, p)
+
+    with ThreadPoolExecutor(max_workers=len(windows)) as ex:
+        results = list(ex.map(lambda w: one(*w), windows))
+    seen: Dict[int, list] = {}
+    venue = results[0][1] if results else "futures"
+    for rows, v in results:
+        venue = v
+        for r in rows or []:
+            seen[int(r[0])] = r
+    rows = [seen[k] for k in sorted(seen)]
+    return rows[-limit:], venue
 
 
 # ── the book state machine (feed.go, ported 1:1) ─────────────────────────
@@ -691,14 +789,15 @@ class BinancePerpProvider(Provider):
             raise ValueError(f"binance: unsupported timeframe {timeframe!r}")
         params = {"symbol": sym, "interval": INTERVALS[tf],
                   "limit": str(int(limit))}
-        # Digit strings are epoch seconds (the shell's live tail fetch);
-        # ISO strings pass through untouched for the backtest paths.
-        if start is not None and str(start).isdigit():
-            params["startTime"] = str(int(start) * 1000)
-        if end is not None and str(end).isdigit():
-            params["endTime"] = str(int(end))
+        # start/end: epoch seconds (the shell's live tail fetch) or ISO
+        # strings (the backtest windows) — both become the exchange's ms.
+        s_ms, e_ms = _to_ms(start), _to_ms(end)
+        if s_ms is not None:
+            params["startTime"] = str(s_ms)
+        if e_ms is not None:
+            params["endTime"] = str(e_ms)
         return self._candles_klines(sym, timeframe, limit, start, end,
-                                    params, pd)
+                                    params, pd, tf)
 
     # --- stale-while-revalidate candle serving ----------------------------
     # The whole point: a user-visible request blocks on the exchange ONLY
@@ -758,15 +857,18 @@ class BinancePerpProvider(Provider):
         df.attrs["venue"] = venue          # honesty: the badge says the book
         return df, venue
 
-    def _candles_klines(self, sym, timeframe, limit, start, end, params, pd):
-        fetch = lambda: self._fetch_klines(params, pd)
+    def _candles_klines(self, sym, timeframe, limit, start, end, params, pd,
+                        tf_sec):
+        fetch = lambda: self._fetch_klines(params, pd, tf_sec)
         if start is not None:
             return self._live_tail((sym, timeframe), fetch)
         return self._swr_candles((sym, timeframe, limit, start, end), fetch)
 
-    def _fetch_klines(self, params, pd):
+    def _fetch_klines(self, params, pd, tf_sec):
         try:
-            rows, venue = _first_json(_KLINE_CALLS, params)
+            rows, venue = fetch_klines_paged(params, tf_sec)
+        except BinanceRESTError as exc:
+            raise NotSupported(str(exc)) from exc
         except Exception as exc:  # noqa: BLE001
             raise NotSupported(f"binance REST unreachable: {exc}") from exc
         if not rows:
