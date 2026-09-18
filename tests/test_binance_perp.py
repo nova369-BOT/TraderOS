@@ -23,6 +23,7 @@ from lse_terminal.contracts import (
     NotSupported,
     TRADE_BUY,
     TRADE_SELL,
+    TradeEvent,
 )
 from lse_terminal.providers.binance_perp import (
     SYMBOLS,
@@ -1013,3 +1014,140 @@ def test_full_ladder_is_native_or_tape():
         assert tf in native or tf in ("tick", "1s", "30s")
     for tf in ("30m", "2h", "1w"):
         assert tf in bp.TIMEFRAMES
+
+
+# ── B2: the tick stream must never wait on the order book ────────────────
+# Root cause of "candles don't update fast": /api/ws -> stream() reused the
+# depth pump, which awaited a 1000-level REST snapshot before its first
+# yield and re-awaited one inline on every sequence gap — on a degraded
+# line (measured 8s) the FIRST TICK arrived 8s after connect and the tape
+# stalled on every resync. Budget: first tick < 1s on a healthy socket
+# regardless of REST latency; bid/ask ride each tick from bookTicker.
+
+def _serve_ticks(n_trades=300, n_depth=300, seq=None):
+    import json
+    seq = seq if seq is not None else {"u": 100}
+
+    async def handler(ws):
+        req = getattr(ws, "request", None)
+        path = getattr(req, "path", "") if req is not None else ""
+        try:
+            if "aggTrade" in path:
+                await ws.send(json.dumps({"stream": "btcusdt@bookTicker",
+                                          "data": {"b": "100.4",
+                                                   "a": "100.6"}}))
+                for i in range(n_trades):
+                    await ws.send(json.dumps({
+                        "stream": "btcusdt@aggTrade",
+                        "data": {"e": "aggTrade", "T": 1750000001000 + i,
+                                 "p": "100.5", "q": "0.2", "t": 11 + i,
+                                 "m": True, "s": "BTCUSDT"}}))
+                    await asyncio.sleep(0.01)
+            else:
+                for i in range(n_depth):
+                    seq["u"] += 1
+                    u = seq["u"]
+                    await ws.send(json.dumps({
+                        "stream": "btcusdt@depth@100ms",
+                        "data": {"e": "depth", "E": 1000 + i, "U": u,
+                                 "u": u, "pu": u - 1,
+                                 "b": [["100.4", "1"]],
+                                 "a": [["100.5", "1"]]}}))
+                    await asyncio.sleep(0.01)
+            await ws.wait_closed()
+        except Exception:  # noqa: BLE001 — peer closed first
+            pass
+    return handler
+
+
+def test_tick_stream_first_tick_independent_of_depth_rest(monkeypatch):
+    import time as _time
+    import websockets
+    import lse_terminal.providers.binance_perp as bp
+    rest_calls = []
+
+    def slow_rest(calls, params):
+        rest_calls.append(params)
+        _time.sleep(2.0)                    # a degraded depth line
+        return {"lastUpdateId": 150, "bids": [], "asks": []}, "spot"
+    monkeypatch.setattr(bp, "_first_json", slow_rest)
+
+    async def main():
+        server = await websockets.serve(_serve_ticks(), "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        monkeypatch.setattr(bp, "WS_BASE", f"ws://127.0.0.1:{port}")
+        monkeypatch.setattr(bp, "MIRROR_WS", f"ws://127.0.0.1:{port}")
+        p = bp.BinancePerpProvider()
+        p._catalog = (0.0, "spot", ["BTCUSDT"])
+        t0 = _time.monotonic()
+        got = []
+        async for ev in p.stream(["BTCUSDT"]):
+            got.append(ev)
+            if len(got) == 1:
+                first = _time.monotonic() - t0
+            if len(got) >= 20:
+                break
+        server.close()
+        await server.wait_closed()
+        return got, first
+
+    got, first = run(main(), timeout=15.0)
+    assert first < 1.0, f"first tick waited on something: {first:.2f}s"
+    assert not [c for c in rest_calls if "limit" in c], \
+        "the tick stream must not fetch a depth snapshot"
+    assert got[0]["bid"] == 100.4 and got[0]["ask"] == 100.6
+    assert got[0]["side"] == TRADE_SELL and got[0]["price"] == 100.5
+    assert len({g["ts"] for g in got}) == 20      # no dupes
+
+
+def test_depth_stream_trades_flow_while_snapshot_in_flight(monkeypatch):
+    """The depth pump: trades are delivered immediately; the snapshot
+    (slow REST) lands later without ever having blocked them; the book
+    then syncs on the straddling diff and deltas follow."""
+    import time as _time
+    import websockets
+    import lse_terminal.providers.binance_perp as bp
+
+    seq = {"u": 100}
+
+    def slow_rest(calls, params):
+        if "limit" not in params:
+            return [], "spot"                  # catalog probe
+        _time.sleep(1.0)
+        # like the real exchange: the snapshot id is wherever the live
+        # sequence is NOW, so the next diff straddles it
+        return {"lastUpdateId": seq["u"] + 1, "bids": [["100", "1"]],
+                "asks": [["101", "1"]]}, "spot"
+    monkeypatch.setattr(bp, "_first_json", slow_rest)
+
+    async def main():
+        server = await websockets.serve(_serve_ticks(seq=seq),
+                                        "127.0.0.1", 0)
+        port = server.sockets[0].getsockname()[1]
+        # one live base only: two winners of the cold race would both
+        # consume the shared sequence counter and fake a gap
+        monkeypatch.setattr(bp, "WS_BASE", "ws://127.0.0.1:1")
+        monkeypatch.setattr(bp, "MIRROR_WS", f"ws://127.0.0.1:{port}")
+        p = bp.BinancePerpProvider()
+        p._catalog = (0.0, "spot", ["BTCUSDT"])
+        t0 = _time.monotonic()
+        first_trade = first_snap = None
+        n_delta = 0
+        async for ev in p.depth_stream(["BTCUSDT"]):
+            now = _time.monotonic() - t0
+            if isinstance(ev, TradeEvent) and first_trade is None:
+                first_trade = now
+            elif getattr(ev, "type", "") == DEPTH_SNAPSHOT:
+                first_snap = first_snap or now
+            elif getattr(ev, "type", "") == DEPTH_DELTA:
+                n_delta += 1
+            if first_snap is not None and n_delta >= 5:
+                break
+        server.close()
+        await server.wait_closed()
+        return first_trade, first_snap, n_delta
+
+    first_trade, first_snap, n_delta = run(main(), timeout=15.0)
+    assert first_trade is not None and first_trade < 0.5, first_trade
+    assert first_snap is not None and first_snap >= 1.0
+    assert n_delta >= 5

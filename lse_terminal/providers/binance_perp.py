@@ -626,8 +626,8 @@ class BookFeed:
 
     # trades -----------------------------------------------------------------
     def on_agg_trade(self, d: dict, last_ids: Dict[str, int]) -> Optional[TradeEvent]:
-        if d.get("e") == "calc" or str(d.get("st", "")) == "2":
-            return None                          # CM messages excluded
+        if d.get("e") != "aggTrade" or str(d.get("st", "")) == "2":
+            return None                  # CM/calc/other frames excluded
         tid = int(d.get("t", 0))
         if tid and tid <= last_ids.get(self.symbol, 0):
             return None                          # duplicate ids never double-count
@@ -662,6 +662,7 @@ class BinancePerpProvider(Provider):
 
     def __init__(self):
         self._last_trade_ids: Dict[str, int] = {}
+        self._ws_winner: Dict[str, str] = {}   # route -> base last held
         # 24h-ticker board cache: (epoch, rows, venue). The watchlist polls
         # once a second; Binance needs one 2s TTL between them, not one
         # REST call per poll. Stale rows are SERVED (with a background
@@ -943,12 +944,59 @@ class BinancePerpProvider(Provider):
                 raise ValueError(f"binance: unknown symbol {s!r}")
             resolved.append(r)
 
-        async def _ticks():
-            async for ev in self._pump(resolved):
-                if isinstance(ev, TradeEvent):
-                    yield {"symbol": ev.symbol, "price": ev.price,
-                           "ts": ev.ts, "volume": ev.size, "side": ev.side}
-        return _ticks()
+        return self._tick_pump(resolved)
+
+    async def _tick_pump(self, symbols: List[str]) -> AsyncIterator[dict]:
+        """The candle chart's tick stream: aggTrade (every print) plus
+        bookTicker (best bid/ask on every quote change) — and NOTHING
+        else. This deliberately does not share the depth pump: that one
+        must await a 1000-level REST snapshot before it can yield and
+        re-awaits one on every sequence gap, which on a degraded line held
+        the FIRST TICK for the whole snapshot latency (measured 8s) and
+        stalled the tape on every resync. A price tick needs no book.
+        Budget: first tick < 1s after the socket opens on a healthy line;
+        thereafter wire latency only."""
+        out_q: asyncio.Queue = asyncio.Queue()
+        quotes: Dict[str, tuple[float, float]] = {}
+        lower = [s.lower() for s in symbols]
+        names = ([f"{s}@aggTrade" for s in lower]
+                 + [f"{s}@bookTicker" for s in lower])
+
+        async def on_msg(stream_name: str, data: dict) -> None:
+            sym = stream_name.split("@")[0].upper()
+            if stream_name.endswith("@bookTicker"):
+                try:
+                    b, a = float(data.get("b", 0)), float(data.get("a", 0))
+                except (TypeError, ValueError):
+                    return
+                if b > 0 and a > b:
+                    quotes[sym] = (b, a)
+                return
+            if data.get("e") != "aggTrade" or str(data.get("st", "")) == "2":
+                return                      # CM/calc/other frames excluded
+            tid = int(data.get("t", 0))
+            if tid and tid <= self._last_trade_ids.get(sym, 0):
+                return                              # duplicate id
+            self._last_trade_ids[sym] = tid
+            try:
+                tick = {"symbol": sym, "price": float(data["p"]),
+                        "ts": int(data.get("T", data.get("E", 0))) / 1000.0,
+                        "volume": float(data["q"]),
+                        "side": TRADE_SELL if data.get("m") else TRADE_BUY}
+            except (KeyError, TypeError, ValueError):
+                return
+            q = quotes.get(sym)
+            if q:
+                tick["bid"], tick["ask"] = q
+            out_q.put_nowait(tick)
+
+        task = asyncio.create_task(
+            self._watch_route("market", names, on_msg))
+        try:
+            while True:
+                yield await out_q.get()
+        finally:
+            task.cancel()
 
     def depth_history(self, symbol, start, end, column_ms=1000,
                       max_levels=50):
@@ -965,157 +1013,201 @@ class BinancePerpProvider(Provider):
         return caps
 
     # pump: two self-healing upstream sockets per symbol set ----------------
-    async def _pump(self, symbols: List[str]) -> AsyncIterator:
-        import websockets
-        feeds = {s: BookFeed(s.lower()) for s in symbols}
-        out_q: asyncio.Queue = asyncio.Queue()
-
-        def drain_into_queue(feed: BookFeed) -> None:
-            while feed.events:
-                out_q.put_nowait(feed.events.pop(0))
-
-        # fstream routes: /market + /public; the .vision mirror serves
-        # combined streams under /stream on one socket. Candidates are tried
-        # in "last winner first" order: whichever base last held a stream
-        # goes first, so a WAF'd or ISP-blocked primary (Render datacenter
-        # egress) is never re-probed for its full open_timeout on every
-        # reconnect — the stream that worked keeps winning until it fails,
-        # then the other is tried.
-        ROUTES = {
+    # fstream routes: /market + /public; the .vision mirror serves
+    # combined streams under /stream on one socket. Candidates are tried
+    # in "last winner first" order: whichever base last held a stream
+    # goes first, so a WAF'd or ISP-blocked primary (Render datacenter
+    # egress) is never re-probed for its full open_timeout on every
+    # reconnect — the stream that worked keeps winning until it fails,
+    # then the other is tried. The winner table is per provider (one
+    # instance in the registry) so every pump learns from every other.
+    def _routes(self) -> Dict[str, list]:
+        return {
             "market": [(WS_BASE, "/market"), (MIRROR_WS, "/stream")],
             "public": [(WS_BASE, "/public"), (MIRROR_WS, "/stream")],
         }
-        winner: Dict[str, str] = {}   # route -> base that last held a stream
 
-        async def watch(route: str, names: List[str],
-                        handler) -> None:
-            base_cands = ROUTES[route]
-            # Order: last winner first, then the rest. Rebuilt each attempt
-            # so a winner flip reorders without any index bookkeeping.
-            def ordered():
-                w = winner.get(route)
-                return sorted(base_cands,
-                              key=lambda c: 0 if c[0] == w else 1)
+    async def _watch_route(self, route: str, names: List[str], on_msg,
+                           on_reset=None) -> None:
+        """Hold one upstream combined-stream socket forever: race the
+        bases cold, prefer the last winner warm, reconnect with jittered
+        backoff (Binance drops every WS at 24h). Every frame goes to
+        on_msg(stream_name, data); on_reset() fires when a fresh socket
+        is held (sequence-continuous state must be rebuilt)."""
+        import websockets
+        winner = self._ws_winner
+        base_cands = self._routes()[route]
+        # Order: last winner first, then the rest. Rebuilt each attempt
+        # so a winner flip reorders without any index bookkeeping.
+        def ordered():
+            w = winner.get(route)
+            return sorted(base_cands,
+                          key=lambda c: 0 if c[0] == w else 1)
 
-            async def _try_connect(base: str, path: str):
-                url = f"{base}{path}?streams=" + ",".join(names)
-                return await websockets.connect(
-                    url, max_size=8 * 1024 * 1024, open_timeout=8)
+        async def _try_connect(base: str, path: str):
+            url = f"{base}{path}?streams=" + ",".join(names)
+            return await websockets.connect(
+                url, max_size=8 * 1024 * 1024, open_timeout=8)
 
-            async def acquire(cands):
-                """(ws, base) for the next connection to hold, else
-                (None, None). COLD start (no known winner yet): race every
-                candidate IN PARALLEL — a WAF'd or ISP-blocked base must
-                cost zero latency, so the healthy mirror wins the race on
-                the first page load instead of ~8s of serial probing.
-                WARM reconnect: try the last winner first, serially — one
-                healthy connect, no fork."""
-                if winner.get(route) is None and len(base_cands) > 1:
-                    tasks = {}
-                    for base, path in cands:
-                        tasks[asyncio.ensure_future(_try_connect(base, path))] = base
-                    try:
-                        while True:
-                            done, pending = await asyncio.wait(
-                                list(tasks),
-                                return_when=asyncio.FIRST_COMPLETED)
-                            for f in done:
-                                try:
-                                    return f.result(), tasks[f]
-                                except asyncio.CancelledError:
-                                    raise
-                                except Exception as exc:  # noqa: BLE001
-                                    log.warning("binance %s connect (%s) failed: %s",
-                                                route, tasks[f], exc)
-                            if not pending:
-                                return None, None
-                    finally:
-                        for f in tasks:
-                            if not f.done():
-                                f.cancel()
-                                # reap without blocking: a blackholed loser
-                                # must not hold the winner hostage
-                                f.add_done_callback(
-                                    lambda t: None
-                                    if t.cancelled() else t.exception())
+        async def acquire(cands):
+            """(ws, base) for the next connection to hold, else
+            (None, None). COLD start (no known winner yet): race every
+            candidate IN PARALLEL — a WAF'd or ISP-blocked base must
+            cost zero latency, so the healthy mirror wins the race on
+            the first page load instead of ~8s of serial probing.
+            WARM reconnect: try the last winner first, serially — one
+            healthy connect, no fork."""
+            if winner.get(route) is None and len(base_cands) > 1:
+                tasks = {}
                 for base, path in cands:
-                    try:
-                        return await _try_connect(base, path), base
-                    except asyncio.CancelledError:
-                        raise
-                    except Exception as exc:  # noqa: BLE001
-                        log.warning("binance %s connect (%s) failed: %s",
-                                    route, base, exc)
-                return None, None
+                    tasks[asyncio.ensure_future(_try_connect(base, path))] = base
+                try:
+                    while True:
+                        done, pending = await asyncio.wait(
+                            list(tasks),
+                            return_when=asyncio.FIRST_COMPLETED)
+                        for f in done:
+                            try:
+                                return f.result(), tasks[f]
+                            except asyncio.CancelledError:
+                                raise
+                            except Exception as exc:  # noqa: BLE001
+                                log.warning("binance %s connect (%s) failed: %s",
+                                            route, tasks[f], exc)
+                        if not pending:
+                            return None, None
+                finally:
+                    for f in tasks:
+                        if not f.done():
+                            f.cancel()
+                            # reap without blocking: a blackholed loser
+                            # must not hold the winner hostage
+                            f.add_done_callback(
+                                lambda t: None
+                                if t.cancelled() else t.exception())
+            for base, path in cands:
+                try:
+                    return await _try_connect(base, path), base
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("binance %s connect (%s) failed: %s",
+                                route, base, exc)
+            return None, None
 
-            backoff = 1.0
-            while True:
-                ws, base = await acquire(ordered())
-                held_any = False
-                if ws is not None:
-                    winner[route] = base
-                    held_any = True
-                    backoff = 1.0
+        backoff = 1.0
+        while True:
+            ws, base = await acquire(ordered())
+            held_any = False
+            if ws is not None:
+                winner[route] = base
+                held_any = True
+                backoff = 1.0
+                try:
+                    if on_reset is not None:
+                        on_reset()
+                    async for raw in ws:
+                        env = json.loads(raw)
+                        await on_msg(env.get("stream", ""),
+                                     env.get("data", {}) or {})
+                except asyncio.CancelledError:
+                    raise
+                finally:
                     try:
-                        for f in feeds.values():
-                            f.reset_for_reconnect()
-                        async for raw in ws:
-                            env = json.loads(raw)
-                            stream_name, data = env.get("stream", ""), env.get("data", {})
-                            sym = stream_name.split("@")[0].upper()
-                            feed = feeds.get(sym)
-                            if feed is None:
-                                continue
-                            await handler(feed, data)
-                            drain_into_queue(feed)
-                    except asyncio.CancelledError:
-                        raise
-                    finally:
-                        try:
-                            await ws.close()
-                        except Exception:  # noqa: BLE001 — stream is gone anyway
-                            pass
-                if held_any:
-                    # A stream held this pass: quick jittered re-pick so a
-                    # healthy mirror is re-established in well under a second
-                    # (Binance drops every WS at 24h; this is the routine hop).
-                    await asyncio.sleep(0.1 + random.random() * 0.3)
-                    continue
-                # nothing held: brief jittered backoff, then re-try (winner
-                # order will prefer the healthy base on the next pass)
-                await asyncio.sleep(backoff + random.random() * 0.5)
-                backoff = min(30.0, backoff * 2)
+                        await ws.close()
+                    except Exception:  # noqa: BLE001 — stream is gone anyway
+                        pass
+            if held_any:
+                # A stream held this pass: quick jittered re-pick so a
+                # healthy mirror is re-established in well under a second
+                # (Binance drops every WS at 24h; this is the routine hop).
+                await asyncio.sleep(0.1 + random.random() * 0.3)
+                continue
+            # nothing held: brief jittered backoff, then re-try (winner
+            # order will prefer the healthy base on the next pass)
+            await asyncio.sleep(backoff + random.random() * 0.5)
+            backoff = min(30.0, backoff * 2)
 
-        async def on_market(feed: BookFeed, data: dict) -> None:
+    # depth pump: book state machine + trades, for depth_stream ----------
+    async def _pump(self, symbols: List[str]) -> AsyncIterator:
+        feeds = {s: BookFeed(s.lower()) for s in symbols}
+        out_q: asyncio.Queue = asyncio.Queue()
+        resyncs: set = set()
+
+        def drain(feed: BookFeed) -> None:
+            while feed.events:
+                out_q.put_nowait(feed.events.pop(0))
+
+        def kick_resync(feed: BookFeed) -> None:
+            """Snapshot fetches run as their own tasks: the socket reader
+            must never await REST (a slow snapshot used to freeze trade
+            delivery for its whole latency on every sequence gap)."""
+            if feed.resyncing or time.monotonic() < feed.next_resync:
+                return
+
+            async def _go():
+                await feed._trigger_resync("initial sync", 0, 0)
+                drain(feed)
+            t = asyncio.create_task(_go())
+            resyncs.add(t)
+            t.add_done_callback(resyncs.discard)
+
+        async def on_market(stream_name: str, data: dict) -> None:
+            feed = feeds.get(stream_name.split("@")[0].upper())
+            if feed is None:
+                return
             ev = feed.on_agg_trade(data, self._last_trade_ids)
             if ev is not None:
-                feed.events.append(ev)
-            # a fresh trade on an unsynced book also nudges first sync
-            if not feed.synced and not feed.resyncing:
-                await feed._trigger_resync("initial sync", 0, 0)
+                out_q.put_nowait(ev)
+            if not feed.synced:
+                kick_resync(feed)   # a fresh trade nudges first sync
 
-        async def on_public(feed: BookFeed, data: dict) -> None:
-            await feed.on_depth(data)
+        # Depth diffs are handed to a per-feed worker: on_depth may await
+        # a REST snapshot (sequence gap, first sync), and that wait must
+        # never sit on the socket reader — the reader keeps draining the
+        # wire (frames for the other symbols keep flowing, and this
+        # symbol's diffs queue up to be replayed in order).
+        diff_q: Dict[str, asyncio.Queue] = {
+            s.upper(): asyncio.Queue() for s in symbols}
+
+        async def depth_worker(feed: BookFeed, q: asyncio.Queue) -> None:
+            while True:
+                d = await q.get()
+                try:
+                    await feed.on_depth(d)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001 — one bad frame
+                    log.warning("depth frame dropped (%s): %s",
+                                feed.symbol, exc)
+                drain(feed)
+
+        async def on_public(stream_name: str, data: dict) -> None:
+            q = diff_q.get(stream_name.split("@")[0].upper())
+            if q is not None:
+                q.put_nowait(data)
+
+        def on_reset() -> None:
+            for f in feeds.values():
+                f.reset_for_reconnect()
 
         lower = [s.lower() for s in symbols]
-        tasks = [
-            asyncio.create_task(watch("market",
-                                      [f"{s}@aggTrade" for s in lower],
-                                      on_market)),
-            asyncio.create_task(watch("public",
-                                      [f"{s}@depth@100ms" for s in lower],
-                                      on_public)),
+        tasks = [asyncio.create_task(depth_worker(feeds[k], diff_q[k]))
+                 for k in feeds] + [
+            asyncio.create_task(self._watch_route(
+                "market", [f"{s}@aggTrade" for s in lower], on_market,
+                on_reset)),
+            asyncio.create_task(self._watch_route(
+                "public", [f"{s}@depth@100ms" for s in lower], on_public,
+                on_reset)),
         ]
-        # initial snapshots — in parallel: 8 symbols x serial REST would
-        # block the first yield for minutes on a slow egress
-        await asyncio.gather(*[f._trigger_resync("initial sync", 0, 0)
-                               for f in feeds.values()])
+        # initial snapshots, in parallel and OFF the yield path: the first
+        # event (a trade, or the snapshot itself) flows the moment it exists
         for f in feeds.values():
-            drain_into_queue(f)
+            kick_resync(f)
         try:
             while True:
-                ev = await out_q.get()
-                yield ev
+                yield await out_q.get()
         finally:
-            for t in tasks:
+            for t in list(tasks) + list(resyncs):
                 t.cancel()
