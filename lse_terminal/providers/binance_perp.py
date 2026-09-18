@@ -26,6 +26,7 @@ Ported semantics, verbatim from feed.go/stream.go/rest.go:
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import logging
 import os
@@ -131,6 +132,12 @@ TAIL_MIN_INTERVAL = 1.6
 # and the prewarm + routes + auto-reload loop all share it.
 _refresh_pool = ThreadPoolExecutor(max_workers=4,
                                    thread_name_prefix="binance-bg")
+# Cold (user-blocking) fetches get their own, wider pool: a cold switch
+# fires catalog + board + chart at once, each racing two legs; funnelling
+# them through the 4-slot refresh pool serialised them (measured: a 3s
+# line became a 9s watchlist and a 12s chart).
+_cold_pool = ThreadPoolExecutor(max_workers=16,
+                                thread_name_prefix="binance-cold")
 _inflight: set = set()
 _inflight_lock = __import__("threading").Lock()
 _cold: Dict[str, "object"] = {}     # key -> in-flight cold fetch (Future)
@@ -165,7 +172,7 @@ def _coalesce(key: str, fetch):
     with _cold_lock:
         fut = _cold.get(key)
         if fut is None:
-            fut = _refresh_pool.submit(fetch)
+            fut = _cold_pool.submit(fetch)
             _cold[key] = fut
     try:
         return fut.result()
@@ -198,9 +205,17 @@ def _get_json(base: str, path: str, params: Dict[str, str],
               timeout: float = REST_TIMEOUT) -> dict:
     q = "&".join(f"{k}={v}" for k, v in params.items())
     url = base + path + ("?" + q if q else "")
+    # gzip: the whole-book ticker is ~1MB and exchangeInfo multi-MB
+    # uncompressed; the exchange gzips ~10x when asked, and on a degraded
+    # datacenter line transfer time IS the latency.
+    req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip",
+                                               "User-Agent": "lse-terminal"})
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            return json.loads(r.read())
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            raw = r.read()
+            if r.headers.get("Content-Encoding", "") == "gzip":
+                raw = gzip.decompress(raw)
+            return json.loads(raw)
     except urllib.error.HTTPError as exc:
         # Binance answers 4xx with {"code": -1130, "msg": "..."}; that text
         # is the diagnosis (a rejected parameter is NOT "unreachable").
@@ -339,15 +354,27 @@ def _usdt_rows(payload, venue: str) -> list:
     return sorted(out)
 
 
-def rest_exchange_symbols() -> tuple[list, str]:
+def _call_symbols(fn, ticker):
+    """rest_exchange_symbols with the shared board fetch when the callee
+    takes one (tests stub it with a zero-arg lambda)."""
+    import inspect
+    try:
+        takes = bool(inspect.signature(fn).parameters)
+    except (TypeError, ValueError):
+        takes = False
+    return fn(ticker) if takes else fn()
+
+
+def rest_exchange_symbols(ticker=None) -> tuple[list, str]:
     """(trading USDT symbols, venue) from the exchange itself: the
     whole-book ticker first (small, fast, lists exactly what is trading
     right now), the authoritative exchangeInfo as fallback. The venue
     label rides back so the catalog can name its own source honestly.
     Both failing means egress is dead — the caller keeps the offline
-    core and its 60s negative TTL."""
+    core and its 60s negative TTL. `ticker` lets the provider pass its
+    shared, coalesced board fetch so catalog + board = ONE download."""
     try:
-        data, venue = _first_json(_TICKER_CALLS, {})
+        data, venue = (ticker or rest_ticker24h)()
         syms = _usdt_rows(data, venue)
         if syms:
             return syms, venue
@@ -737,11 +764,17 @@ class BinancePerpProvider(Provider):
         """The one blocking catalog fetch. Success: real book + venue.
         Failure: whatever was held before (the offline core at cold
         boot), stamped with the negative TTL so the next retry is 10s
-        out, not next millisecond."""
+        out, not next millisecond.
+
+        ONE download serves both surfaces: the whole-book ticker IS the
+        price board, so it is fetched once (coalesced with prices()) and
+        seeds self._ticker — the sidebar and the board used to download
+        the same 1MB payload twice on every cold switch."""
         now = time.time()
         ts, venue, syms = self._catalog
         try:
-            fresh, fresh_venue = rest_exchange_symbols()
+            fresh, fresh_venue = _call_symbols(rest_exchange_symbols,
+                                               self._ticker_rows)
             if fresh:
                 self._catalog = (now, fresh_venue, fresh)
                 return fresh_venue, fresh
@@ -749,6 +782,16 @@ class BinancePerpProvider(Provider):
             pass
         self._catalog = (now, venue, syms)
         return venue, syms
+
+    def _ticker_rows(self) -> tuple[list, str]:
+        """The whole-book 24h ticker, at most one fetch in flight per
+        provider; a fresh (<2s) held board is returned without a fetch."""
+        ts, rows, venue = self._ticker
+        if rows and time.time() - ts < 2.0:
+            return rows, venue
+        rows, venue = _coalesce(f"ticker:{id(self)}", rest_ticker24h)
+        self._ticker = (time.time(), rows, venue)
+        return rows, venue
 
     def _resolve_symbol(self, symbol: str) -> Optional[str]:
         """The exchange's own spelling of `symbol`, or None.
@@ -759,6 +802,12 @@ class BinancePerpProvider(Provider):
         s = (symbol or "").strip().upper()
         if not s:
             return None
+        # A symbol the HELD book already lists resolves without waiting:
+        # the chart must never queue behind the sidebar's cold catalog
+        # download (measured: +3s on the first chart for a 3s line). Only
+        # a miss against what is held pays for the fresh book.
+        if s in self._catalog[2]:
+            return s
         _, have = self.catalog()
         have = set(have)
         if s in have:
@@ -947,12 +996,9 @@ class BinancePerpProvider(Provider):
                 _schedule_refresh(f"ticker:{id(self)}", self._refresh_ticker)
             else:
                 # Nothing held yet (first poll of a cold process): the one
-                # blocking fetch; an honest error beats a blank board.
-                try:
-                    rows, venue = rest_ticker24h()
-                    self._ticker = (time.time(), rows, venue)
-                except Exception:  # noqa: BLE001
-                    raise
+                # blocking fetch, SHARED with the catalog's (same payload);
+                # an honest error beats a blank board.
+                rows, venue = self._ticker_rows()
         out: List[dict] = []
         for r in rows:
             sym = str(r.get("symbol", "")).upper()
@@ -976,7 +1022,7 @@ class BinancePerpProvider(Provider):
     def _refresh_ticker(self):
         """Background board refresh (stale-while-revalidate): the poll
         keeps serving the last real board while this catches up."""
-        rows, venue = rest_ticker24h()
+        rows, venue = _coalesce(f"ticker:{id(self)}", rest_ticker24h)
         self._ticker = (time.time(), rows, venue)
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:

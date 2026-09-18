@@ -658,6 +658,7 @@ def test_first_json_single_ceiling_gives_slow_line_a_chance():
     import lse_terminal.providers.binance_perp as bp
 
     class FakeResp:
+        headers = {}
         def __enter__(self):
             return self
         def __exit__(self, *a):
@@ -667,8 +668,11 @@ def test_first_json_single_ceiling_gives_slow_line_a_chance():
 
     seen = []
 
-    def fake_urlopen(url, timeout=6.0):
+    def fake_urlopen(req, timeout=6.0):
+        url = req.full_url if hasattr(req, "full_url") else req
         seen.append((url, timeout))
+        # gzip is always requested: the whole-book ticker is ~1MB raw
+        assert req.get_header("Accept-encoding") == "gzip"
         if "fapi" in url:
             raise RuntimeError("WAF 418")      # blocked base, always
         if timeout >= 8.0:
@@ -1209,3 +1213,47 @@ def test_fold_candles_is_vectorised_and_gap_honest():
     t0 = _time.perf_counter()
     bp.fold_candles(big, 30, pd)
     assert _time.perf_counter() - t0 < 0.05            # budget: 50ms / 5000 bars
+
+
+# ── cold switch: catalog + board = ONE download; chart never queues behind it
+
+def test_cold_switch_shares_one_ticker_download_and_chart_does_not_wait(monkeypatch):
+    """Measured before: a 3s ticker line gave a 9s watchlist (catalog and
+    board each downloaded the ~1MB ticker, serialised through the 4-slot
+    refresh pool) and the chart queued behind the catalog for symbol
+    validation. Budget: watchlist = line latency; chart independent."""
+    import threading
+    import time as _time
+    import lse_terminal.providers.binance_perp as bp
+    calls = []
+
+    def slow_first(cands, params):
+        label = cands[0][0]
+        path = cands[0][2]
+        calls.append(path)
+        if "ticker" in path:
+            _time.sleep(0.6)
+            return [{"symbol": "BTCUSDT", "lastPrice": "1", "bidPrice": "0.9",
+                     "askPrice": "1.1"},
+                    {"symbol": "ETHUSDT", "lastPrice": "2"}], label
+        if "klines" in path:
+            return [[1700000000000, "1", "2", "0.5", "1.5", "7"]], label
+        return [], label
+    monkeypatch.setattr(bp, "_first_json", slow_first)
+    p = bp.BinancePerpProvider()
+    out = {}
+
+    def run(name, fn):
+        t0 = _time.perf_counter()
+        fn()
+        out[name] = _time.perf_counter() - t0
+    ts = [threading.Thread(target=run, args=("catalog", lambda: p.search("", 5000))),
+          threading.Thread(target=run, args=("board", lambda: p.prices(["BTCUSDT"]))),
+          threading.Thread(target=run, args=("chart", lambda: p.candles("BTCUSDT", "1h", 50)))]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join()
+    assert calls.count("/fapi/v1/ticker/24hr") == 1, calls
+    assert out["catalog"] < 0.9 and out["board"] < 0.9
+    assert out["chart"] < 0.3, f"chart waited on the catalog: {out['chart']:.2f}s"

@@ -884,6 +884,17 @@ function renderWatchlist() {
   // its own stars, its own open/closed memory (keys are prefixed with the
   // source name so the two sections never fight), and a pick crosses the
   // source for you (pickFromSource).
+  if (!state.instruments.length && state.provider === "binance") {
+    // The exchange's whole book is still downloading (a cold switch on a
+    // slow line is the one fetch here that can take seconds): say so,
+    // instead of a blank sidebar that reads as broken. The chart never
+    // waits for this — it is already painting BTCUSDT.
+    el.innerHTML =
+      '<div class="wl-loading">' +
+        '<span class="wl-loading-dot"></span>loading the Binance book…' +
+      '</div>';
+    return;
+  }
   const buildGroups = (instruments) => {
     const gs = [];
     for (const ins of instruments) {
