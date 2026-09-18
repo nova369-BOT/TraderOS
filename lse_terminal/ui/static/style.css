@@ -2134,13 +2134,14 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
 .bt-chip.neg { color: var(--down); }
 
 /* indicator browser + parameter editor (JS-positioned dropdown cards) */
-#ind-panel, #ind-cfg, #tpl-panel, #panes-panel {
+#ind-panel, #ind-cfg, #tpl-panel, #panes-panel, #src-panel {
   position: fixed; z-index: 60; width: 280px;
   background: var(--panel); border: 1px solid var(--edge); border-radius: 2px;
   box-shadow: 0 6px 20px var(--shadow); padding: 6px;
   display: flex; flex-direction: column; gap: 5px;
 }
-#ind-panel.hidden, #ind-cfg.hidden, #tpl-panel.hidden, #panes-panel.hidden { display: none; }
+#ind-panel.hidden, #ind-cfg.hidden, #tpl-panel.hidden,
+#panes-panel.hidden, #src-panel.hidden { display: none; }
 /* Panes dropdown rows: label left, what-it-does right, current kind checked */
 .panes-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 12px;

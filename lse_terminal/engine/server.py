@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -7848,8 +7848,14 @@ def create_app() -> FastAPI:
     @app.get("/w/")
     @app.get("/w/index.html")
     def w_index():
-        return FileResponse(_STATIC / "w" / "index.html",
-                            headers={"Cache-Control": "no-store"})
+        # The F2 workspace is replaced by the LSE terminal itself: Binance
+        # is a first-class source in the terminal chart, the panes live in
+        # the toolbar's Panes dropdown, and the watchlist shows both books.
+        # Old /w/ bookmarks land on the terminal. 302 (not 301) so the
+        # redirect can follow the workspace if it ever returns in a
+        # different shape; the asset routes below stay so a tab left open
+        # across the redeploy doesn't break.
+        return RedirectResponse("/", status_code=302)
 
     @app.get("/w/workspace.js")
     def w_js():

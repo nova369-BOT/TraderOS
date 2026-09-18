@@ -693,6 +693,54 @@ function setupPanesPanel() {
   };
   // Click-away closes, same contract as the indicator panels.
   document.addEventListener("click", (e) => {
+    if (panel.contains(e.target) && panel.classList.contains("hidden")) return;
+    if (!panel.classList.contains("hidden") &&
+        !panel.contains(e.target) && e.target !== btn) close();
+  });
+}
+
+/* ---------- Source switch (toolbar) ----------
+   The quick flip between the terminal's books: LSE and Binance (when the
+   engine lists both). Toolbar on purpose: the conn-bar key manager hides
+   on hosted terminals, and a source switch is a chart action, not a
+   key-entry action. The MARKETS sidebar already shows both books side by
+   side; this is the button form of the same switch. Hidden when the
+   deployment lists only one book (nothing to switch). */
+function setupSourcePanel() {
+  const btn = $("src-open");
+  const panel = $("src-panel");
+  if (!btn || !panel) return;
+  const close = () => { panel.classList.add("hidden"); panel.innerHTML = ""; };
+  const render = () => {
+    const books = state.providers.filter(
+      (p) => p.name === "lse" || p.name === "binance");
+    if (books.length < 2) { btn.classList.add("hidden"); close(); return; }
+    btn.classList.remove("hidden");
+    panel.innerHTML = books.map((p) => {
+      const isBn = p.name === "binance";
+      return `<div class="panes-row${p.name === state.provider ? " on" : ""}" data-src="${p.name}">` +
+        `<span class="panes-name">${p.name === state.provider ? "✓ " : ""}` +
+        `${isBn ? "Binance USD-M Futures" : "London Strategic Edge"}</span>` +
+        `<span class="panes-hint">${isBn ? "crypto · keyless" : "equities · FX · indices"}</span></div>`;
+    }).join("");
+    for (const el of panel.querySelectorAll(".panes-row")) {
+      el.onclick = () => {
+        close();
+        if (el.dataset.src !== state.provider) enterLiveSource(el.dataset.src);
+      };
+    }
+  };
+  const open = () => {
+    closeIndPanels();
+    render();
+    panel.classList.remove("hidden");
+    positionPanel(panel, btn);
+  };
+  btn.onclick = (e) => {
+    e.stopPropagation();
+    panel.classList.contains("hidden") ? open() : close();
+  };
+  document.addEventListener("click", (e) => {
     if (panel.classList.contains("hidden")) return;
     if (!panel.contains(e.target) && e.target !== btn) close();
   });
@@ -14642,6 +14690,7 @@ async function boot() {
 
   setupIndicatorPanel();
   setupPanesPanel();
+  setupSourcePanel();
   setupEditor();
   setupBacktest();
   setupAiPanel(!!config.hosted);
