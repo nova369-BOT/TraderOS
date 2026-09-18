@@ -1,6 +1,7 @@
 // F2 · chart pane data path. Same-origin engine API; source switch with an
-// honest fallback: BINANCE needs the user's edgedepth-gateway, and when it is
-// not reachable the pane says so and serves DEMO instead of pretending.
+// honest fallback chain: BINANCE first tries the direct spine (the
+// edgedepth-gateway adapter, ported into the engine — zero config), then
+// the user's gateway if one is configured, and only then DEMO, labelled.
 
 import { Candle, Source, Timeframe } from './types';
 
@@ -27,11 +28,16 @@ export async function loadCandles(source: Source,
 
   if (source === 'binance') {
     try {
-      return { candles: await attempt('edgedepth', 'BTCUSDT'),
+      // direct Binance spine first: zero-config, no gateway needed
+      return { candles: await attempt('binance', 'BTCUSDT'),
                badge: 'BINANCE · LIVE', source: 'binance' };
+    } catch { /* fall through to the gateway path */ }
+    try {
+      return { candles: await attempt('edgedepth', 'BTCUSDT'),
+               badge: 'BINANCE · VIA GATEWAY', source: 'binance' };
     } catch {
       return { candles: await attempt('demo', 'DEMO:BTC'),
-               badge: 'GATEWAY OFFLINE → DEMO', source: 'demo' };
+               badge: 'BINANCE OFFLINE → DEMO', source: 'demo' };
     }
   }
   return { candles: await attempt('demo', 'DEMO:BTC'),

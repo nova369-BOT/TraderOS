@@ -67,11 +67,24 @@ with XF-style transport bar + named session hot buttons.
 Each phase = one or a few commits, suite green, and a **you-see-this** gate.
 Nothing advances without your approval of the gate.
 
-**Phase 0 — Data spine (gateway + engine provider).**
-Finish E2/E3: WS client, sequence-checked book, candles (history + live),
-trades, liquidations; fake-gateway test harness; rail offers BINANCE source.
-*Expect:* curl-level proof of live BTCUSDT book/candles through our engine;
-Render blueprint ready with the gateway as service #2.
+**Phase 0 — Data spine (MERGED: Binance direct, zero-config).** 2026-09-18.
+Restarted per your direction: instead of wiring a second gateway service on
+Render, we ported the edgedepth-gateway's Binance adapter *into* the engine
+as `providers/binance_perp.py` — a 1:1 Python port of `internal/binance/`
+(feed.go book-sync state machine, stream.go routing, rest.go endpoints).
+One TraderOS service now serves real Binance USD-M futures with zero extra
+containers, env vars, or wiring. Semantics carried over verbatim: diffs
+buffer (cap 5000) until the REST snapshot lands; first applied diff must
+STRADDLE the snapshot id (U ≤ lastUpdateId ≤ u); thereafter each diff's `pu`
+must equal the previous `u` or one collapsed resync fires (≤1/s); size-0
+deletes a level; aggTrade buyer-is-maker ⇒ SELL with id-dedup and CM
+excluded; 24h WS drops reconnect with jittered backoff and resync. Honest
+history: live depth only, `depth_history` raises NotSupported (the recorder
+is the history path). BINANCE_REST/BINANCE_WS env overrides kept for mirror
+endpoints. The `edgedepth` gateway provider remains registered as the
+optional gateway path. 10 offline tests pin the state machine (no network).
+*Expect:* `/api/candles?provider=binance` + depth through the same engine
+that already runs `/w/`; no second Render service required.
 
 **Phase 1 — Shell + unique grid.**
 `/w/` app skeleton; token themes (Charcoal default, Sonar); snap-canvas
