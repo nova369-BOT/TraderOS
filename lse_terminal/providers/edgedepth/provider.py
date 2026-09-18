@@ -25,7 +25,7 @@ from lse_terminal.contracts import (
 )
 from lse_terminal.contracts.types import Instrument
 
-from .client import EdgeDepthClient
+from .client import EdgeDepthClient, ensure_gateway
 
 # The product's day-one Binance USD-M futures list; one row per supported
 # symbol is the whole change to add another.
@@ -76,6 +76,18 @@ class EdgeDepthProvider(Provider):
     def __init__(self, url: Optional[str] = None):
         self.client = EdgeDepthClient(url)
 
+    @staticmethod
+    def _ensure() -> None:
+        """Bring the managed gateway up before any socket is touched. The
+        supervisor raises GatewayUnavailable with an actionable reason; we
+        convert to NotSupported so source resolution reports the reason and
+        falls through instead of hanging (fail-open invariant)."""
+        from lse_terminal.engine.gateway import GatewayUnavailable
+        try:
+            ensure_gateway()
+        except GatewayUnavailable as e:
+            raise NotSupported(f"edgedepth gateway: {e}") from e
+
     # ── catalog ─────────────────────────────────────────────────────────
 
     def search(self, query: str = "", limit: int = 50) -> List[Instrument]:
@@ -102,6 +114,7 @@ class EdgeDepthProvider(Provider):
             raise ValueError(f"{self.name}: unsupported timeframe {timeframe}")
         if symbol not in SYMBOLS:
             raise ValueError(f"{self.name}: unknown symbol {symbol}")
+        self._ensure()
         values = run_async(self.client.fetch_candles(symbol, tf,
                                                      limit=int(limit)))
         if not values:
@@ -119,6 +132,7 @@ class EdgeDepthProvider(Provider):
 
     def stream(self, symbols: List[str]) -> AsyncIterator[dict]:
         self._validate(symbols)
+        self._ensure()
 
         async def _ticks():
             async for ev in self.client.depth_stream(list(symbols)):
@@ -131,7 +145,17 @@ class EdgeDepthProvider(Provider):
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
         # Eager validation per the provider contract: raise at call time.
         self._validate(symbols)
+        self._ensure()  # gateway up first; depth_stream then connects
         return self.client.depth_stream(list(symbols))
+
+    def feed_stream(self, symbol: str, candle_tf_s: int = 60
+                    ) -> AsyncIterator:
+        """The full normalized per-symbol feed (book/trades/candles/stats/
+        liquidations) — one gateway, one wire, one subscription set. Eager
+        validation + gateway ensure, same rule as depth_stream."""
+        self._validate([symbol])
+        self._ensure()
+        return self.client.feed_stream(symbol, candle_tf_s)
 
     def depth_history(self, symbol, start, end, column_ms=1000,
                       max_levels=50):

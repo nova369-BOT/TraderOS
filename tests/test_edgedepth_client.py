@@ -32,7 +32,9 @@ from lse_terminal.providers.edgedepth.wire import (
 SYM = "BTCUSDT"
 
 
-def frame(stream, inner, symbol=SYM, timeframe=0, event_ms=0):
+def frame(stream, inner, symbol=SYM.lower(), timeframe=0, event_ms=0):
+    # Wire realism: the gateway echoes the subscribed (lowercase) symbol; the
+    # client re-keys events to the caller's canonical casing.
     return wire.encode_ws_payload(WSPayload(
         exchange="binance", symbol=symbol, stream=stream,
         timeframe=timeframe, data=inner, event_time_ms=event_ms))
@@ -176,7 +178,11 @@ def test_pump_reconnects_and_resubscribes():
 # ── historical candles ─────────────────────────────────────────────────────
 
 
-def test_fetch_candles_parses_and_unsubscribes():
+def test_fetch_candles_uses_get_historical_candles_method():
+    """Historical candles are a REQUEST, not a subscription (hub/client.go:
+    only `get_historical_candles` is routed to the venue's REST history; a
+    `subscribe` on stream 8 starts the upstream feed and answers nothing).
+    This test previously pinned that protocol bug as if it were correct."""
     candle = Candle(100.0, 101.0, 99.0, 100.5, 12.0, 1_750_000_000_000,
                     60, True)
     inner = wire.encode_candles(60, [candle])
@@ -184,9 +190,24 @@ def test_fetch_candles_parses_and_unsubscribes():
     client = FakeClient([ws])
     values = asyncio.run(client.fetch_candles(SYM, 60, limit=10))
     assert len(values) == 1 and values[0].close == 100.5
-    unsub = [json.loads(m) for m in ws.sent
-             if json.loads(m)["method"] == "unsubscribe"]
-    assert unsub and unsub[0]["data"]["stream"] == STREAM_HISTORICAL_CANDLES
+    reqs = [json.loads(m) for m in ws.sent]
+    assert len(reqs) == 1
+    req = reqs[0]
+    assert reqs == [json.loads(m) for m in ws.sent] and req["method"] == "get_historical_candles"
+    assert req["data"]["stream"] == STREAM_HISTORICAL_CANDLES
+    assert req["data"]["pair"] == {"exchange": "binancef",
+                                   "symbol": SYM.lower()}  # wire casing
+    assert req["data"]["timeframe"] == 60 and req["data"]["count"] == 10
+    # request/response: the socket is closed, nothing is unsubscribed
+    assert not [r for r in reqs if r.get("method") == "unsubscribe"]
+
+
+def test_venue_id_matches_the_gateway_adapter():
+    """The hub keys subscriptions on (exchange, symbol) and ignores unknown
+    venues; the gateway's Binance adapter reports 'binancef'
+    (internal/binance/adapter.go). Any other id = silently no data."""
+    from lse_terminal.providers.edgedepth.client import EXCHANGE
+    assert EXCHANGE == "binancef"
 
 
 # ── provider contract ──────────────────────────────────────────────────────

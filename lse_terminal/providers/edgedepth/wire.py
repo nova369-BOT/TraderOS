@@ -386,21 +386,107 @@ def encode_ws_payload(p: WSPayload) -> bytes:
             + _enc_i64(5, p.event_time_ms))
 
 
+@dataclass(frozen=True)
+class Stat:
+    mark_price: float
+    funding: float
+    timestamp_ms: int
+    final: bool
+    timeframe: int
+    open_interest_usd: float
+    next_funding_time: int
+    trade_buy: int
+    trade_sell: int
+    liq_total_usd: float
+
+
+@dataclass(frozen=True)
+class Liquidation:
+    timestamp_ms: int
+    price: float
+    avg_price: float
+    qty: float
+    is_buy: bool
+
+
+def parse_stat(buf: bytes) -> Stat:
+    f = parse_fields(buf)
+    return Stat(
+        mark_price=_f64(f, 1), funding=_f64(f, 2),
+        timestamp_ms=_i64(f, 3), final=_bool(f, 4), timeframe=_i64(f, 5),
+        open_interest_usd=_f64(f, 14), next_funding_time=_i64(f, 15),
+        trade_buy=_i64(f, 12), trade_sell=_i64(f, 13),
+        liq_total_usd=_f64(f, 10),
+    )
+
+
+def parse_stats(buf: bytes) -> Tuple[int, List[Stat]]:
+    f = parse_fields(buf)
+    return _i64(f, 1), [parse_stat(b) for b in _repeated_msg(f, 2)]
+
+
+def parse_liquidation(buf: bytes) -> Liquidation:
+    f = parse_fields(buf)
+    return Liquidation(
+        timestamp_ms=_i64(f, 1), price=_f64(f, 2), avg_price=_f64(f, 3),
+        qty=_f64(f, 4), is_buy=_bool(f, 5),
+    )
+
+
+def encode_stat(s: Stat) -> bytes:
+    return (_enc_double(1, s.mark_price) + _enc_double(2, s.funding)
+            + _enc_i64(3, s.timestamp_ms) + _enc_bool(4, s.final)
+            + _enc_i64(5, s.timeframe) + _enc_i64(12, s.trade_buy)
+            + _enc_i64(13, s.trade_sell) + _enc_double(10, s.liq_total_usd)
+            + _enc_double(14, s.open_interest_usd)
+            + _enc_i64(15, s.next_funding_time))
+
+
+def encode_stats(timeframe: int, values: List[Stat]) -> bytes:
+    out = _enc_i64(1, timeframe)
+    for s in values:
+        out += _enc_bytes(2, encode_stat(s))
+    return out
+
+
+def encode_liquidation(l: Liquidation) -> bytes:
+    return (_enc_i64(1, l.timestamp_ms) + _enc_double(2, l.price)
+            + _enc_double(3, l.avg_price) + _enc_double(4, l.qty)
+            + _enc_bool(5, l.is_buy))
+
+
+def parse_candle_singular(buf: bytes) -> Candle:
+    """Live STREAM_CANDLES frames carry a SINGULAR pb.Candle (hub/emitCandle:
+    the terminal parses this stream as a bare Candle with no plural fallback;
+    proto3 accepts the wrong shape silently, which is precisely why upstream
+    ships a wire-shape test). HISTORICAL stays plural via parse_candles."""
+    return parse_candle(buf)
+
+
 # ============================================================================
 # control plane (JSON text frames, hub/client.go: key is "method")
 # ============================================================================
 
 
+def control_message(method: str, exchange: str, symbol: str, stream: int = 0,
+                    timeframe: int = 0, **data) -> str:
+    """One JSON TEXT control frame. ``subscribe``/``unsubscribe``/``get_*``
+    all ride the same hub request shape (hub/client.go: request); the method
+    name is the routing key — sending ``subscribe`` with stream 8 does NOT
+    fetch history, only ``get_historical_candles`` does."""
+    payload = {"pair": {"exchange": exchange, "symbol": symbol},
+               "stream": stream, "timeframe": timeframe}
+    payload.update(data)
+    return json.dumps({"method": method, "data": payload})
+
+
 def subscribe_message(exchange: str, symbol: str, stream: int,
                       timeframe: int = 0, **extra) -> str:
-    data = {"pair": {"exchange": exchange, "symbol": symbol},
-            "stream": stream, "timeframe": timeframe}
-    data.update(extra)
-    return json.dumps({"method": "subscribe", "data": data})
+    return control_message("subscribe", exchange, symbol,
+                           stream=stream, timeframe=timeframe, **extra)
 
 
 def unsubscribe_message(exchange: str, symbol: str, stream: int,
                         timeframe: int = 0) -> str:
-    return json.dumps({"method": "unsubscribe", "data": {
-        "pair": {"exchange": exchange, "symbol": symbol},
-        "stream": stream, "timeframe": timeframe}})
+    return control_message("unsubscribe", exchange, symbol,
+                           stream=stream, timeframe=timeframe)
