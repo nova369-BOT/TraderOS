@@ -105,3 +105,26 @@ visibility with zero code. Nothing about the switch guesses: every state
 comes from `/api/providers` and `/api/edgedepth/gateway/*`.
 Reverse: remove `setupGatewayChip`, the SOURCE_BOOKS row, and the
 `edgedepth` literals in `isLiveSource`/`runSwitchProvider`.
+
+## D8 — hosted deploy: build the gateway from the vendored pin inside the image (2026-09-18)
+
+Question: "preview on Render" — the previous single-stage Dockerfile shipped
+no gateway binary, so a hosted terminal would have shown the edgedepth book
+while its supervisor could only report "no executable".
+
+**Decision.** The binary is never committed to git; provenance stays
+auditable because the image builds it from the exact vendored pin
+(`services/edgedepth-gateway`) in a `golang:1.24-alpine` stage and the
+runtime stage pins it via image ENV (`EDGEDEPTH_GATEWAY_BIN=/usr/local/bin/
+edgedepth-gateway`, the name the supervisor's self-defence check demands).
+One container, managed mode — no second service, no wiring, and the
+`.dockerignore` keeps the runtime layer free of the repo's dev surface
+(tests/docs/.git) while explicitly keeping the vendored source the
+Dockerfile builds. The blueprint lists the gateway book for THAT service
+only (`LSE_EXTRA_PROVIDERS=binance,edgedepth` in render.yaml) — the engine
+default and the fleet-directory policy from D2 are untouched, so the
+listing stays an owner-level per-service choice. External mode remains one
+env var away (`EDGEDEPTH_GATEWAY_URL`) for anyone who wants the gateway as
+its own service instead of a child.
+Reverse: restore Dockerfile/render.yaml to commit `ce111d6` and deploy the
+single-stage image.

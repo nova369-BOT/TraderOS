@@ -1,9 +1,9 @@
 # Render blueprint: one-click deploy → https://render.com/deploy
 #   ?repo=https://github.com/nova369-BOT/TraderOS
-#   &branch=arena/01a0b463-traderos
+#   &branch=arena/01a0b513-traderos
 # Creates a NEW web service (traderos-w) alongside anything you already run.
-# The Binance USD-M data spine is merged INTO this image (ported from the
-# edgedepth-gateway adapter), so no second service and no wiring is needed.
+# The image builds the REAL edgedepth-gateway from the vendored pin and the
+# engine runs it as a managed child process — one service, no wiring.
 services:
   - type: web
     name: traderos-w
@@ -19,10 +19,11 @@ services:
         value: onrender.com
       # Built-in keyless sources listed even when the fleet directory does
       # not mention them (the /api/providers gate is fleet-driven). binance
-      # is the terminal's crypto book: charts, live ticks, Depth Heat.
+      # is the terminal's crypto book; edgedepth is the same Binance USD-M
+      # feed served through the managed gateway (charts, live ticks, book).
       - key: LSE_EXTRA_PROVIDERS
-        value: binance
-      # Optional, only if you ALSO run your own edgedepth-gateway somewhere
-      # and want the gateway path alongside the merged direct spine:
+        value: binance,edgedepth
+      # Optional: point the engine at YOUR gateway instead of the managed
+      # child in the image (external mode — Start/Stop become read-only):
       # - key: EDGEDEPTH_GATEWAY_URL
       #   value: wss://<your-gateway>.onrender.com/ws

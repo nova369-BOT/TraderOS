@@ -78,6 +78,10 @@ Legend: `[ ] to-do` / `[x] done (date, evidence)`.
       1.24 is present. Desktop installers that bundle per-platform binaries
       (win/darwin/linux) are a separate milestone: 3 binaries, notarized
       where needed, checksums in-repo.
+      * [x] Container deploys covered (2026-09-18): Dockerfile stage 1
+      builds the gateway from the vendored pin, stage 2 pins
+      `EDGEDEPTH_GATEWAY_BIN`; the single-container Render blueprint
+      (render.yaml) rides exactly this.
 * [ ] **External mode in production.** For a hosted deployment, run the
       gateway as its own service and set `EDGEDEPTH_GATEWAY_URL=ws(s)://...`
       on the engine. Confirm the engine never spawns a child in that mode
@@ -92,6 +96,12 @@ Legend: `[ ] to-do` / `[x] done (date, evidence)`.
       host. Without it the book is invisible there BY DESIGN (the UI never
       advertises what the engine doesn't list) — this is a listing
       decision, not a bug.
+* [ ] **Hosted preview doubles as the real-venue run.** A Render service
+      from render.yaml has unrestricted Binance egress (the sandbox did
+      not), is ephemeral (free plan), auto-deploys this branch, and rebuilds
+      the gateway from source on every deploy — run §1–§2 by simply opening
+      it (Source → EdgeDepth, charts + Depth Heat + chip), then record
+      outcomes against §1–§2 above.
 * [ ] **Restart-budget tuning.** Defaults (3 spawns / 120s, 30s stable
       reset) are desktop-reasonable; on a server make sure an orchestrator
       (systemd/docker) owns restarts instead: set

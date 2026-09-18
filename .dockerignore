@@ -1,0 +1,13 @@
+# Build context hygiene: keep the image to what the runtime needs.
+# services/edgedepth-gateway/ MUST stay — the Dockerfile builds it.
+.git
+.arena
+.venv
+__pycache__
+*.pyc
+node_modules
+dist
+build
+*.egg-info
+docs
+tests
