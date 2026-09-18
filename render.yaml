@@ -1,30 +1,23 @@
-# Render blueprint: New → Blueprint → pick this repo/branch → Deploy.
-# You get a public https URL (e.g. https://traderos.onrender.com).
-# Add your LSE key later in the app's top conn bar ("Add key"), or set
-# LSE_API_KEY here as an env var if you prefer.
+# Render blueprint: one-click deploy → https://render.com/deploy
+#   ?repo=https://github.com/nova369-BOT/TraderOS
+#   &branch=arena/01a0a9dd-traderos
+# Creates a NEW web service (traderos-w) alongside anything you already run.
+# The Binance USD-M data spine is merged INTO this image (ported from the
+# edgedepth-gateway adapter), so no second service and no wiring is needed.
 services:
   - type: web
-    name: traderos
+    name: traderos-w
     runtime: docker
     plan: free
     healthCheckPath: /api/health
+    # keep re-deploying automatically when this branch is pushed
+    autoDeploy: true
     envVars:
       # The engine's host guard trusts loopback only by default; public
       # hosting must whitelist its own host suffix or browsers are rejected.
       - key: LSE_TRUSTED_HOST_SUFFIXES
         value: onrender.com
-      # Phase 0 data spine: your edgedepth-gateway service (deployed from the
-      # edgedepth-gateway repo, see note below). After creating the gateway
-      # service, set this to its public URL, e.g. wss://edgedepth-gw.onrender.com/ws
-      - key: EDGEDEPTH_GATEWAY_URL
-        value: ws://127.0.0.1:8080/ws
-
-# ── EdgeDepth gateway: separate service, deployed from ITS repo ────────────
-# The gateway source lives in edgedepthhq/edgedepth-gateway (your company's
-# repo), so it gets its own Render service rather than riding in this image:
-#   Render → New → Web Service → repo edgedepth-gateway → Runtime: Go
-#   Build command : go build -o edgedepth-gateway ./cmd/edgedepth-gateway
-#   Start command : ./edgedepth-gateway -addr ":${PORT:-8080}"
-#   Plan          : free
-# Binance's public streams need no key, so the service needs no env vars.
-# Then paste its https URL (wss://…) into EDGEDEPTH_GATEWAY_URL above.
+      # Optional, only if you ALSO run your own edgedepth-gateway somewhere
+      # and want the gateway path alongside the merged direct spine:
+      # - key: EDGEDEPTH_GATEWAY_URL
+      #   value: wss://<your-gateway>.onrender.com/ws
