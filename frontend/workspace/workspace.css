@@ -6,6 +6,10 @@ html, body, #ws-root { height: 100%; margin: 0; }
 
 .ws-root {
   display: flex; flex-direction: column;
+  /* THE layout invariant: without an explicit height this div collapses to
+     its in-flow content (just the top bar) and the canvas computes to zero
+     height in real browsers — the blank-body bug. #ws-root is height:100%. */
+  height: 100%;
   background: var(--bg); color: var(--tx1);
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;

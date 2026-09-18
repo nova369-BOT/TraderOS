@@ -13,8 +13,8 @@ export function isFiniteRect(p: PaneSpec): boolean {
 export function repairPane(p: PaneSpec, index: number): PaneSpec {
   const cols = 2, row = Math.floor(index / cols), col = index % cols;
   const fallback = { x: col * 0.5, y: row * 0.5, w: 0.5, h: 0.5 };
-  const x = Number.isFinite(p.x) ? Math.min(0.98, Math.max(0, p.x)) : fallback.x;
-  const y = Number.isFinite(p.y) ? Math.min(0.98, Math.max(0, p.y)) : fallback.y;
+  const x = Number.isFinite(p.x) ? Math.min(1 - MIN_W, Math.max(0, p.x)) : fallback.x;
+  const y = Number.isFinite(p.y) ? Math.min(1 - MIN_H, Math.max(0, p.y)) : fallback.y;
   const w = Number.isFinite(p.w) ? Math.min(1 - x, Math.max(MIN_W, p.w)) : fallback.w;
   const h = Number.isFinite(p.h) ? Math.min(1 - y, Math.max(MIN_H, p.h)) : fallback.h;
   return { ...p, x, y, w, h };
@@ -27,5 +27,9 @@ export function sanitizeState(s: WorkspaceState,
     .filter((p) => p && typeof p.id === 'string' && typeof p.kind === 'string')
     .map(repairPane);
   if (!panes.length) return fallback();
-  return { ...s, panes };
+  // theme must be a real token set: THEMES[bad] would crash React on a
+  // stale/corrupt saved layout. Normalise, never propagate.
+  const theme: WorkspaceState['theme'] =
+    (s as { theme?: unknown }).theme === 'sonar' ? 'sonar' : 'charcoal';
+  return { panes, theme };
 }

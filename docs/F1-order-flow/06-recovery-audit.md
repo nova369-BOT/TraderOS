@@ -53,5 +53,11 @@ EdgeDepth properly; be the professional this project needs.
 ## 4 · Known issues (user-verified rows close only by user confirmation)
 
 - [ ] `/w/` blank-screen fix (`45f6a84`) — awaiting user redeploy + confirm.
+- [ ] `/w/` black-body on Render (top bar only): `.ws-root` had no height rule,
+      so in a real browser the snap canvas computed to zero height (jsdom
+      probes cannot catch layout bugs — no layout engine). Fixed: explicit
+      `height: 100%` on `.ws-root`; plus `sanitizeState` now normalises the
+      theme id and `repairPane` clamps x/y to `1−MIN`. Awaiting user confirm
+      on the auto-redeployed traderos-w service.
 - [ ] Phase 2 chart pane never visually confirmed by user.
 - [ ] Gateway live proof (E3 against real Binance) still pending.

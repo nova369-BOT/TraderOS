@@ -21,8 +21,12 @@ function App() {
   const [state, setState] = useState<WorkspaceState>(() => loadState());
   useEffect(() => { saveState(state); }, [state]);
 
+  // belt-and-braces: state is sanitised on load, but never trust a theme
+  // id enough to let a missing token set crash the whole tree
+  const tokens = THEMES[state.theme] ?? THEMES.charcoal;
+
   return (
-    <div className="ws-root" style={cssVars(THEMES[state.theme])}>
+    <div className="ws-root" style={cssVars(tokens)}>
       <TopBar
         state={state}
         onChange={setState}
