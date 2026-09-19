@@ -84,3 +84,31 @@ flip, the stick, the never-flip-on-429, the WS dial flip, and the spot
 frame shape are all pinned.
 Reverse: delist the mirror rungs in providers/binance.py — only on the
 owner's word, and only if every target egress can see the trade venue.
+
+## D15 — The MT5 glide: the forming candle eases toward real prices, never jumps (2026-09-19)
+
+Owner asked for MT5-grade candle movement on the Binance/Coinbase books:
+"the moving candle makes the terminal lively." Measured first: the pipe
+was already immediate end-to-end (venue frame → engine emit ≈ 0.06 ms
+median S2; browser flush per rAF). The damping was perceptual, not
+structural: ECharts' global `animation: false` in UniversalChart and
+ProChart's direct final-state canvas drawing made every tick paint as a
+hard jump. (UniversalChart was touched first and REVERTED — the terminal
+does not mount it; ProChart is the mounted engine. Only ProChart's diff
+shipped.)
+
+Shipped inside ProChart (custom canvas): a display-state morph for the
+FORMING candle only. Each tick flush sets the REAL target bar; a tiny
+ease-out driver (factor 0.35, ≈96% converged in ~4 frames at 60fps)
+glides the painted close/high/low toward it, redrawing via the same
+fastMode frame path live scrolling already uses, and stops with zero
+redraw cost once converged. Same-bucket guard: morph state can never
+leak into a new bar; scrolled-back history never glides (autoFollow
+gate, same as the existing pulse). Honesty invariant, stated in code:
+high only climbs toward the real high, low only falls toward the real
+low, close approaches the last real print — the screen never shows a
+price the venue has not traded; this is interpolation BETWEEN real
+prices, never extrapolation past them.
+Verify: typecheck delta 0 vs HEAD (51 pre-existing errors unchanged,
+none in the diff); vines build clean; bundle +1.1 kB. Visual verdict is
+the owner's — the numbers only prove the pipe.

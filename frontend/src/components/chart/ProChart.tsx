@@ -158,6 +158,18 @@ const ProChart: React.FC<ProChartProps> = ({
   // Flag to prevent calling onCrosshairMove during synced crosshair updates
   const isSyncedUpdateRef = useRef(false);
 
+  // ── D15 live morph ("the MT5 glide") ───────────────────────────────
+  // Display state for the FORMING candle only: painted geometry eases
+  // toward the latest real bar over ~4 frames (factor 0.35 ≈ 96% at
+  // 60fps) instead of jumping per flush. High can only climb toward the
+  // real high, low can only fall toward the real low, close approaches
+  // the last real print — the displayed bar never exceeds a price the
+  // venue has actually traded (interpolation between real values, never
+  // extrapolation past them). Historical bars and pans never animate.
+  const formingMorphRef = useRef<Candle | null>(null);
+  const formingMorphRafRef = useRef<number | null>(null);
+  const candlesLiveRef = useRef<Candle[]>(candles);
+
   // Store syncedCrosshairTime in a ref so drawCrosshair always has the latest value
   // Initialise with null (not undefined) so the React useRef overload returns
   // MutableRefObject (writable .current) instead of the readonly RefObject form.
@@ -549,6 +561,66 @@ const ProChart: React.FC<ProChartProps> = ({
     }, 150); // Reduced frequency further
     return () => clearInterval(interval);
   }, [viewState.autoFollowLatest]);
+
+  // D15 glide driver: fires on every candle flush; when the forming bar
+  // moved, ease the painted bar toward it, redrawing with fastMode (the
+  // same cheap frame path live scrolling already uses), then stop. The
+  // cleanup cancels a pending glide the moment the next flush re-aims it.
+  useEffect(() => {
+    candlesLiveRef.current = candles;
+    const last = candles[candles.length - 1];
+    if (!last) return;
+    const m = formingMorphRef.current;
+    if (!m || m.time !== last.time || !viewState.autoFollowLatest) {
+      // New bucket (or first paint, or scrolled back through history):
+      // seed/paint the real bar as-is. A new bar's open IS the previous
+      // close, so the tape stays continuous without pretending a price
+      // that never printed.
+      formingMorphRef.current = { time: last.time, open: last.open,
+                                  high: last.high, low: last.low,
+                                  close: last.close };
+      return;
+    }
+    if (m.close === last.close && m.high === last.high &&
+        m.low === last.low) return;
+    if (formingMorphRafRef.current != null) {
+      cancelAnimationFrame(formingMorphRafRef.current);
+    }
+    const ease = () => {
+      const cur = formingMorphRef.current;
+      const arr = candlesLiveRef.current;
+      const tgt = arr[arr.length - 1];
+      formingMorphRafRef.current = null;
+      if (!cur || !tgt || cur.time !== tgt.time) return;
+      const K = 0.35;                     // ease-out: ≈96% in 4 frames
+      const eps = Math.max(1e-9, Math.abs(tgt.close) * 1e-9);
+      let dirty = false;
+      const move = (key: 'close' | 'high' | 'low', target: number) => {
+        const d = target - cur[key];
+        if (Math.abs(d) <= eps) {
+          if (cur[key] !== target) { cur[key] = target; dirty = true; }
+          return;
+        }
+        cur[key] += d * K;
+        dirty = true;
+      };
+      move('close', tgt.close);
+      move('high', tgt.high);
+      move('low', tgt.low);
+      if (!dirty) return;                 // converged: stop, zero cost
+      if (drawChartRef.current) drawChartRef.current(true);
+      formingMorphRafRef.current = requestAnimationFrame(ease);
+    };
+    formingMorphRafRef.current = requestAnimationFrame(ease);
+    return () => {
+      if (formingMorphRafRef.current != null) {
+        cancelAnimationFrame(formingMorphRafRef.current);
+        formingMorphRafRef.current = null;
+      }
+    };
+    // `candles` identity changes on every tick flush; autoFollow gates
+    // the glide so panned-back users see exact history.
+  }, [candles, viewState.autoFollowLatest]);
 
   // Fetch predicted price data for heatmap overlay (all 55 tracked US stocks)
   useEffect(() => {
@@ -1788,16 +1860,26 @@ const ProChart: React.FC<ProChartProps> = ({
     const candleBodyWidth = Math.max(currentCandleWidth * 0.7, 3);
     const wickWidth = Math.max(1, candleBodyWidth * 0.15);
 
+    // D15: the forming candle draws from the morph envelope (eased),
+    // everything else from the real bar. Same-bucket guard: a morph
+    // state from a finished bucket can never leak into a new bar.
+    const morphBar = formingMorphRef.current;
+    const globalLastIdx = candles.length - 1;
+    const morphAt = (i: number, c: Candle): Candle =>
+      (morphBar && visible.startIndex + i === globalLastIdx &&
+       morphBar.time === c.time) ? morphBar : c;
+
     if (chartType === 'candlestick') {
       // Draw candlesticks
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const isBullish = candle.close >= candle.open;
+        const dc = morphAt(i, candle);                     // D15 glide
+        const isBullish = dc.close >= dc.open;
 
-        const openY = mainPriceToY(candle.open);
-        const closeY = mainPriceToY(candle.close);
-        const highY = mainPriceToY(candle.high);
-        const lowY = mainPriceToY(candle.low);
+        const openY = mainPriceToY(dc.open);
+        const closeY = mainPriceToY(dc.close);
+        const highY = mainPriceToY(dc.high);
+        const lowY = mainPriceToY(dc.low);
 
         // Draw wick, rounded caps for a modern premium feel
         ctx.strokeStyle = isBullish ? colors.bullishWick : colors.bearishWick;
@@ -1828,7 +1910,7 @@ const ProChart: React.FC<ProChartProps> = ({
 
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(candle.close);
+        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
 
         if (i === 0) {
           ctx.moveTo(x, y);
@@ -1847,7 +1929,7 @@ const ProChart: React.FC<ProChartProps> = ({
       ctx.beginPath();
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(candle.close);
+        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
 
         if (i === 0) {
           ctx.moveTo(x, y);
@@ -1873,7 +1955,7 @@ const ProChart: React.FC<ProChartProps> = ({
       ctx.beginPath();
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(candle.close);
+        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
 
         if (i === 0) {
           ctx.moveTo(x, y);
