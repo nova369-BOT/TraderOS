@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Density pass (2026-09-19): monospaced numerals keep their columns at the
+   compact 10–12px scale — proportional digits visibly jitter in price
+   cells. The shell's data text is already mono/tabular; this gives the
+   React islands the same discipline with one rule. */
+@layer base {
+  .font-mono {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
 /* ── Design tokens the ported components consume ──────────────────────────
    tailwind.config.ts maps bg-popover/border-border/text-muted-foreground/...
    to raw var() references. The SITE defines those variables in its own

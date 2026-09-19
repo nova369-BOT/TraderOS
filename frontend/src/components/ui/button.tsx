@@ -5,7 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-semibold ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-electric-blue focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-3.5 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -17,11 +17,14 @@ const buttonVariants = cva(
         link: "text-electric-blue underline-offset-4 hover:underline hover:text-neon-purple",
         premium: "bg-gradient-premium text-white shadow-glow-purple hover:shadow-glow-purple hover:scale-105",
       },
+      // Density pass (2026-09-19, ATAS band): 28/24px controls instead of
+      // 40/36/48 — the type scale above already shrank, fixed heights must
+      // follow or buttons read as empty slabs. Icons step down with them.
       size: {
-        default: "h-10 px-5 py-2",
-        sm: "h-9 rounded-lg px-4",
-        lg: "h-12 rounded-lg px-8 text-base",
-        icon: "h-10 w-10",
+        default: "h-7 px-3",
+        sm: "h-6 rounded-md px-2.5",
+        lg: "h-8 rounded-md px-4 text-base",
+        icon: "h-7 w-7",
       },
     },
     defaultVariants: {

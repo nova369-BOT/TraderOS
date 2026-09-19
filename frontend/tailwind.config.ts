@@ -14,6 +14,21 @@ export default {
         mono: ['JetBrains Mono', 'SF Mono', 'ui-monospace', 'monospace'],
         display: ['Playfair Display', 'Georgia', 'serif'],
       },
+      // Named sizes ride the shell's density scale (--t-* in style.css):
+      // compact by default (ATAS band: xs=11, sm=12), comfortable restores
+      // the pre-density values via html[data-density]. Literal fallbacks
+      // keep the bundle readable if the shell sheet is ever absent. One
+      // config entry rescales every text-* site uniformly; arbitrary
+      // values like text-[10px] are already in band and stay literal.
+      fontSize: {
+        xs: ['var(--t-sm, 11px)', { lineHeight: '1.3' }],
+        sm: ['var(--t-md, 12px)', { lineHeight: '1.35' }],
+        base: ['var(--t-xl, 13px)', { lineHeight: '1.3' }],
+        lg: ['var(--t-2xl, 14px)', { lineHeight: '1.25' }],
+        xl: ['var(--t-3xl, 16px)', { lineHeight: '1.25' }],
+        '2xl': ['var(--t-4xl, 18px)', { lineHeight: '1.2' }],
+        '3xl': ['var(--t-4xl, 18px)', { lineHeight: '1.2' }],
+      },
       colors: {
         // Base Colors
         background: 'var(--bg)',
