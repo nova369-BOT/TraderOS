@@ -18,12 +18,12 @@ services:
       - key: LSE_TRUSTED_HOST_SUFFIXES
         value: onrender.com
       # Built-in keyless sources listed even when the fleet directory does
-      # not mention them (the /api/providers gate is fleet-driven). binance
-      # is the terminal's crypto book; edgedepth is the same Binance USD-M
-      # feed served through the managed gateway (charts, live ticks, book);
-      # coinbase is the second independent pipeline (USD spot direct).
+      # not mention them (the /api/providers gate is fleet-driven). ONE
+      # Binance surface exists (D11, owner-locked): edgedepth — the managed
+      # gateway child (charts, live ticks, book); coinbase is the second
+      # independent pipeline (USD spot direct).
       - key: LSE_EXTRA_PROVIDERS
-        value: binance,edgedepth,coinbase
+        value: edgedepth,coinbase
       # Optional: point the engine at YOUR gateway instead of the managed
       # child in the image (external mode — Start/Stop become read-only):
       # - key: EDGEDEPTH_GATEWAY_URL

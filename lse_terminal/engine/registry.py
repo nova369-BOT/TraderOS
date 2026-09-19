@@ -65,11 +65,10 @@ class Registry:
 
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
-    from lse_terminal.providers import (BinancePerpProvider,
-                                        CoinbaseProvider, CryptoL2Provider,
-                                        DemoProvider, EdgeDepthProvider,
-                                        LseProvider, MboProvider,
-                                        UserDataProvider)
+    from lse_terminal.providers import (CoinbaseProvider,
+                                        CryptoL2Provider, DemoProvider,
+                                        EdgeDepthProvider, LseProvider,
+                                        MboProvider, UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
@@ -85,9 +84,11 @@ def load_builtins(reg: Registry) -> None:
     # EdgeDepth gateway (F1/E0): the user's own Binance USD-M futures bridge —
     # candles AND depth from one keyless wire. Fails open at connect time.
     reg.register(EdgeDepthProvider())
-    # Merged Phase-0 spine: Binance USD-M futures direct, ported 1:1 from the
-    # gateway's adapter (company-owned MIT). Zero config, zero extra services.
-    reg.register(BinancePerpProvider())
+    # There is exactly ONE Binance surface — the EdgeDepth gateway book
+    # (owner-locked, docs/edgedepth-integration/02-decisions.md D11): the
+    # ports-once "merged direct" provider was deleted; the gateway chain
+    # measured fast, and the pain lived in the deleted book's footprint.
+    # (Not registering anything here is the removal.)
     # Coinbase spot direct (recovery task): Advanced Trade public market
     # data, keyless by docs — trades, level2 book, candle history. Second
     # independent pipeline next to the gateway's Binance book.

@@ -205,3 +205,16 @@ Removed: none.
 6. Reconnect *pace* of the binance direct pump is capped-backoff by
    design (≤ one 30 s window after venue return); it is a pacing choice,
    measured, not a defect.
+
+
+## Addendum (2026-09-19, post-report): single-Binance ruling
+
+The owner locked exactly one Binance surface: the EdgeDepth gateway book.
+The direct "Binance (futures & spot)" book is DELETED (module, tests,
+boot prewarm, every UI entry, the hosted listing). Root-cause attribution
+of the residual slowness stands as written above and in D11: the deleted
+book's whole-exchange catalog design plus the (fixed) render law — the
+gateway chain measured clean throughout. Coinbase-style direct-native was
+evaluated and rejected for Binance (a second protocol implementation to
+maintain for a measured ~0 gain; the gateway is the master-brief
+authority and not incapable).

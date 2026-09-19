@@ -851,7 +851,6 @@ function setupPanesPanel() {
    next book is one entry, not a rewrite. */
 const SOURCE_BOOKS = {
   lse:       { label: "London Strategic Edge",      hint: "equities · FX · indices" },
-  binance:   { label: "Binance (futures & spot)",   hint: "crypto · keyless" },
   edgedepth: { label: "EdgeDepth — Binance gateway", hint: "crypto · engine-owned" },
   coinbase:  { label: "Coinbase",                    hint: "USD spot · keyless direct" },
 };
@@ -1019,7 +1018,7 @@ function setupGatewayChip() {
 /* ---------- watchlist + controls ---------- */
 
 /* Starred instruments per source (state.watchlists, keyed by provider name:
-   "lse", "binance", "broker:<id>", ...). Order = order starred. The src
+   "lse", "edgedepth", "broker:<id>", ...). Order = order starred. The src
    argument defaults to the active source; the partner section of the
    sidebar stars its own list through the same helpers. */
 const WL_FAV_GROUP = "\u2605watchlist"; // groupsOpen key; cannot collide with a category name
@@ -1079,17 +1078,9 @@ function renderWatchlist() {
   // its own stars, its own open/closed memory (keys are prefixed with the
   // source name so the two sections never fight), and a pick crosses the
   // source for you (pickFromSource).
-  if (!state.instruments.length && state.provider === "binance") {
-    // The exchange's whole book is still downloading (a cold switch on a
-    // slow line is the one fetch here that can take seconds): say so,
-    // instead of a blank sidebar that reads as broken. The chart never
-    // waits for this — it is already painting BTCUSDT.
-    el.innerHTML =
-      '<div class="wl-loading">' +
-        '<span class="wl-loading-dot"></span>loading the Binance book…' +
-      '</div>';
-    return;
-  }
+  // No whole-exchange cold fetch exists on any listed book anymore
+  // (D11): every remaining book catalog is a curated handful,
+  // so there is nothing long enough to narrate here.
   const buildGroups = (instruments) => {
     const gs = [];
     for (const ins of instruments) {
@@ -1175,7 +1166,7 @@ function renderWatchlist() {
       // the first ~200 rendered, the rest growing in on scroll. LSE's many
       // small categories stay collapsed. An explicit user close is
       // remembered and honored (state.groupsOpen[key] = false).
-      const binanceBook = src === "binance" ||
+      const binanceBook = src === "edgedepth" ||
         (src === null && String(g.cat).startsWith("Binance"));
       const open = state.groupsOpen[key] === undefined
         ? binanceBook : !!state.groupsOpen[key];
@@ -1256,12 +1247,11 @@ function wlWireGrow(pending) {
    terminal to that vendor's universe. The sidebar deliberately carries no
    source list; a duplicate OTHER SOURCES section was removed. */
 function isLiveSource(name) {
-  // "binance" and "edgedepth" are built-in keyless live sources like "lse"
+  // "edgedepth" and "coinbase" are built-in keyless live sources like "lse"
   // (their universes ship with the engine, no vendor key to configure), so
   // the MARKETS surface treats them identically: charts, stream, watchlist
   // section.
-  if (name === "lse" || name === "binance" || name === "edgedepth"
-      || name === "coinbase") return true;
+  if (name === "lse" || name === "edgedepth" || name === "coinbase") return true;
   const p = state.providers.find((x) => x.name === name);
   return !!(p && (p.custom || p.broker));
 }
@@ -1451,7 +1441,7 @@ async function openConnMenu() {
   // Switching is a plain enterLiveSource: their universes need no key to
   // prove. Rows share SOURCE_BOOKS copy with the toolbar dropdown, so a
   // book reads the same in every surface.
-  for (const key of ["binance", "edgedepth", "coinbase"]) {
+  for (const key of ["edgedepth", "coinbase"]) {
     if (!SOURCE_BOOKS[key] || !state.providers.some((p) => p.name === key)) continue;
     const row = document.createElement("div");
     row.className = "conn-row";
@@ -2744,17 +2734,17 @@ async function loadInstruments(query = "") {
    withhold binance, in which case the section simply never appears. */
 function altSourceName() {
   if (!state.providers.length) return null;
-  const hasBn = state.providers.some((p) => p.name === "binance");
+  const hasEd = state.providers.some((p) => p.name === "edgedepth");
   const hasLse = state.providers.some((p) => p.name === "lse");
-  if (state.provider === "binance" && hasLse) return "lse";
-  if (state.provider === "lse" && hasBn) return "binance";
-  if (state.provider === null && hasLse && hasBn) return "binance";
+  if (state.provider === "edgedepth" && hasLse) return "lse";
+  if (state.provider === "lse" && hasEd) return "edgedepth";
+  if (state.provider === null && hasEd) return "edgedepth";
   return null;
 }
 
 function altShortTitle(name) {
   // Divider labels name the book, not the provider's full technical title.
-  if (name === "binance") return "Binance · USD-M Futures";
+  if (name === "edgedepth") return "Binance · EdgeDepth";
   const p = state.providers.find((x) => x.name === name);
   return (p && p.title) || name;
 }
@@ -2868,7 +2858,7 @@ async function runSwitchProvider(name) {
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
   renderTimeframes();
-  if (name === "binance" || name === "edgedepth" || name === "coinbase") {
+  if (name === "edgedepth" || name === "coinbase") {
     // The crypto books are zero-config, so their chart must NOT wait for
     // the catalog: the exchange's own book is the slowest fetch on this page
     // (a multi-megabyte cold download, raced small->large server-side,
@@ -15187,10 +15177,10 @@ async function boot() {
       if (hit.sym !== v0) e.target.value = hit.sym;
       if (hit.src !== state.provider) pickFromSource(hit.src, hit.sym);
       else setSymbol(hit.sym);
-    } else if (state.provider === "binance") {
-      // The Binance book is fully in memory here, so a miss is certain —
-      // say so inline instead of burning the chart on a 404 round trip.
-      status(`no Binance instrument named ${v0} — search the sidebar book`);
+    } else if (state.provider === "edgedepth" || state.provider === "coinbase") {
+      // These books are curated and fully in memory here, so a miss is
+      // certain — say so inline instead of burning the chart on a 404.
+      status(`no ${altShortTitle(state.provider)} instrument named ${v0} — search the sidebar book`);
     } else {
       setSymbol(v0);
     }

@@ -188,3 +188,49 @@ happens only after Coinbase-specific rules are applied; never invented
 fields, never synthesized rungs.
 Reverse: revert /api/ws + app.js render flush + datadiag + coinbase.py +
 its registrations; the pipeline returns to per-print charts.
+
+## D11 — ONE Binance surface: the EdgeDepth gateway book; the direct book is deleted (2026-09-19)
+
+Owner report after the recovery shipped: Binance "still slow" — and two
+Binance entries made the cause unreadable. Owner instruction: find the
+root cause, delete the other Binance, keep only the EdgeDepth gateway;
+rebuild Binance the Coinbase way if that is the better process.
+
+Root cause found (consistent with the D10 measurements, now attributed
+per surface before touching anything):
+
+1. The deleted direct book (`binance`, binance_perp.py) carried the whole
+   exchange catalog on a cold switch — the engine's own comment named it
+   "the multi-megabyte book in the chart's critical path… the one fetch
+   that can take seconds", and it spent startup bytes just hiding it
+   (`_prewarm_binance`). That pain lived above its wire: 24h-ticker +
+   exchangeInfo downloads, not its stream.
+2. The per-tick full-chart rebuild (render law) — fixed in 9c13b80.
+3. The gateway chain itself measured clean: median ~0.6 ms venue→norm,
+   ~0.1 ms norm→WS (fake-venue segment numbers; the same instrumentation
+   reports the real ones on Render).
+
+Answer to "is Coinbase-style direct native the better process for
+Binance": the direct native approach ALREADY existed — it was the book
+being deleted (a 1:1 Python port of the gateway's own adapter; the only
+native protocol client in the tree). Its structural cost was not its
+protocol handling but the whole-exchange surface it shipped with. The
+gateway approach, meanwhile, matches the product mandate (the ACTUAL
+EdgeDepth gateway), measured fast, and is not the incapability threshold
+the master brief set for replacement. Direct-native for Binance from
+scratch would re-introduce a second protocol implementation to maintain
+for a measured ~0 gain. The better process verdict: keep the gateway,
+delete the whole-exchange-surface book, and the perceived slowness dies
+with it (plus every remaining book becomes catalog-instant by design).
+
+Changes: BinancePerpProvider and its suite deleted (the whole-exchange
+catalog prewarm with it); the Source dropdown, connection menu, switcher,
+partner-book pairing, and the sidebar loading narration now know exactly
+one Binance book — "Binance · EdgeDepth". LSE_EXTRA_PROVIDERS default
+becomes "edgedepth,coinbase"; render.yaml lists the pair. Nothing else
+touched — crypto L2 depth (Coinbase primary/Kraken fallback, Depth Heat)
+is unchanged.
+Reverse: restore binance_perp.py, tests/test_binance_perp.py, the
+prewarm block, and the six app.js anchors from commit 9c13b80 — the
+single-surface rule is the owner's, though, so treat this reversal as
+thrown only on account of the owner asking.
