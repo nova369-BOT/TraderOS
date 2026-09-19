@@ -74,6 +74,21 @@ async function writeSection<T>(section: Section, value: T): Promise<T> {
 let idSeq = 0;
 const newId = () => `local-${Date.now().toString(36)}-${(idSeq++).toString(36)}`;
 
+// One ranked row from smartSearch(). Same shape as the upstream server's
+// symbol-search RPC, so the manual-backtest source dialog consumes local and
+// hosted results through the same code. The ranking fields upstream carried
+// are filled with neutral values locally (the local catalog has no popularity
+// signal); they stay in the type so consuming code written against the server
+// contract keeps compiling untouched.
+export interface SmartSearchResult {
+  symbol: string;
+  display_name: string;
+  category: string;
+  popularity_rank: number | null;
+  popular_dropdown: boolean;
+  search_boosted: boolean;
+}
+
 export const api = {
   // ── chart settings (single record) ───────────────────────────────────────
   async getChartSettings() {
@@ -186,9 +201,18 @@ export const api = {
   },
 
   // ── candle history ───────────────────────────────────────────────────────
+  // `select` and `offset` are accepted for parity with the upstream candle
+  // API but are not applied locally: the engine always returns full
+  // timestamp,open,high,low,close,volume rows, and windowing happens through
+  // limit/order/start/end rather than row offsets. Callers page back in time
+  // with the exclusive-bound variants below (getCandlesLt / getCandlesGt),
+  // which is the offset semantics expressed as a timestamp window.
   async getCandlesRange(
     tableName: string,
-    options: { limit?: number; order?: 'asc' | 'desc' } = {}
+    options: {
+      limit?: number; order?: 'asc' | 'desc';
+      select?: string; offset?: number;
+    } = {}
   ) {
     return fetchLocalCandles(tableName, options);
   },
@@ -338,7 +362,7 @@ export const api = {
   // Upstream this is a server-ranked RPC over the master symbol registry.
   // Locally the universe is whatever the active provider offers, served by
   // /api/instruments; ranking fields are filled with neutral values.
-  async smartSearch(opts: { q?: string; limit?: number; category?: string; provider?: string } = {}) {
+  async smartSearch(opts: { q?: string; limit?: number; category?: string; provider?: string } = {}): Promise<SmartSearchResult[]> {
     const { getEngineContext } = await import('./localEngine');
     // An explicit provider lets a caller (the manual-backtest source picker)
     // search one source's universe without touching the shell's active chart
@@ -420,7 +444,12 @@ export const api = {
   async getNewsArticles(_options?: Record<string, any>) { return []; },
   async getCotData(_options?: Record<string, any>) { return []; },
   async getSectorSentiment() { return []; },
-  async getOptionsPredictedPrice(_underlying: string) { return []; },
+  // Single-row endpoints return `{...} | null` (see file header) — not `[]`:
+  // an empty array is truthy, so it would send the Options PDF panel down its
+  // "data present" branch and crash formatting undefined fields. The
+  // predicted-price surface reads a hosted table the terminal does not ship;
+  // null puts the panel on its honest "No PDF data available" path.
+  async getOptionsPredictedPrice(_underlying: string): Promise<Record<string, any> | null> { return null; },
 };
 
 // Generic local GET helper. Kept because the ported code imports it alongside

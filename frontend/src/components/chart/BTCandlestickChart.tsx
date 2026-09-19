@@ -46,6 +46,7 @@ import {
 import { useLiveCandleFromTicks, mergeLiveCandleWithHistory, clearTickCandleStorage, type LiveCandle } from "@/hooks/useLiveCandleFromTicks";
 import { PRICE_TAG_NEUTRAL } from "./core/types";
 import { useChartSettings } from '@/contexts/ChartSettingsContext';
+import type { ChartSettings } from './ChartSettingsDialog';
 
 
 
@@ -209,7 +210,7 @@ const ProCandlestickChart = ({
   const channelRef = useRef<any>(null);
   const onStatsRef = useRef(onStats);
   const backtestDataLoadedRef = useRef(false);
-  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const fetchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoadRef = useRef(true);
 
   // Chart colors come from ChartSettingsContext, re-renders automatically
@@ -2059,8 +2060,11 @@ const ProCandlestickChart = ({
     }
     // Otherwise, read from ChartSettingsContext (was localStorage, now context-backed)
     if (savedChartSettings) {
-      const cs = savedChartSettings.candles || {};
-      const ch = savedChartSettings.chart || {};
+      // The context merges loaded settings with defaults, so both sections are
+      // always present; the empty-object fallbacks are typed to the section
+      // shape so the dead branch still satisfies the field reads below.
+      const cs = savedChartSettings.candles || ({} as ChartSettings['candles']);
+      const ch = savedChartSettings.chart || ({} as ChartSettings['chart']);
       const savedBg = ch.backgroundColor || (isDark ? '#000000' : '#ffffff');
       // Derive text color from actual background, same logic as customColors path above
       const savedBgIsLight = isLightBackground(savedBg);

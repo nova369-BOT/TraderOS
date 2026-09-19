@@ -57,7 +57,7 @@ export default function LoginModal({ open, onOpenChange, title, message }: Login
 
         <div className="space-y-4 py-3">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            {message || 'Sign in to save your layouts and sync across devices, completely free.'}
+            {message || 'Your layouts, drawings and settings are saved locally on this machine and survive reinstalls — no account needed.'}
           </p>
 
           <button

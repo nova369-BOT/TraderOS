@@ -3,7 +3,9 @@
 # Runs the full backend test suite on every push to main and on every pull
 # request, so a change that breaks something is caught the moment it is
 # pushed, not when a user finds it. The official baseline measured on
-# Python 3.11 is 111 passed / 1 skipped.
+# Python 3.11 (with the JS toolchain present, as here) is
+# 219 passed / 1 skipped — the skip is the indicator-parity truth gate,
+# which needs tests/gen_ts_truth.mjs run first by design.
 #
 # Python 3.11 is the version the baseline was measured on. When 3.10/3.12
 # are actually supported, they belong here as a matrix - not before, so a
@@ -29,3 +31,24 @@ jobs:
           pip install ".[dev]"
       - name: test
         run: pytest tests/ -q
+  frontend:
+    # The chart pane ships as a committed bundle; a type error today becomes
+    # a silent runtime bug tomorrow. Typecheck + production build gate every
+    # frontend change. Baseline measured 2026-09-19: tsc 0 errors, vite build
+    # green (deterministic: a clean rebuild reproduces the committed bundle
+    # byte-for-byte).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: install
+        run: npm ci
+      - name: typecheck
+        run: npx tsc --noEmit
+      - name: build
+        run: npm run build

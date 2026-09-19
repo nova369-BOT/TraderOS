@@ -24,7 +24,17 @@ export interface AuthValue {
   user: LocalUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
+
+// The terminal has no accounts, so the hosted Google sign-in can never
+// succeed. Rejecting with an explicit reason (instead of the method being
+// absent and throwing "not a function") lets the ported LoginModal's catch
+// block show the user a truthful explanation in its error toast.
+const NO_ACCOUNTS_ERROR = new Error(
+  'Sign-in is not available in the terminal: there are no accounts here. ' +
+  'Your layouts, drawings and settings are saved locally on this machine.'
+);
 
 // A single frozen object so identity is stable across renders. Several ported
 // hooks list `user` in effect dependency arrays; a fresh object each render
@@ -41,6 +51,8 @@ const VALUE: AuthValue = Object.freeze({
   // No-op: there is no session to end. Components that render a sign-out
   // control still call this, so it must resolve rather than throw.
   signOut: async () => {},
+  // Honest rejection, see NO_ACCOUNTS_ERROR above.
+  signInWithGoogle: async () => { throw NO_ACCOUNTS_ERROR; },
 });
 
 export function useAuth(): AuthValue {
