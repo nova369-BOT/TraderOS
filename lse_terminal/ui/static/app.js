@@ -2,10 +2,21 @@
    types, OHLC legend. Vanilla JS on purpose; the richer React workspace
    replaces this later, speaking to exactly the same /api endpoints. */
 
-const TF_SECONDS = { "1s": 1, "30s": 30,
+const TF_SECONDS = { "1s": 1, "15s": 15, "30s": 30,
                      "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
                      "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400,
                      "1w": 604800 };
+/* Custom crypto timeframes ("45s", "3m", "2h"…) parse to their step in
+   seconds; unknown strings fall back to the 1h step — the providers
+   themselves validate what they can honestly serve and the chart tells
+   the user their words when a custom entry is not served. */
+function tfSecondsOf(tf) {
+  if (TF_SECONDS[tf] !== undefined) return TF_SECONDS[tf];
+  const m = /^(\d+)([smhdw])$/.exec(String(tf || ""));
+  if (!m) return 3600;
+  const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[m[2]] || 1;
+  return parseInt(m[1], 10) * mult;
+}
 // A tick chart appends one bar per trade; big liquid pairs print ~24/s, so
 // without a cap a day-open session would grow the array into millions of
 // bars and the canvas repaint would die long before the memory did.
@@ -580,7 +591,7 @@ function onTick(t, tRecvPerf) {
     return;
   }
   if (!state.lastBar) return;
-  const step = TF_SECONDS[state.timeframe] || 3600;
+  const step = tfSecondsOf(state.timeframe);
   const bucket = Math.floor((t.ts || Date.now() / 1000) / step) * step;
   let bar = state.lastBar;
   if (bucket > bar.time) {
@@ -2508,6 +2519,37 @@ function renderTimeframes() {
       b.onclick = () => { state.timeframe = tf; renderTimeframes(); loadChart(); };
     }
     nav.appendChild(b);
+  }
+  // The crypto venues speak more bars than their menu holds (Binance:
+  // 3m/2h/6h/8h/12h/3d native; any <n>s tape bucket; Coinbase: 2h/6h +
+  // tape buckets). A Custom… entry reaches them without crowding the
+  // rail; the provider's own error words answer anything it cannot
+  // serve (e.g. Coinbase has no 4h and no 1w).
+  if (state.provider === "binance" || state.provider === "coinbase") {
+    const c = document.createElement("button");
+    c.textContent = "Custom…";
+    const isCustomTf = !TF_SECONDS[state.timeframe] &&
+                       state.timeframe !== "tick";
+    c.className = isCustomTf ? "active" : "";
+    c.title = "Any <n>s second bucket from the real trade tape (45s, 90s…), " +
+      "or a venue-native interval (Binance: 3m/2h/6h/8h/12h/3d; Coinbase: 2h/6h)";
+    c.onclick = () => {
+      const v = prompt(
+        "Custom timeframe — <n>s from the trade tape (e.g. 15s, 45s), " +
+        "or native: Binance 1m/3m/5m/15m/30m/1h/2h/4h/6h/8h/12h/1d/3d/1w · " +
+        "Coinbase 1m/5m/15m/30m/1h/2h/6h/1d (no 4h/1w on that venue)",
+        isCustomTf ? state.timeframe : "45s");
+      if (!v) return;
+      const tf = v.trim().toLowerCase();
+      if (!/^(tick|\d+[smhdw])$/.test(tf)) {
+        status(`"${tf}" is not a timeframe shape — try 45s, 3m, 2h, 1d…`);
+        return;
+      }
+      state.timeframe = tf;
+      renderTimeframes();
+      loadChart();
+    };
+    nav.appendChild(c);
   }
 }
 

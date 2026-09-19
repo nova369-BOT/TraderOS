@@ -123,10 +123,13 @@ def test_search_bare_base_and_case():
     assert p.search("nope-nothing") == []
 
 
-def test_timeframe_ladder_is_the_honest_subset_with_native_4h():
+def test_timeframe_ladder_is_the_owner_locked_lse_shape():
+    # Owner-locked (2026-09-19): the LSE-terminal ladder — tick and the
+    # second rungs from the venue's own tape, then the natives; 4h STAYS
+    # because it is native here (Coinbase, which lacks it, refuses it).
     p = BinanceProvider()
-    assert p.timeframes == ["1m", "5m", "15m", "1h", "4h", "1d"]
-    # 4h is NATIVE here (Coinbase had to refuse it; Binance serves it).
+    assert p.timeframes == ["tick", "1s", "15s", "30s", "1m", "5m",
+                            "15m", "30m", "1h", "4h", "1d", "1w"]
 
 
 def test_rfc3339_ns_timestamp_helper():
@@ -141,7 +144,7 @@ def test_eager_validation_unknown_symbol():
     with pytest.raises(ValueError):
         p.candles("DOGEUSD", "1m")
     with pytest.raises(ValueError):
-        p.candles("BTCUSDT", "3m")     # not on this book's ladder
+        p.candles("BTCUSDT", "90m")    # no such bar exists anywhere
 
 
 def test_honest_no_depth_history_and_capabilities():
@@ -458,3 +461,207 @@ def test_spot_partial_book_frame_shape_reads_clean():
     assert ev.type == DEPTH_SNAPSHOT
     assert ev.bids == [(42000.0, 1.0)] and ev.asks == [(42001.0, 2.0)]
     assert abs(ev.ts - time.time()) < 5         # receipt time, honestly
+
+
+# ── LSE ladder: the menu and the tape (owner-locked 2026-09-19) --------------
+
+def test_ladder_menu_matches_the_constant():
+    assert BinanceProvider().timeframes == list(binance.LADDER)
+
+
+def _tape_row(i, price, t_ms, qty="0.5"):
+    return {"a": i, "p": str(price), "q": qty, "f": i, "l": i,
+            "T": int(t_ms), "m": False}
+
+
+class _Tape:
+    """aggTrades stub at the HTTP seam, paging per the docs: startTime
+    pages FORWARD, otherwise the newest rows with T <= endTime;
+    <=1000 per page, ascending by agg id."""
+
+    def __init__(self, rows=(), status=200, body=b"{}"):
+        self.rows = list(rows)
+        self.status = status
+        self.body = body
+        self.queries = []
+
+    def __enter__(self):
+        outer = self
+
+        class H(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802
+                q = parse_qs(urlparse(self.path).query)
+                outer.queries.append(q)
+                if outer.status != 200:
+                    body = outer.body
+                    self.send_response(outer.status)
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                lim = min(1000, int(q.get("limit", ["500"])[0]))
+                st = q.get("startTime", [None])[0]
+                et = q.get("endTime", [None])[0]
+                rows = outer.rows
+                if et is not None:
+                    rows = [r for r in rows if r["T"] <= int(et)]
+                if st is not None:
+                    rows = [r for r in rows if r["T"] >= int(st)][:lim]
+                else:
+                    rows = rows[-lim:]
+                body = json.dumps(rows).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+
+            def log_message(self, *a):
+                pass
+
+        self._httpd = HTTPServer(("127.0.0.1", 0), H, )
+        self.port = self._httpd.server_address[1]
+        threading.Thread(target=self._httpd.serve_forever,
+                         daemon=True).start()
+        return self
+
+    def __exit__(self, *a):
+        self._httpd.shutdown()
+
+
+def test_tape_tick_is_one_bar_per_print(monkeypatch):
+    now_ms = int(time.time() * 1000)
+    rows = [_tape_row(i + 1, 100 + i, now_ms - 5000 + i * 400) for i in range(5)]
+    with _Tape(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "tick", 3)
+    assert len(df) == 3                       # limit = newest 3 prints
+    assert df["ts"].is_monotonic_increasing
+    # tick bar: the print IS the candle — o=h=l=c, no invented spread
+    assert (df["open"] == df["close"]).all()
+    assert (df["high"] == df["low"]).all()
+    assert df["open"].tolist() == [102.0, 103.0, 104.0]
+    assert df.attrs["venue"] == "binance"
+    q = k.queries[0]
+    assert q["symbol"] == ["BTCUSDT"] and q["limit"] == ["1000"]
+    assert len(q["endTime"][0]) == 13         # ms window on the wire
+
+
+def test_tape_seconds_buckets_math_and_never_filled(monkeypatch):
+    now_ms = int(time.time() * 1000)
+    # three 15s buckets, with a GAP in the middle: prints at bucket edges
+    # (anchored 90s into the past so no print is ever in the future)
+    t0 = (now_ms // 15000) * 15000 - 90_000   # aligned bucket start
+    rows = [_tape_row(1, 100, t0 + 1000), _tape_row(2, 102, t0 + 4000, "1.0"),
+            _tape_row(3, 99, t0 + 31000), _tape_row(4, 101, t0 + 38000, "2.0")]
+    with _Tape(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        df = BinanceProvider().candles("BTCUSDT", "15s", 50)
+    assert len(df) == 2                       # the silent gap is NOT filled
+    b0 = df.iloc[0]
+    assert (b0["open"], b0["high"], b0["low"], b0["close"]) == \
+        (100.0, 102.0, 100.0, 102.0)
+    assert b0["volume"] == 1.5
+    b1 = df.iloc[1]
+    assert (b1["open"], b1["close"], b1["volume"]) == (99.0, 101.0, 2.5)
+    assert int(b1["ts"]) - int(b0["ts"]) == 30   # two real buckets apart
+
+
+def test_tape_pages_backward_until_short_page(monkeypatch):
+    now_s = int(time.time())
+    # 1500 prints, 1/s: page 1 (1000) is full -> page 2 (500) stops it
+    rows = [_tape_row(i + 1, 100 + (i % 7), (now_s - 1500 + i) * 1000)
+            for i in range(1500)]
+    with _Tape(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        df = BinanceProvider().candles("BTCUSDT", "15s", 500)
+    assert len(k.queries) == 2                # full page -> page back once
+    assert int(k.queries[1]["endTime"][0]) < \
+        int(k.queries[0]["endTime"][0])
+    # 1500 consecutive seconds touch 100 or 101 aligned 15s buckets
+    # (wall-clock alignment of the fixture is not pinned; the LAW is).
+    assert len(df) in (100, 101)
+    assert df["ts"].is_monotonic_increasing
+    assert len(set(df["ts"])) == len(df)      # no duplicated buckets
+    assert all(int(t) % 15 == 0 for t in df["ts"])   # aligned, real grid
+
+
+def test_tape_start_window_filters_and_unreach_is_honest(monkeypatch):
+    now_s = int(time.time())
+    rows = [_tape_row(i + 1, 100, (now_s - 100 + i) * 1000) for i in range(100)]
+    with _Tape(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        aligned = (now_s // 15) * 15 - 30    # bucket-true start
+        df = p.candles("BTCUSDT", "15s", 50, start=aligned)
+        assert all(df["ts"] >= aligned)
+        assert len(df) >= 2
+        # a window older than the whole tape is not invented
+        with pytest.raises(NotSupported):
+            p.candles("BTCUSDT", "15s", 50, start=now_s - 4000,
+                      end=now_s - 3900)
+
+
+def test_tape_geo_flip_shares_the_klines_ladder(monkeypatch):
+    now_ms = int(time.time() * 1000)
+    rows = [_tape_row(i + 1, 100 + i, now_ms - 3000 + i * 500) for i in range(4)]
+    with _Tape(status=451,
+               body=b'{"code":0,"msg":"restricted location"}') as geo, \
+            _Tape(rows=rows) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{geo.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "tick", 10)
+    assert len(df) == 4                        # one bar per print
+    assert df.attrs["venue"] == "binance-spot"     # honest badge
+    assert p.venue == "binance-spot"
+    assert len(geo.queries) == 1 and len(mirror.queries) == 1
+
+
+def test_tape_429_never_flips_and_keeps_the_venue_words(monkeypatch):
+    now_ms = int(time.time() * 1000)
+    rows = [_tape_row(1, 100, now_ms - 1000)]
+    with _Tape(status=429, body=b'{"code":-1003,'
+               b'"msg":"Way too many requests"}') as hot, \
+            _Tape(rows=rows) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{hot.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        with pytest.raises(NotSupported) as ei:
+            BinanceProvider().candles("BTCUSDT", "5s", 10)
+        assert len(mirror.queries) == 0       # the ladder held its ground
+    assert "429" in str(ei.value)
+    assert "Way too many requests" in str(ei.value)
+
+
+def test_tape_unsupported_timeframe_explains_the_ladder():
+    p = BinanceProvider()
+    with pytest.raises(ValueError, match="natives"):
+        p.candles("BTCUSDT", "3w", 10)
+    with pytest.raises(ValueError, match="<n>s"):
+        p.candles("BTCUSDT", "90m", 10)
+
+
+@pytest.mark.parametrize("tf,interval", [
+    ("3m", "3m"), ("2h", "2h"), ("6h", "6h"), ("8h", "8h"),
+    ("12h", "12h"), ("3d", "3d"), ("1w", "1w")])
+def test_native_intervals_all_reach_the_venue(monkeypatch, tf, interval):
+    tf_s = {"3m": 180, "2h": 7200, "6h": 21600, "8h": 28800,
+            "12h": 43200, "3d": 259200, "1w": 604800}[tf]
+    rows = [_kline(i, tf_s=tf_s) for i in range(4)]
+    with _Klines(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        df = BinanceProvider().candles("BTCUSDT", tf, 4,
+                                       end=1686300000 + 4 * tf_s)
+    assert len(df) == 4
+    assert k.queries[0]["interval"] == [interval]   # native, verbatim
+

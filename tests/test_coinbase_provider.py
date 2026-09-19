@@ -15,8 +15,10 @@ import json
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
+from datetime import datetime, timezone
 
 import pytest
+import time
 
 from lse_terminal.contracts import (
     DEPTH_DELTA,
@@ -120,7 +122,9 @@ def test_catalog_rows_and_symbol_map():
 def test_timeframe_ladder_is_the_honest_subset():
     p = CoinbaseProvider()
     assert "4h" not in p.timeframes               # never present a fake rung
-    assert set(p.timeframes) == {"1m", "5m", "15m", "1h", "1d"}
+    assert "1w" not in p.timeframes               # this venue has no weekly
+    assert p.timeframes == ["tick", "1s", "15s", "30s", "1m", "5m",
+                            "15m", "30m", "1h", "1d"]
     with pytest.raises(ValueError, match="unsupported timeframe"):
         p.candles("BTCUSD", "4h")
     with pytest.raises(ValueError, match="unknown symbol"):
@@ -449,3 +453,131 @@ def test_candles_rest_failure_is_honest(monkeypatch):
     p = CoinbaseProvider()
     with pytest.raises(NotSupported, match="REST failed"):
         p.candles("BTCUSD", "1m")
+
+
+# ── LSE ladder: the menu and the tape (owner-locked 2026-09-19) --------------
+
+def test_ladder_is_owner_locked_and_4h_1w_stay_off():
+    # This venue has no 4h and no weekly product — they must never appear
+    # on the menu; the rungs that DO exist are all here (June 2026 docs).
+    assert CoinbaseProvider().timeframes == [
+        "tick", "1s", "15s", "30s", "1m", "5m", "15m", "30m", "1h", "1d"]
+
+
+def test_4h_and_1w_refusals_name_the_venue_truth():
+    p = CoinbaseProvider()
+    for tf in ("4h", "1w", "2d"):
+        with pytest.raises(ValueError) as ei:
+            p.candles("BTCUSD", tf, 10)
+        msg = str(ei.value)
+        assert "no 4h/1w exist on this venue" in msg     # the refusal law
+        assert "<n>s" in msg                             # the tape way out
+
+
+@pytest.mark.parametrize("tf,gran", [
+    ("30m", "THIRTY_MINUTE"), ("2h", "TWO_HOUR"), ("6h", "SIX_HOUR")])
+def test_extended_natives_reach_the_wire(monkeypatch, tf, gran):
+    seen = {}
+
+    def handler(req):
+        q = parse_qs(urlparse(req.path).query)
+        seen["granularity"] = q["granularity"][0]
+        rows = [_candle(1686300000, 1, 2, 0.5, 1.5, 9)]
+        body = json.dumps({"candles": rows}).encode()
+        req.send_response(200)
+        req.send_header("Content-Type", "application/json")
+        req.send_header("Content-Length", str(len(body)))
+        req.end_headers()
+        req.wfile.write(body)
+
+    srv = _run_fake_rest(handler)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    CoinbaseProvider().candles("BTCUSD", tf, 1)
+    srv.shutdown()
+    assert seen["granularity"] == gran       # native enum, verbatim
+
+
+def _trade(i, price, t_s, size="0.0105", side="BUY"):
+    return {"trade_id": f"BTC-USD-{i}", "product_id": "BTC-USD",
+            "price": f"{price:.2f}", "size": size, "side": side,
+            "time": (datetime.fromtimestamp(t_s, tz=timezone.utc)
+                     .strftime("%Y-%m-%dT%H:%M:%S.")
+                     + f"{int((t_s % 1) * 1e9):09d}Z")}
+
+
+def _ticker_server(rows):
+    def handler(req):
+        assert "/ticker" in urlparse(req.path).path
+        body = json.dumps({"trades": rows}).encode()
+        req.send_response(200)
+        req.send_header("Content-Type", "application/json")
+        req.send_header("Content-Length", str(len(body)))
+        req.end_headers()
+        req.wfile.write(body)
+    return _run_fake_rest(handler)
+
+
+def test_tape_15s_buckets_from_newest_first_tape(monkeypatch):
+    now_s = time.time() - 120
+    t0 = int(now_s // 15) * 15                # aligned bucket start
+    # NEWEST-FIRST as the venue serves; the bucketer must re-chronologise
+    rows = [_trade(4, 101.0, t0 + 38), _trade(3, 99.0, t0 + 31),
+            _trade(2, 102.5, t0 + 4), _trade(1, 100.0, t0 + 1)]
+    srv = _ticker_server(rows)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    df = CoinbaseProvider().candles("BTCUSD", "15s", 50)
+    srv.shutdown()
+    assert len(df) == 2                        # silent gap never filled
+    b0 = df.iloc[0]
+    # chronological within the bucket: open 100 -> close 102.5
+    assert (b0["open"], b0["high"], b0["low"], b0["close"]) == \
+        (100.0, 102.5, 100.0, 102.5)
+    assert df.iloc[1]["open"] == 99.0 and df.iloc[1]["close"] == 101.0
+    assert df["ts"].is_monotonic_increasing
+    assert df.attrs["venue"] == "coinbase"
+
+
+def test_tape_tick_is_one_bar_per_print(monkeypatch):
+    now_s = time.time()
+    rows = [_trade(i, 100.0 + i, now_s - 5 + i * 0.4)
+            for i in range(5, 0, -1)]          # newest first
+    srv = _ticker_server(rows)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    df = CoinbaseProvider().candles("BTCUSD", "tick", 3)
+    srv.shutdown()
+    assert len(df) == 3                        # newest 3 prints only
+    assert (df["open"] == df["high"]).all()
+    assert (df["open"] == df["close"]).all()
+    assert df["open"].tolist() == [103.0, 104.0, 105.0]   # chronological
+    assert df["ts"].is_monotonic_increasing
+
+
+def test_tape_window_older_than_the_tape_is_honest(monkeypatch):
+    now_s = time.time()
+    rows = [_trade(i, 100.0, now_s - 10 + i) for i in range(5, 0, -1)]
+    srv = _ticker_server(rows)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    p = CoinbaseProvider()
+    # window entirely BEFORE the tape begins -> named side, real bounds
+    with pytest.raises(NotSupported,
+                       match="ends .* before this .* tape even begins"):
+        p.candles("BTCUSD", "15s", 50, start=now_s - 900,
+                  end=now_s - 800)
+    # window entirely NEWER than the tape's last print -> named side too
+    with pytest.raises(NotSupported, match="older than your window"):
+        p.candles("BTCUSD", "15s", 50, start=now_s - 4)
+    srv.shutdown()
+
+
+def test_tape_empty_tape_says_so(monkeypatch):
+    srv = _ticker_server([])
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    with pytest.raises(NotSupported, match="no prints"):
+        CoinbaseProvider().candles("BTCUSD", "1s", 50)
+    srv.shutdown()
+

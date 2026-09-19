@@ -36,7 +36,10 @@ Protocol facts (Binance public market data, keyless on both rungs):
   shows the venue's top 20 exactly as served.
 - ``aggTrade``: ``{s, a, p, q, T, m}`` with ``a`` the aggregate trade
   id (reconnect-safe identity for dedupe) and ``m`` = "buyer is maker",
-  i.e. the taker SOLD when true.
+  i.e. the taker SOLD when true. The same prints are served over REST
+  (aggTrades) and back the tick / `<n>s` charts — the finest real data
+  the venue publishes; there are no sub-minute klines, and none are
+  faked.
 
 Data honesty: live-only book (Binance exposes no public L2 history — the
 session recorder stays the history path); no symbol outside the curated
@@ -49,6 +52,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import os
 import time
 import urllib.request
@@ -95,10 +99,23 @@ SYMBOLS = {
     "LINKUSDT": "Chainlink / Tether (USD-M perp)",
 }
 
-# Honest subset, all native on this venue (4h included — it exists here).
-_TIMEFRAMES = {"1m": ("1m", 60), "5m": ("5m", 300), "15m": ("15m", 900),
-               "1h": ("1h", 3600), "4h": ("4h", 14400),
-               "1d": ("1d", 86400)}
+# The LSE ladder + custom: every bar is built from REAL venue data —
+# klines where intervals are native on the venue, and for sub-minute the
+# exchange's own trade tape bucketed into seconds (never a synthesized
+# fill). Tick = one bar per print.
+_TIMEFRAMES = {"1m": ("1m", 60), "3m": ("3m", 180), "5m": ("5m", 300),
+               "15m": ("15m", 900), "30m": ("30m", 1800),
+               "1h": ("1h", 3600), "2h": ("2h", 7200), "4h": ("4h", 14400),
+               "6h": ("6h", 21600), "8h": ("8h", 28800),
+               "12h": ("12h", 43200), "1d": ("1d", 86400),
+               "3d": ("3d", 259200), "1w": ("1w", 604800)}
+
+# The menu (LSE-shaped, owner-locked): custom entries beyond it ride the
+# same rules — any `<n>s` tape bucket, any native interval above.
+LADDER = ["tick", "1s", "15s", "30s",
+          "1m", "5m", "15m", "30m", "1h", "4h", "1d", "1w"]
+
+_SEC_BUCKET = re.compile(r"^(\d+)s$")
 
 _MAX_REST_CANDLES = 1500          # documented request cap
 _WS_OPEN_TIMEOUT_S = 8.0
@@ -129,6 +146,52 @@ def _to_s(v) -> Optional[int]:
     return int(v)
 
 
+def _parse_sec_bucket(tf: str) -> Optional[int]:
+    m = _SEC_BUCKET.match(tf or "")
+    return int(m.group(1)) if m else None
+
+
+def tape_to_candles(rows: list, step_s: int,
+                    limit: int = 500) -> tuple[list, float]:
+    """aggTrades rows -> (candle tuples, newest-tape-time).
+
+    Tick (step_s == 0): one bar per print — the LSE tape shape, o=h=l=c.
+    Otherwise fixed `<n>s` buckets. Empty/short tapes return what exists —
+    never a fabricated fill, and never more than `limit` newest bars.
+    """
+    buckets: Dict[float, list] = {}
+    newest = 0.0
+    for r in rows:
+        try:
+            t_ms = int(r.get("T") or r.get("t") or 0)
+            price = float(r["p"])
+            qty = float(r["q"])
+        except (TypeError, ValueError, KeyError, AttributeError):
+            continue                      # garbage row: the wire moves on
+        if t_ms <= 0:
+            continue
+        ts = t_ms / 1000.0
+        newest = max(newest, ts)
+        key = (ts // step_s) * step_s if step_s else ts
+        if key not in buckets:
+            buckets[key] = []
+        buckets[key].append((price, qty))
+    out: List[tuple] = []
+    for key in sorted(buckets):
+        pts = buckets[key]
+        if step_s:
+            o = pts[0][0]
+            h = max(x for x, _ in pts)
+            l = min(x for x, _ in pts)
+            c = pts[-1][0]
+            v = sum(q for _, q in pts)
+        else:
+            o = h = l = c = pts[-1][0]
+            v = sum(q for _, q in pts)
+        out.append((key, o, h, l, c, v))
+    return out[-max(1, int(limit)):], newest
+
+
 class BinanceProvider(Provider):
     """Keyless public Binance USD-M market data: trades, top-20 book,
     candles — one hop to the venue, no child process, no catalog fetch.
@@ -137,7 +200,7 @@ class BinanceProvider(Provider):
     name = "binance"
     title = "Binance USD-M Futures (direct, keyless)"
     venue = "binance"          # default label; instance attrs may narrow it
-    timeframes = list(_TIMEFRAMES)
+    timeframes = list(LADDER)
     deterministic = False
 
     def __init__(self, backoff_base: float = 1.0):
@@ -163,8 +226,8 @@ class BinanceProvider(Provider):
 
     @staticmethod
     def _rest_rungs():
-        return (("binance", REST_BASE, "/fapi/v1/klines"),
-                ("binance-spot", SPOT_REST_BASE, "/api/v3/klines"))
+        return (("binance", REST_BASE, "/fapi/v1"),
+                ("binance-spot", SPOT_REST_BASE, "/api/v3"))
 
     @staticmethod
     def _ws_rungs():
@@ -201,11 +264,20 @@ class BinanceProvider(Provider):
             raise ValueError(
                 f"binance: unknown symbol {symbol} (this book serves: "
                 f"{', '.join(SYMBOLS)})")
+        if timeframe == "tick" or _SEC_BUCKET.match(timeframe):
+            # Sub-minute: no such klines exist on ANY crypto venue, so the
+            # bars are the exchange's own recent trade tape bucketed by
+            # seconds (honest, shortest real history, the live stream
+            # extends the edge).
+            step = 0 if timeframe == "tick" else int(_parse_sec_bucket(timeframe))
+            return self._candles_tape(symbol, timeframe, step, limit,
+                                      start, end)
         tf = _TIMEFRAMES.get(timeframe)
         if tf is None:
             raise ValueError(
-                f"binance: unsupported timeframe {timeframe} "
-                f"(this venue serves {', '.join(_TIMEFRAMES)})")
+                f"binance: unsupported timeframe {timeframe!r} — natives: "
+                f"{', '.join(_TIMEFRAMES)}; sub-minute: tick or any "
+                f"<n>s bucket from the real trade tape (45s, 90s…)")
         interval, tf_s = tf
         limit = max(1, min(int(limit), _MAX_REST_CANDLES * 4))
         end_s = _to_s(end) or int(time.time())
@@ -219,14 +291,14 @@ class BinanceProvider(Provider):
         serving_venue = None
         while len(rows) < limit:
             rungs = self._rest_rungs()
-            venue, base, path = rungs[self._rest_rung]
+            venue, base, path = rungs[self._rest_rung]  # path: api prefix
             want = min(_MAX_REST_CANDLES, limit - len(rows))
             window_start = window_end - want * tf_s + tf_s
             if start_s is not None:
                 window_start = max(window_start, start_s)
                 if window_start > window_end:
                     break
-            url = (f"{base}{path}?symbol={symbol}"
+            url = (f"{base}{path}/klines?symbol={symbol}"
                    f"&interval={interval}&limit={want}"
                    f"&startTime={window_start * 1000}"
                    f"&endTime={window_end * 1000}")
@@ -278,6 +350,74 @@ class BinanceProvider(Provider):
             serving_venue = self._rest_rungs()[self._rest_rung][0]
         df.attrs["venue"] = serving_venue
         self.venue = serving_venue     # the tick badge flips with the rung
+        return df
+
+    # -- sub-minute from the exchange's own trade tape (honest depth) ------
+
+    def _fetch_tape_page(self, url: str, rungs) -> tuple:
+        """One aggTrades page through the SAME ladder law as klines:
+        venue rung first; a geo/WAF/unreachable answer advances the rung
+        and reties ONCE here; venue's own errors (429) surface verbatim.
+        Returns (rows, venue)."""
+        while True:
+            venue, base, prefix = rungs[self._rest_rung]
+            full = f"{base}{prefix}/aggTrades?{url}"
+            try:
+                with urllib.request.urlopen(full, timeout=15) as resp:
+                    data = json.loads(resp.read().decode())
+                return (data if isinstance(data, list) else []), venue
+            except urllib.error.HTTPError as e:
+                body = e.read().decode(errors="replace")[:200]
+                if e.code in _GEO_HTTP and                         self._rest_rung < len(rungs) - 1:
+                    self._rest_rung += 1
+                    continue
+                raise NotSupported(
+                    f"{venue}: aggTrades REST HTTP {e.code}: {body}") from e
+            except Exception as e:  # noqa: BLE001
+                if self._rest_rung < len(rungs) - 1:
+                    self._rest_rung += 1
+                    continue
+                raise NotSupported(
+                    f"{venue}: aggTrades REST failed: {e}") from e
+
+    def _candles_tape(self, symbol: str, timeframe: str, step: int,
+                      limit: int, start, end):
+        end_s = _to_s(end) or int(time.time())
+        start_s = _to_s(start)
+        rungs = self._rest_rungs()
+        tapes: list = []
+        # aggTrades pages ASCEND by id; walk ENDTIME backwards for older
+        # pages. Cap 12 pages (12k prints ≈ seconds-to-minutes of depth on
+        # a liquid pair) — the tape is the honest short history; nobody is
+        # served a fabricated older bar.
+        page_end_ms = end_s * 1000
+        serving_venue = None
+        for _ in range(12):
+            q = (f"symbol={symbol}&limit=1000&endTime={page_end_ms}")
+            batch, serving_venue = self._fetch_tape_page(q, rungs)
+            if not batch:
+                break
+            tapes = batch + tapes
+            oldest = min(int(r.get("T") or r.get("t") or 0) for r in batch)
+            if len(batch) < 1000 or                     (start_s is not None and oldest <= start_s * 1000):
+                break
+            page_end_ms = oldest - 1
+        if start_s is not None:
+            tapes = [r for r in tapes
+                     if int(r.get("T") or r.get("t") or 0) >= start_s * 1000]
+        tapes = [r for r in tapes
+                 if int(r.get("T") or r.get("t") or 0) <= end_s * 1000]
+        bars, _newest = tape_to_candles(tapes, step, limit)
+        if not bars:
+            raise NotSupported(
+                f"{self.venue}: the trade tape holds no prints inside "
+                f"{symbol} {timeframe} (tape history is seconds-to-"
+                f"minutes deep by design)")
+        df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
+        if serving_venue is None:
+            serving_venue = rungs[self._rest_rung][0]
+        df.attrs["venue"] = serving_venue
+        self.venue = serving_venue
         return df
 
     # -- live ticks (aggTrade) --------------------------------------------

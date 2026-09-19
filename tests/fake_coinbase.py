@@ -46,8 +46,11 @@ def _ns_ts(t: float | None = None) -> str:
     return base.strftime("%Y-%m-%dT%H:%M:%S.") + f"{int((now % 1) * 1e9):09d}Z"
 
 
+# every documented granularity enum (June 2026 docs) — 4h/weekly absent
+# because the venue itself has no such product
 _GRAN_S = {"ONE_MINUTE": 60, "FIVE_MINUTE": 300, "FIFTEEN_MINUTE": 900,
-           "ONE_HOUR": 3600, "ONE_DAY": 86400}
+           "THIRTY_MINUTE": 1800, "ONE_HOUR": 3600, "TWO_HOUR": 7200,
+           "SIX_HOUR": 21600, "ONE_DAY": 86400}
 
 
 class FakeCoinbase:
@@ -63,6 +66,9 @@ class FakeCoinbase:
         self.book = {99.9: 1.5, 99.8: 2.0}          # bid price -> size
         self.book_asks = {100.1: 1.2, 100.2: 2.2}
         self.trade_ids = itertools.count(1)
+        # Market-trades tape behind the REST /ticker route: docs' row
+        # shape, oldest-first, capped — the venue serves <=220 newest.
+        self.trades: list = []
         self._rest_srv = None
         self._ws_srv = None
         self._conns = set()
@@ -90,6 +96,20 @@ class FakeCoinbase:
         if self._ws_srv:
             self._ws_srv.shutdown()
 
+    def record_trade(self, pid: str, price: float, size: str,
+                     side: str, when: float | None = None) -> dict:
+        """One print into the tape (docs' row shape). Emitter and scripts
+        share this so REST /ticker and WS market_trades never disagree."""
+        t = time.time() if when is None else when
+        with self._lock:
+            row = {"trade_id": f"{pid}-{next(self.trade_ids)}",
+                   "product_id": pid, "price": f"{price:.2f}",
+                   "size": size, "side": side, "time": _ns_ts(t)}
+            self.trades.append(row)
+            if len(self.trades) > 2_000:
+                self.trades = self.trades[-2_000:]
+        return row
+
     # ── REST (public market data) ─────────────────────────────────────────
 
     def _rest_handler(self):
@@ -109,6 +129,20 @@ class FakeCoinbase:
 
             def do_GET(self):
                 u = urlparse(self.path)
+                if "/ticker" in u.path:
+                    # Get Market Trades: {"trades": [...]} NEWEST first,
+                    # documented cap 220 (limit param, default 10).
+                    q = parse_qs(u.query)
+                    lim = min(220, int(q.get("limit", ["10"])[0]))
+                    pid = u.path.rsplit("/ticker", 1)[0].rsplit("/", 1)[-1]
+                    with fake._lock:
+                        rows = [t for t in reversed(fake.trades)
+                                if t["product_id"] == pid][:lim]
+                        st = fake.products.get(pid, {"price": 1.0})
+                    self._json({"trades": rows,
+                                "best_bid": f"{st['price'] * 0.9999:.2f}",
+                                "best_ask": f"{st['price'] * 1.0001:.2f}"})
+                    return
                 if "/candles" in u.path:
                     q = parse_qs(u.query)
                     gran = q.get("granularity", ["ONE_MINUTE"])[0]
@@ -207,16 +241,14 @@ class FakeCoinbase:
                         with self._lock:
                             st = self.products.get(pid, {"price": 1.0})
                             price = st["price"]
-                            tid = f"{pid}-{next(self.trade_ids)}"
+                        row = self.record_trade(
+                            pid, price, "0.0105",
+                            "BUY" if int(time.time() * 2) % 2 else "SELL")
                         self._send(conn, {
                             "channel": "market_trades", "timestamp": _ns_ts(),
                             "sequence_num": int(time.time() * 4) % 1_000_000,
-                            "events": [{"type": "update", "trades": [{
-                                "trade_id": tid, "product_id": pid,
-                                "price": f"{price:.2f}", "size": "0.0105",
-                                "side": ("BUY" if
-                                         int(time.time() * 2) % 2 else "SELL"),
-                                "time": _ns_ts()}]}]})
+                            "events": [{"type": "update",
+                                        "trades": [dict(row)]}]})
                     elif channel == "level2" and not delta_flip:
                         continue
                     elif channel == "level2":

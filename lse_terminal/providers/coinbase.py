@@ -37,6 +37,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import os
 import time
 import urllib.request
@@ -90,12 +91,24 @@ _NAMES = {
 
 _PRODUCTS = {p: s for s, p in SYMBOLS.items()}   # product id -> canonical
 
-# Documented REST granularities, honest subset: no FOUR_HOUR exists on this
-# venue (TWO_HOUR/SIX_HOUR do), and synthesizing a 4h bar from 1h bars
-# would present an aggregated window as if the venue served it.
+# Documented REST granularities: 1m/5m/15m/30m/1h/2h/6h/1d — no FOUR_HOUR
+# or weekly granularity exists on this venue, and synthesizing either
+# from finer bars would present an aggregated window as if the venue
+# served it. Sub-minute bars come from the venue's own trade tape
+# (market trades REST, 220-print window) bucketed by seconds; tick = one
+# bar per print. The `_TIMEFRAMES` keys double as the klines ladder.
 _TIMEFRAMES = {"1m": ("ONE_MINUTE", 60), "5m": ("FIVE_MINUTE", 300),
-               "15m": ("FIFTEEN_MINUTE", 900), "1h": ("ONE_HOUR", 3600),
+               "15m": ("FIFTEEN_MINUTE", 900),
+               "30m": ("THIRTY_MINUTE", 1800), "1h": ("ONE_HOUR", 3600),
+               "2h": ("TWO_HOUR", 7200), "6h": ("SIX_HOUR", 21600),
                "1d": ("ONE_DAY", 86400)}
+
+# The menu (LSE-shaped, owner-locked): 4h/1w stay off it because the
+# venue has no such product — custom `<n>s` buckets ride the tape.
+LADDER = ["tick", "1s", "15s", "30s",
+          "1m", "5m", "15m", "30m", "1h", "1d"]
+
+_SEC_BUCKET = re.compile(r"^(\d+)s$")
 
 _MAX_REST_CANDLES = 300           # documented request cap
 _WS_OPEN_TIMEOUT_S = 8.0
@@ -118,6 +131,37 @@ def _iso_s(ts: str) -> float:
             digits += 1
         t = f"{head}.{rest[:min(6, digits)]}{rest[digits:]}"
     return datetime.fromisoformat(t).replace(tzinfo=timezone.utc).timestamp()
+
+
+def tape_to_candles(rows: list, step_s: int,
+                    limit: int = 500) -> List[tuple]:
+    """Trade-tape rows ({"T" ms, "p", "q"}) -> candle tuples. Tick
+    (step_s == 0): one bar per print; otherwise fixed `<n>s` buckets.
+    What the tape holds is what returns — never a fabricated fill."""
+    buckets: Dict[float, list] = {}
+    for r in rows:
+        try:
+            t_ms = int(r["T"])
+            price = float(r["p"])
+            qty = float(r["q"])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if t_ms <= 0:
+            continue
+        ts = t_ms / 1000.0
+        key = (ts // step_s) * step_s if step_s else ts
+        buckets.setdefault(key, []).append((price, qty))
+    out: List[tuple] = []
+    for key in sorted(buckets):
+        pts = buckets[key]
+        if step_s:
+            out.append((key, pts[0][0], max(x for x, _ in pts),
+                        min(x for x, _ in pts), pts[-1][0],
+                        sum(q for _, q in pts)))
+        else:
+            out.append((key, pts[-1][0], pts[-1][0], pts[-1][0],
+                        pts[-1][0], sum(q for _, q in pts)))
+    return out[-max(1, int(limit)):]
 
 
 class _BookState:
@@ -149,7 +193,7 @@ class CoinbaseProvider(Provider):
     name = "coinbase"
     title = "Coinbase Spot (Advanced Trade)"
     venue = "coinbase"
-    timeframes = list(_TIMEFRAMES)     # honest subset: no 4h on this venue
+    timeframes = list(LADDER)        # no 4h/1w: the venue has no such bars
     deterministic = False
 
     def __init__(self, backoff_base: float = 1.0):
@@ -196,11 +240,18 @@ class CoinbaseProvider(Provider):
         product = SYMBOLS.get(symbol)
         if product is None:
             raise ValueError(f"{self.name}: unknown symbol {symbol}")
+        if timeframe == "tick" or _SEC_BUCKET.match(timeframe):
+            step = 0 if timeframe == "tick" else int(
+                _SEC_BUCKET.match(timeframe).group(1))
+            return self._candles_tape(product, symbol, timeframe, step,
+                                      limit, start, end)
         gran = _TIMEFRAMES.get(timeframe)
         if gran is None:
             raise ValueError(
-                f"{self.name}: unsupported timeframe {timeframe} "
-                f"(this venue serves {', '.join(_TIMEFRAMES)})")
+                f"{self.name}: unsupported timeframe {timeframe!r} — "
+                f"natives: {', '.join(_TIMEFRAMES)} (no 4h/1w exist on "
+                f"this venue); sub-minute: tick or any <n>s bucket from "
+                f"the real trade tape")
         granularity, tf_s = gran
         limit = max(1, min(int(limit), 1500))
         end_s = int(_iso_s(end)) if isinstance(end, str) else \
@@ -253,6 +304,69 @@ class CoinbaseProvider(Provider):
                 f"{self.name}: venue served no history for {symbol} "
                 f"{timeframe}")
         df = pd.DataFrame(rows[-limit:], columns=CANDLE_COLUMNS)
+        df.attrs["venue"] = self.venue
+        return df
+
+    # -- sub-minute from the venue's own market-trades tape --------------
+
+    def _candles_tape(self, product: str, symbol: str, timeframe: str,
+                      step: int, limit: int, start, end):
+        # Get Market Trades: newest-first, 220-print cap — the honest
+        # depth of a sub-minute chart on this venue (seconds to a few
+        # minutes, liquidity-dependent; no older windows are invented).
+        url = (f"{REST_BASE}/api/v3/brokerage/market/products/"
+               f"{product}/ticker?limit=220")
+        try:
+            with urllib.request.urlopen(url, timeout=15) as resp:
+                payload = json.loads(resp.read().decode())
+        except urllib.error.HTTPError as e:
+            body = e.read().decode(errors="replace")[:200]
+            raise NotSupported(
+                f"{self.name}: market trades REST HTTP {e.code}: {body}"
+                ) from e
+        except Exception as e:  # noqa: BLE001
+            raise NotSupported(
+                f"{self.name}: market trades REST failed: {e}") from e
+        rows = payload.get("trades") or []
+        end_s = int(_iso_s(end)) if isinstance(end, str) else             (int(end) if end else int(time.time()))
+        start_s = int(_iso_s(start)) if isinstance(start, str) else             (int(start) if start else None)
+        tapes = []
+        for tr in rows:
+            try:
+                t_s = _iso_s(tr["time"])
+                tapes.append({"T": int(t_s * 1000), "p": tr["price"],
+                              "q": tr["size"]})
+            except (KeyError, TypeError, ValueError):
+                continue
+        # The venue's tape is NEWEST-first; bucketing needs chronological
+        # prints or every bucket's open/close swaps (high/low survive).
+        tapes.sort(key=lambda r: r["T"])
+        # Window-vs-tape honesty: the words name WHICH side missed, with
+        # the tape's real bounds — never a generic shrug, never a fill.
+        newest_ms = tapes[-1]["T"] if tapes else None
+        tapes = [r for r in tapes if r["T"] <= end_s * 1000]
+        if tapes:
+            oldest_ms = tapes[0]["T"]
+        if newest_ms is not None and not tapes:
+            raise NotSupported(
+                f"{self.name}: your window ends "
+                f"{(end_s * 1000 - newest_ms) / 1000:.0f}s before this "
+                f"venue's tape even begins — the tape holds only the "
+                f"most recent prints (seconds-to-minutes deep)")
+        if start_s is not None:
+            tapes = [r for r in tapes if r["T"] >= start_s * 1000]
+            if not tapes:
+                raise NotSupported(
+                    f"{self.name}: the tape's newest print "
+                    f"(t-{(end_s * 1000 - newest_ms) / 1000:.0f}s) is "
+                    f"older than your window — nothing that recent is "
+                    f"on the venue's tape yet")
+        bars = tape_to_candles(tapes, step, limit)
+        if not bars:
+            raise NotSupported(
+                f"{self.name}: no prints inside {symbol} {timeframe} "
+                f"on the venue's recent tape")
+        df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
         df.attrs["venue"] = self.venue
         return df
 

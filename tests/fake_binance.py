@@ -39,6 +39,8 @@ class FakeBinance:
             "asks": [["100150.0", "1.2"], ["100200.0", "2.2"]],
         }
         self.klines: list = []
+        # aggTrades REST book: rows in the docs' shape, ascending by "a".
+        self.agg_trades: list = []
         self.premium = {"markPrice": "100500.0", "lastFundingRate": "0.00010",
                         "nextFundingTime": _ms() + 28_800_000}
         self.open_interest = "25000.0"
@@ -118,6 +120,22 @@ class FakeBinance:
                         return self._json(outer.depth_snapshot)
                     if u.path == "/fapi/v1/klines":
                         return self._json(outer.klines)
+                    if u.path == "/fapi/v1/aggTrades":
+                        # Docs: with startTime the page runs FORWARD from
+                        # it; otherwise the latest <= endTime (default
+                        # now); <=1000 rows per page, ascending by "a".
+                        lim = min(1000, int(q.get("limit", ["500"])[0]))
+                        st = q.get("startTime", [None])[0]
+                        et = q.get("endTime", [None])[0]
+                        rows = outer.agg_trades
+                        if et is not None:
+                            rows = [r for r in rows if r["T"] <= int(et)]
+                        if st is not None:
+                            rows = [r for r in rows if r["T"] >= int(st)]
+                            rows = rows[:lim]          # forward from start
+                        else:
+                            rows = rows[-lim:]         # latest <= endTime
+                        return self._json(rows)
                     if u.path == "/fapi/v1/premiumIndex":
                         return self._json(outer.premium)
                     if u.path == "/fapi/v1/openInterest":
@@ -182,6 +200,12 @@ class FakeBinance:
     def send_trade(self, price: str, qty: str, agg_id: int, maker: bool,
                    ts: int | None = None) -> None:
         t = ts or _ms()
+        with self._lock:
+            self.agg_trades.append({"a": agg_id, "p": price, "q": qty,
+                                    "f": agg_id, "l": agg_id, "T": t,
+                                    "m": maker})
+            if len(self.agg_trades) > 50_000:
+                self.agg_trades = self.agg_trades[-50_000:]
         self.send_to_route("market", "btcusdt@aggTrade", {
             "e": "aggTrade", "E": t, "p": price, "q": qty,
             "T": t, "t": agg_id, "a": agg_id, "m": maker})

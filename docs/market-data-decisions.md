@@ -112,3 +112,37 @@ prices, never extrapolation past them.
 Verify: typecheck delta 0 vs HEAD (51 pre-existing errors unchanged,
 none in the diff); vines build clean; bundle +1.1 kB. Visual verdict is
 the owner's — the numbers only prove the pipe.
+
+## D16 — LSE-shaped timeframe ladders on the crypto books (2026-09-19)
+
+Owner's words: "the timeframe also have custom and the default should be
+just like that of lse data terminal from tick, 1s, 15s, 30s, 1m, etc".
+
+- **Binance** menu: `tick 1s 15s 30s 1m 5m 15m 30m 1h 4h 1d 1w` plus a
+  **Custom…** entry. Native klines cover every documented interval
+  (1m/3m/5m/15m/30m/1h/2h/4h/6h/8h/12h/1d/3d/1w); via Custom… you can
+  reach 3m/2h/6h/8h/12h/3d too.
+- **Coinbase** menu: `tick 1s 15s 30s 1m 5m 15m 30m 1h 1d` + Custom…
+  (reaches 2h/6h). **4h and 1w stay refused** — the venue has no such
+  product; the error says so in its own words and points at `<n>s`.
+- **Sub-minute law (any venue):** tick and every `<n>s` bar is built ONLY
+  from the exchange's own real trade tape — Binance `aggTrades` (paged
+  backward by `endTime`, ≤12k prints, ascending-by-id), Coinbase Get
+  Market Trades (≤220 newest prints; re-chronologised before bucketing or
+  open/close would swap). `tick` = one bar per print (o=h=l=c). Buckets
+  sit on the aligned clock grid; silent gaps are never filled; the tape's
+  depth (seconds-to-minutes) is the honest short history, and windows
+  outside it are refused with the tape's real bounds named. The live
+  stream extends the chart edge from then on.
+- aggTrades pages ride the **same D14 ladder** as klines: venue first,
+  geo/WAF 451/418/403 or an unreachable rung flips to the public spot
+  mirror and pins; a 429 never flips and keeps the venue's words.
+- UI: the menu renders provider ladders verbatim, Custom… validates the
+  shape (`tick` or `<n>[smhdw]`), and the forming-bar bucket uses
+  `tfSecondsOf` so custom second-rungs morph/glide exactly like stock ones.
+
+Proof: targeted tape/ladder tests both suites + full suite 243 passed /
+1 skipped; live engine runtime — binance `tick` (per-print, 21 ms),
+`1s/15s/45s` (tape, ≤10 ms), `3m/1w` (native, ≤5 ms); coinbase `tick/15s`
+(tape, ≤5 ms), `30m/2h/6h` (native, ≤6 ms); `coinbase 4h` and
+`binance 3w` refuse with 404s quoting the real ladders.
