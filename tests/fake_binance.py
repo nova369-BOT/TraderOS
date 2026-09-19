@@ -1,29 +1,15 @@
-"""Protocol-faithful fake Binance USD-M futures endpoint (test double).
+"""Purpose: drive the TraderOS Binance surface against a DETERMINISTIC
+venue double when the sandbox cannot reach (or must not depend on) the
+real exchange. Speaks the USD-M public market-data wire:
+/fapi/v1/klines + friends over HTTP, and combined-stream frames
+{"stream", "data"} over WebSocket — routed into two client buckets
+("market" for trade/ticker churn, "public" for depth-style traffic) so a
+harness can schedule exact frames and swap contents over time.
 
-Purpose: the E2E for the EdgeDepth gateway integration must drive the REAL
-Go binary end to end without touching the actual Binance network (which this
-sandbox cannot reach). The gateway ships mirror/testnet overrides for
-exactly this (`-binance-rest`, `-binance-ws`; README "Configuration"), so the
-double only has to implement what the ACTUAL gateway consumes — read from
-the source, not reinvented:
-
-- REST (internal/binance/rest.go): /fapi/v1/exchangeInfo, /fapi/v1/depth,
-  /fapi/v1/klines, /fapi/v1/premiumIndex, /fapi/v1/openInterest,
-  /fapi/v1/ticker/24hr
-- WS (internal/binance/stream.go): <base>/market/stream and
-  <base>/public/stream with ?streams=a/b/c, combined envelopes
-  {"stream": <name>, "data": <payload>}
-- Payloads (internal/binance/feed.go): depthUpdate (U/u/pu straddle rules),
-  aggTrade (a dedupe, m=buyer-maker), markPrice (p/r/T), forceOrder (o.S/p/ap/q),
-  !ticker@arr array entries (e/E/s/c/P/q)
-
-The double is intentionally a *scriptable mirror*, not an exchange: the test
-schedules exact frames and swaps snapshot contents, so gateway behaviour
-synced -> gap -> resync -> reconnect is deterministic.
-
-Threading: stdlib REST server in one thread, websockets.sync server in
-another. Every mutator is safe to call from the test thread.
-"""
+No network, no credentials; used by the preview demo driver
+(arena-workspace/serve_fakes.py) to exercise providers/binance.py
+end-to-end. Anything this file serves that the REAL Binance would not
+serve is a bug in this file."""
 
 from __future__ import annotations
 
@@ -164,7 +150,7 @@ class FakeBinance:
                 bucket = self._market_clients
             bucket.append(conn)
         try:
-            # The gateway never sends client messages upstream; just hold the
+            # Combined streams take no client messages upstream; just hold the
             # socket. Reading keeps control frames flowing (ping/pong).
             for _msg in conn:
                 pass
@@ -225,7 +211,7 @@ class FakeBinance:
                 pass
 
     def drop_upstream_connections(self) -> None:
-        """Simulate a Binance outage: close every gateway->venue socket."""
+        """Simulate a Binance outage: close every venue-facing socket."""
         with self._lock:
             clients = list(self._depth_clients) + list(self._market_clients)
         for c in clients:

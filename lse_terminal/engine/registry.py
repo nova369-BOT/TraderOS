@@ -67,8 +67,8 @@ def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
     from lse_terminal.providers import (BinanceProvider, CoinbaseProvider,
                                         CryptoL2Provider, DemoProvider,
-                                        EdgeDepthProvider, LseProvider,
-                                        MboProvider, UserDataProvider)
+                                        LseProvider, MboProvider,
+                                        UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
@@ -81,19 +81,15 @@ def load_builtins(reg: Registry) -> None:
     # open like everything user-visible; registration costs nothing when
     # ccxt is absent (the provider reports itself unconfigured).
     reg.register(CryptoL2Provider())
-    # Binance USD-M futures, direct native (D12, owner-locked): ONE hop
+    # Binance USD-M futures, direct native (D12/D13, owner-locked): ONE hop
     # to the venue, curated in-memory catalog — the Coinbase-shaped
-    # pipeline, after the gateway surface proved environment-bound (no
-    # Go toolchain here = no Binance at all) and one hop slower on every
-    # request. The gateway stays registered below for its engine-owned
-    # uses, but it is no longer the chart's Binance book.
+    # pipeline. The gateway alternative was excised from the tree: it
+    # hard-fails wherever no Go toolchain exists and costs a child hop
+    # everywhere else. There is exactly this one Binance surface.
     reg.register(BinanceProvider())
-    # EdgeDepth gateway (F1/E0): the user's own Binance USD-M futures bridge —
-    # candles AND depth from one keyless wire. Fails open at connect time.
-    reg.register(EdgeDepthProvider())
     # Coinbase spot direct (recovery task): Advanced Trade public market
-    # data, keyless by docs — trades, level2 book, candle history. Second
-    # independent native pipeline next to the direct Binance book.
+    # data, keyless by docs — trades, level2 book, candle history. The
+    # second independent native pipeline, same shape as Binance.
     reg.register(CoinbaseProvider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous

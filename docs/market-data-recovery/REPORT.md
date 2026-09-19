@@ -231,3 +231,16 @@ engine-owned uses but leaves the chart Source menu: it hard-fails
 wherever no Go toolchain exists (measured) and adds a hop where it does.
 Suite 262 passed / 7 skipped; engine-preview proof: instruments 19 ms,
 candles 22 ms, ws batched ticks LIVE at 1 ms venue-origin lag.
+
+
+## Third addendum (2026-09-19): the gateway leaves the tree (D13)
+
+Owner instruction, verbatim: "delete everything related to edgedepth
+gateway i meant every single thing". Done in full — vendored Go service,
+proto contract, provider package, lifecycle supervisor, /api/edgedepth/*
+routes, ED chip/panel/styles, workspace gateway hop, Docker/Render build
+stages, attribution, docs/edgedepth-integration/, the E0 feed plan, and
+all gateway test suites. Live decisions were distilled into
+docs/market-data-decisions.md (D10–D13) before the directory went. The
+"gateway stays in the tree" statements earlier in this report are hereby
+superseded; the narrative above is kept as the dated record it is.

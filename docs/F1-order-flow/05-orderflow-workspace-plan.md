@@ -1,6 +1,14 @@
 # F2 · Orderflow Workspace — implementation plan
 
 Status: **PLAN, awaiting user go-ahead** · 2026-09-17
+> **SUPERSEDED rail (2026-09-19, D13):** every mention of the
+> edgedepth-gateway below describes a path that no longer exists —
+> the gateway was excised from the tree in full at the owner's
+> instruction. Where this document says "via the gateway", read
+> "via the native direct providers (Binance USD-M / Coinbase)".
+> The order-flow visuals and semantics here remain the plan.
+
+
 Supersedes nothing; the old terminal keeps living at its route until this overtakes it.
 
 ## 0 · The product in one paragraph

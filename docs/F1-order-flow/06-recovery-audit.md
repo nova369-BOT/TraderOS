@@ -1,5 +1,13 @@
 # Recovery audit — 2026-09-18
 
+> **SUPERSEDED rail (2026-09-19, D13):** every mention of the
+> edgedepth-gateway below describes a path that no longer exists —
+> the gateway was excised from the tree in full at the owner's
+> instruction. Where this document says "via the gateway", read
+> "via the native direct providers (Binance USD-M / Coinbase)".
+> The order-flow visuals and semantics here remain the plan.
+
+
 User directive: stop wasting time; audit everything; use the open-sourced
 EdgeDepth properly; be the professional this project needs.
 

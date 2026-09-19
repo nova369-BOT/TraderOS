@@ -3,11 +3,10 @@
 // Binance's main domains are WAF-418 from datacenter egress (Render) AND
 // ISP-blocked in some countries (Nigeria), so every realistic route is a hop:
 //
-//   1. server  -> fapi, mirror fallback   'BINANCE · LIVE' / 'BINANCE SPOT · LIVE'
+//   1. server  -> fapi, direct native     'BINANCE · LIVE'
 //   2. browser -> fapi (residential IP)   'BINANCE · LIVE (browser)'
 //   3. browser -> .vision mirror          'BINANCE SPOT · LIVE (browser)'
-//   4. server  -> your edgedepth gateway  'BINANCE · VIA GATEWAY'
-//   5. demo, with the failed hops named   'BINANCE OFFLINE → DEMO · srv✗ …'
+//   4. demo, with the failed hops named   'BINANCE OFFLINE → DEMO · srv✗ …'
 //
 // Nothing synthetic is ever presented as real.
 
@@ -87,9 +86,6 @@ export async function loadCandles(source: Source,
       { tag: 'mir', run: (tf) => browserKlines(MIRROR_KLINES, tf).then((c) => ({
           candles: c, source: 'binance' as Source,
           badge: 'BINANCE SPOT · LIVE (browser)' })) },
-      { tag: 'gw', run: (tf) => attempt('edgedepth', 'BTCUSDT').then((r) => ({
-          candles: r.rows, source: 'binance' as Source,
-          badge: 'BINANCE · VIA GATEWAY' })) },
     ];
     // poll fast path: last round's winner goes direct, no re-race
     if (lastWinner) {

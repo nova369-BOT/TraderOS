@@ -1,4 +1,4 @@
-"""Phase 1 gate: the F2 workspace surface and the edgedepth provider.
+"""Phase 1 gate: the F2 workspace surface.
 
 The workspace is now REPLACED by the LSE terminal itself (Binance is a
 first-class source in the terminal chart, the panes live in the toolbar's
@@ -37,14 +37,6 @@ def test_workspace_redirects_to_terminal(client):
 def test_workspace_bundle_assets(client):
     assert client.get("/w/workspace.js").status_code == 200
     assert client.get("/w/workspace.css").status_code == 200
-
-
-def test_edgedepth_provider_listed(client):
-    provs = {p["name"]: p for p in client.get("/api/providers").json()}
-    assert "edgedepth" in provs
-    caps = provs["edgedepth"]["capabilities"]
-    assert "depth_stream" in caps
-    assert "depth_history" not in caps  # honest live-only source
 
 
 def test_chart_pane_timeframes_served(client):

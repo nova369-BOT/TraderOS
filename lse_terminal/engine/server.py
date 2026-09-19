@@ -7470,8 +7470,8 @@ def create_app() -> FastAPI:
         {"type": "trade"} for the volume dots."""
         await websocket.accept()
         try:
-            # Resolution can block on first connect (the edgedepth provider
-            # may be spawning its gateway child): keep it off the event loop.
+            # Resolution can block on first connect (a provider's first
+            # network touch): keep it off the event loop.
             from fastapi.concurrency import run_in_threadpool as _ritp
             p, agen = await _ritp(_of_service.resolve_stream, symbol,
                                   provider or None)
@@ -7503,75 +7503,6 @@ def create_app() -> FastAPI:
                                            "message": str(e)[:200]})
             except Exception:
                 pass
-
-    # ── EdgeDepth gateway lifecycle (market-data service management) ──────
-    #
-    # The engine owns the actual EdgeDepth Go gateway process (managed mode)
-    # or points at an external one (EDGEDEPTH_GATEWAY_URL). These routes are
-    # the observability/control surface for that lifecycle: state, health,
-    # restart budget, log tail, and manual start/stop. The provider path
-    # auto-starts the gateway on first request; these exist so the UI (and
-    # an operator) can always SEE which Binance path is live and why.
-    from lse_terminal.engine.gateway import (
-        supervisor as _gw_supervisor,
-        GatewayUnavailable as _GatewayUnavailable,
-    )
-
-    @app.get("/api/edgedepth/gateway/status")
-    async def gw_status():
-        """Current gateway lifecycle state. Always 200: an UNKNOWN/FAILED
-        gateway is a normal answer here, not an HTTP error — the body says
-        why (observability rule: users must be able to see the data path)."""
-        from fastapi.concurrency import run_in_threadpool as _ritp
-        return await _ritp(_gw_supervisor().status)
-
-    @app.post("/api/edgedepth/gateway/start")
-    async def gw_start():
-        """Explicit start/retry after a FAILED state. 409 carries the
-        concrete reason (no executable, busy port, crash loop + log tail)."""
-        from fastapi.concurrency import run_in_threadpool as _ritp
-        sup = _gw_supervisor()
-        try:
-            return await _ritp(sup.start)
-        except _GatewayUnavailable as e:
-            raise HTTPException(409, str(e))
-
-    @app.post("/api/edgedepth/gateway/stop")
-    async def gw_stop():
-        """Graceful stop (SIGTERM -> SIGKILL -> reap). Idempotent."""
-        from fastapi.concurrency import run_in_threadpool as _ritp
-        return await _ritp(_gw_supervisor().stop)
-
-    @app.on_event("shutdown")
-    def _gateway_shutdown():
-        # Engine exit must never orphan the child (managed mode only;
-        # external URLs are not ours to stop).
-        try:
-            sup = _gw_supervisor()
-            if sup.mode() == "managed":
-                sup.stop()
-        except Exception:
-            pass
-
-    # The edgedepth book's first pane tap used to pay for everything at
-    # once: child spawn (~1-3s), the engine->gateway dial, and the
-    # gateway->Binance REST hop - on the user's click. Spawn the child and
-    # memoize the book's latest frames AT BOOT instead, so the first tap
-    # paints from memo and the hop is engine bookkeeping, not user wait.
-    # run_in_threadpool for the spawn: boot must never block on Binance.
-    @app.on_event("startup")
-    async def _edgedepth_boot_warm():
-        import threading
-        from fastapi.concurrency import run_in_threadpool as _ritp
-        try:
-            if _gw_supervisor().mode() == "managed":
-                await _ritp(_gw_supervisor().ensure_running)
-            prov = reg.get("edgedepth")
-        except Exception:
-            # autostart disabled / no executable / book absent: the blocking
-            # path reports it all already; boot just proceeds unwarmed.
-            return
-        threading.Thread(target=prov.prewarm, daemon=True).start()
 
     # ── Algo trading: run a strategy LIVE against a brue-connect adapter ──
     #
@@ -7750,10 +7681,6 @@ def create_app() -> FastAPI:
 
     import threading as _threading
     _threading.Thread(target=_directory_loop, daemon=True).start()
-
-    # The Exchange-catalog prewarm died with the deleted direct-Binance
-    # book (D11): the one remaining Binance surface is the EdgeDepth
-    # gateway book, warmed by _edgedepth_boot_warm above instead.
 
     def _hub_call(fn, *a, **kw):
         try:

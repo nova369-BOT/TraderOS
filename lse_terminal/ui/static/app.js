@@ -892,128 +892,6 @@ function setupSourcePanel() {
   });
 }
 
-/* ---------- EdgeDepth gateway chip (toolbar "ED") ----------
-   The gateway crypto book is served by a REAL Go service the engine owns
-   (spawn/monitor/restart owns it, per docs/edgedepth-integration). A dead
-   crypto chart must answer "why" without opening a terminal, so state is
-   pinned into the toolbar: green running, amber coming/up or going down,
-   red failed, grey stopped. Click: full status (mode, address, pid, exe
-   source, restart budget, last error verbatim), the log tail, and
-   start/stop over the management API — every op stays in HTTP, never a
-   shell. The status payload is data (always 200); a 404/405 answers "this
-   build predates the management API" and the chip stays quiet rather than
-   wrong. Hidden unless the engine lists the provider (same listing rule
-   as the Source dropdown). */
-function setupGatewayChip() {
-  const chip = $("gw-chip");
-  const panel = $("gw-panel");
-  if (!chip || !panel) return;
-  if (!state.providers.some((p) => p.name === "edgedepth")) {
-    chip.classList.add("hidden");
-    return;
-  }
-  chip.classList.remove("hidden");
-  let latest = null;
-  let mgmtMissing = false;   // route-absent build: don't badge it as broken
-  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const stateClass = (s) =>
-    s === "RUNNING" ? "run" : s === "FAILED" ? "down"
-    : (s === "STARTING" || s === "STOPPING") ? "up" : "";
-  const paintChip = () => {
-    if (mgmtMissing) { chip.classList.add("hidden"); return; }
-    if (!latest) return;
-    chip.innerHTML = `ED <span class="gw-dot ${stateClass(latest.state)}"></span>`;
-    chip.title = `EdgeDepth gateway: ${latest.state} (${latest.mode || "managed"})` +
-      (latest.last_error ? ` — ${latest.last_error}` : "");
-  };
-  const fmtUp = (s) => {
-    if (!s) return "";
-    const m = Math.floor(s / 60), h = Math.floor(m / 60);
-    return h ? `${h}h ${m % 60}m` : m ? `${m}m ${Math.floor(s % 60)}s` : `${Math.floor(s)}s`;
-  };
-  const kv = (k, v) => `<div class="gw-kv"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
-  const renderPanel = async () => {
-    const st = latest || {};
-    const kvs = [
-      ["State", st.state || "—"],
-      ["Mode", st.mode || "—"],
-      ["Address", st.addr ? `ws://${st.addr}${st.path || "/ws"}` : "—"],
-      ["Process", st.pid ? `pid ${st.pid}${st.adopted ? " (adopted)" : ""}` : "not running"],
-      ["Executable", st.exe ? `${st.exe} (${st.exe_origin || "?"})` : (st.exe_origin || "—")],
-      ["Healthz", st.mode === "managed" ? (st.healthz ? "ok" : "not answering") : "external"],
-      ["Uptime", fmtUp(st.uptime_s) || "—"],
-      ["Restarts", `${st.restarts ?? 0} (budget 3 per 120s)`],
-      ["Autostart", st.autostart === false ? "off" : "on"],
-      ["Venue mirrors", st.mirrors
-        ? `${st.mirrors.binance_rest ? "REST→" : ""}${st.mirrors.binance_ws ? "WS→" : ""}` +
-          (st.mirrors.binance_rest || st.mirrors.binance_ws ? "custom" : "production Binance") +
-          ` · trades via ${st.mirrors.trade_stream || "aggTrade"}`
-        : "—"],
-    ];
-    panel.innerHTML =
-      `<div class="gw-sec">EDGEDEPTH GATEWAY</div>` +
-      kvs.map(([k, v]) => kv(k, v)).join("") +
-      (st.last_error ? `<div class="gw-err">${esc(st.last_error)}</div>` : "") +
-      (st.log_tail && st.log_tail.length
-        ? `<div class="gw-sec">LOG TAIL</div><pre class="gw-log">${st.log_tail.map(esc).join("\n")}</pre>` : "") +
-      `<div class="gw-actions">` +
-      `<button id="gw-start"${st.state === "RUNNING" || st.state === "STARTING" ? " disabled" : ""}>Start</button>` +
-      `<button id="gw-stop"${st.mode !== "managed" ||
-          !(st.state === "RUNNING" || st.state === "STARTING") ? " disabled" : ""}>Stop</button>` +
-      `<button id="gw-refresh">Refresh</button>` +
-      `<span class="gw-note" id="gw-note"></span></div>`;
-    const note = (t) => { const n = panel.querySelector("#gw-note"); if (n) n.textContent = t; };
-    const act = async (verb) => {
-      note(verb + "…");
-      try {
-        const r = await fetch(`/api/edgedepth/gateway/${verb}`, { method: "POST" });
-        if (r.status === 404 || r.status === 405) { mgmtMissing = true; paintChip(); close(); return; }
-        if (r.status === 409) {          // actionable detail, shown verbatim
-          note((await r.json()).detail || `${verb} failed`);
-          return;
-        }
-        latest = await r.json();
-        note("");
-        poll();                          // converge quickly to the truth
-        setTimeout(poll, 1500);
-        setTimeout(poll, 3500);
-      } catch (e) { note(`${verb} failed (engine unreachable)`); }
-    };
-    const bs = panel.querySelector("#gw-start"), bq = panel.querySelector("#gw-stop");
-    if (bs) bs.onclick = () => act("start");
-    if (bq) bq.onclick = () => act("stop");
-    const rf = panel.querySelector("#gw-refresh");
-    if (rf) rf.onclick = () => poll();
-  };
-  const close = () => { panel.classList.add("hidden"); panel.innerHTML = ""; };
-  const open = () => {
-    closeIndPanels();
-    renderPanel();
-    panel.classList.remove("hidden");
-    positionPanel(panel, chip);
-  };
-  const poll = async () => {
-    try {
-      const r = await fetch("/api/edgedepth/gateway/status");
-      if (r.status === 404 || r.status === 405) { mgmtMissing = true; paintChip(); return; }
-      if (!r.ok) return;
-      latest = await r.json();
-      paintChip();
-      if (!panel.classList.contains("hidden")) renderPanel();
-    } catch (e) { /* engine mid-restart; next tick retries */ }
-  };
-  chip.onclick = (e) => {
-    e.stopPropagation();
-    panel.classList.contains("hidden") ? open() : close();
-  };
-  document.addEventListener("click", (e) => {
-    if (panel.classList.contains("hidden")) return;
-    if (!panel.contains(e.target) && e.target !== chip && !chip.contains(e.target)) close();
-  });
-  poll();
-  setInterval(() => { if (!document.hidden) poll(); }, 8000);
-}
 
 /* ---------- watchlist + controls ---------- */
 
@@ -2860,15 +2738,13 @@ async function runSwitchProvider(name) {
   renderTimeframes();
   if (name === "binance" || name === "coinbase") {
     // The crypto books are zero-config, so their chart must NOT wait for
-    // the catalog: the exchange's own book is the slowest fetch on this page
-    // (a multi-megabyte cold download, raced small->large server-side,
-    // prewarmed at boot — but still async; the gateway book's curated list
-    // is small, but its first-candles call can be spawning the Go child, so
-    // charting FIRST there matters at least as much). Chart the flagship
-    // pair NOW and let the sidebar fill in behind it when the catalog
-    // lands. LSE keeps the catalog-first boot: its first row is the natural
-    // default and its catalog is small and key-gated. (Canonical symbols
-    // differ per book: USD-M perps are BTCUSDT, the spot books BTCUSD.)
+    // the catalog: both catalogs live in engine memory (D12 — a handful of
+    // curated rows, never a download), so the only network call on a
+    // switch is the candles frame itself. Chart the flagship pair NOW and
+    // let the sidebar fill in behind it. LSE keeps the catalog-first boot:
+    // its first row is the natural default and its catalog is small and
+    // key-gated. (Canonical symbols differ per book: USD-M perps are
+    // BTCUSDT, the spot books BTCUSD.)
     state.symbol = name === "coinbase" ? "BTCUSD" : "BTCUSDT";
     // Never paint the previous provider's rows under this source: clear
     // the list, show the (empty) watchlist, and let the real book land.
@@ -15011,7 +14887,6 @@ async function boot() {
   setupIndicatorPanel();
   setupPanesPanel();
   setupSourcePanel();
-  setupGatewayChip();
   setupEditor();
   setupBacktest();
   setupAiPanel(!!config.hosted);

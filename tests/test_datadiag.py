@@ -33,7 +33,7 @@ def test_health_tracks_kinds_independently():
     kinds = d.health()["providers"]["coinbase"]["by_kind"]
     assert "book" in kinds and "trade" not in kinds
     # only the provider's OWN activity ever lands under its name
-    assert "edgedepth" not in d.health()["providers"]
+    assert "binance" not in d.health()["providers"]
 
 
 def test_health_reports_recency_not_sockets():

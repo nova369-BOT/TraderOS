@@ -1,14 +1,13 @@
 """Binance USD-M futures, direct — the chart's single Binance surface
 (D12, owner-locked 2026-09-19).
 
-History: the exchange was first reachable two ways — the EdgeDepth
-gateway child (engine → Go child → Binance) and a direct native book
-whose whole-exchange catalog downloads were the measured cold-switch
-pain (deleted in D11). Neither is what the chart now dials. This module
-is the Coinbase-shaped native pipeline: a CURATED catalog held in
-memory (nothing to download, ever — the winning half of the EdgeDepth
-book's design), one socket hop to the venue (no child in the path),
-written against the same rules as providers/coinbase.py.
+Design law (D12/D13, owner-locked): the chart dials the venue
+DIRECTLY, one socket hop, keyless, in pure Python — no child process,
+no toolchain dependency, no whole-exchange catalog download. This
+module is the Coinbase-shaped native pipeline: a CURATED catalog held
+in memory (nothing is ever downloaded to answer the sidebar), the
+combined-stream socket doing all live work, candles over the public
+klines REST. Written against the same rules as providers/coinbase.py.
 
 Protocol facts (Binance USD-M public market data, keyless):
 
@@ -63,9 +62,8 @@ log = logging.getLogger("lse_terminal")
 WS_BASE = os.environ.get("BINANCE_WS", "wss://fstream.binance.com")
 REST_BASE = os.environ.get("BINANCE_REST", "https://fapi.binance.com")
 
-# The book's day-one list — identical to the EdgeDepth book's rows, so
-# the pipe changed, the menu's content did not. One row is the whole
-# change to add another symbol; nothing else is downloaded at any point.
+# The book's day-one list: one row per supported symbol is the whole
+# change to add another; nothing else is downloaded at any point.
 SYMBOLS = {
     "BTCUSDT": "Bitcoin / Tether (USD-M perp)",
     "ETHUSDT": "Ethereum / Tether (USD-M perp)",

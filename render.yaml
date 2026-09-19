@@ -2,8 +2,8 @@
 #   ?repo=https://github.com/nova369-BOT/TraderOS
 #   &branch=arena/01a0b513-traderos
 # Creates a NEW web service (traderos-w) alongside anything you already run.
-# The image builds the REAL edgedepth-gateway from the vendored pin and the
-# engine runs it as a managed child process — one service, no wiring.
+# The image is pure Python: market data is native direct (Binance/Coinbase),
+# one hop, no child process, no Go toolchain anywhere (D12/D13).
 services:
   - type: web
     name: traderos-w
@@ -24,7 +24,3 @@ services:
       # independent pipeline (USD spot direct).
       - key: LSE_EXTRA_PROVIDERS
         value: binance,coinbase
-      # Optional: point the engine at YOUR gateway instead of the managed
-      # child in the image (external mode — Start/Stop become read-only):
-      # - key: EDGEDEPTH_GATEWAY_URL
-      #   value: wss://<your-gateway>.onrender.com/ws

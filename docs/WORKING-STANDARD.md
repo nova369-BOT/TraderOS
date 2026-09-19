@@ -30,7 +30,7 @@ timestamp, data type.
 ## 4. Minimal, additive, reversible diffs
 Extend existing surfaces rather than spawning new ones. No chrome the
 backend cannot serve. Decisions are recorded in `docs/` (see
-`docs/edgedepth-integration/02-decisions.md`) with a stated reversal path.
+`docs/market-data-decisions.md`) with a stated reversal path.
 Every modified file gets a documented reason in the task record or commit
 message. Unrelated systems are out of scope — full test-suite green at
 every boundary, never just the touched corner.
