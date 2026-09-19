@@ -1373,7 +1373,7 @@ function StatsPanel({
 
         {/* Model Performance: no icons, plain text headers */}
         <div>
-          <span className="text-[10px] font-medium text-[#808080] uppercase tracking-widest">Performance</span>
+          <span className="text-2xs font-medium text-[#808080] uppercase tracking-widest">Performance</span>
           <div className="space-y-1.5 mt-2">
             <StatRow label="R² Score" value={rSquared.toFixed(4)} color="#e8e8e8" bar={rSquared} />
             <StatRow label="RMSE" value={rmse.toFixed(4)} color="#e8e8e8" />
@@ -1386,7 +1386,7 @@ function StatsPanel({
 
         {/* Training Diagnostics */}
         <div>
-          <span className="text-[10px] font-medium text-[#808080] uppercase tracking-widest">Training</span>
+          <span className="text-2xs font-medium text-[#808080] uppercase tracking-widest">Training</span>
           <div className="space-y-1.5 mt-2">
             <StatRow label="Best Val Loss" value={bestValLoss.toFixed(5)} color="#e8e8e8" />
             <StatRow label="Best Round" value={`${learningCurves[bestValIdx]?.round ?? 0}`} color="#e8e8e8" />
@@ -1400,7 +1400,7 @@ function StatsPanel({
 
         {/* Feature Analysis */}
         <div>
-          <span className="text-[10px] font-medium text-[#808080] uppercase tracking-widest">Features</span>
+          <span className="text-2xs font-medium text-[#808080] uppercase tracking-widest">Features</span>
           <div className="space-y-1.5 mt-2">
             <StatRow label="Top Feature" value={features[0]?.name ?? '-'} color="#e8e8e8" small />
             <StatRow label="Top 3 Share" value={`${(top3Importance * 100).toFixed(1)}%`} color="#e8e8e8" bar={top3Importance} />
@@ -1413,13 +1413,13 @@ function StatsPanel({
 
         {/* Model Complexity */}
         <div>
-          <span className="text-[10px] font-medium text-[#808080] uppercase tracking-widest">Complexity</span>
+          <span className="text-2xs font-medium text-[#808080] uppercase tracking-widest">Complexity</span>
           <div className="space-y-1.5 mt-2">
             <StatRow label="Est. Nodes" value={totalParams.toLocaleString()} color="#e8e8e8" />
             <StatRow label="Objective" value={objective.split(':')[1]} color="#e8e8e8" small />
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-[#808080]">Overfit Risk</span>
-              <span className="text-[10px] font-mono text-[#808080]">{riskLabel}</span>
+              <span className="text-2xs text-[#808080]">Overfit Risk</span>
+              <span className="text-2xs font-mono text-[#808080]">{riskLabel}</span>
             </div>
           </div>
         </div>
@@ -1428,7 +1428,7 @@ function StatsPanel({
 
         {/* Config */}
         <div>
-          <span className="text-[10px] font-medium text-[#808080] uppercase tracking-widest">Config</span>
+          <span className="text-2xs font-medium text-[#808080] uppercase tracking-widest">Config</span>
           <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[9px]">
             <span className="text-[#808080]">Trees</span>
             <span className="text-[#e8e8e8] text-right font-mono">{nEstimators}</span>
@@ -1476,8 +1476,8 @@ function StatRow({ label, value, color, bar, small }: {
   return (
     <div>
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[#808080]">{label}</span>
-        <span className={`${small ? 'text-[9px]' : 'text-[10px]'} font-mono`} style={{ color }}>{value}</span>
+        <span className="text-2xs text-[#808080]">{label}</span>
+        <span className={`${small ? 'text-[9px]' : 'text-2xs'} font-mono`} style={{ color }}>{value}</span>
       </div>
       {bar !== undefined && (
         <div className="mt-0.5 h-1 bg-[#3a3a3a] rounded-full overflow-hidden">
@@ -1590,7 +1590,7 @@ export default function XGBoostVisualization() {
 
             {/* Objective */}
             <div className="space-y-1">
-              <Label className="text-[10px] text-[#808080]">Objective Function</Label>
+              <Label className="text-2xs text-[#808080]">Objective Function</Label>
               <Select value={objective} onValueChange={(v) => setObjective(v as Objective)}>
                 <SelectTrigger className="h-7 text-xs bg-[#262626] border-[#3a3a3a]"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -1637,7 +1637,7 @@ export default function XGBoostVisualization() {
               <CollapsibleContent className="pt-2 space-y-2.5">
                 {viewMode === 'importance' && (
                   <div className="space-y-1">
-                    <Label className="text-[10px] text-[#808080]">Importance Metric</Label>
+                    <Label className="text-2xs text-[#808080]">Importance Metric</Label>
                     <Select value={importanceType} onValueChange={(v) => setImportanceType(v as typeof importanceType)}>
                       <SelectTrigger className="h-7 text-xs bg-[#262626] border-[#3a3a3a]"><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -1650,7 +1650,7 @@ export default function XGBoostVisualization() {
                 )}
                 {viewMode === 'learning' && (
                   <div className="flex items-center justify-between">
-                    <Label className="text-[10px] text-[#808080]">Early Stopping Line</Label>
+                    <Label className="text-2xs text-[#808080]">Early Stopping Line</Label>
                     <Switch checked={showEarlyStopping} onCheckedChange={setShowEarlyStopping} />
                   </div>
                 )}
@@ -1712,7 +1712,7 @@ export default function XGBoostVisualization() {
           </div>
 
           {/* Bottom status bar */}
-          <div className="flex items-center justify-between px-4 py-1.5 bg-card border-t border-border text-[10px] text-[#b0b0b0] font-mono">
+          <div className="flex items-center justify-between px-4 py-1.5 bg-card border-t border-border text-2xs text-[#b0b0b0] font-mono">
             <div className="flex items-center gap-3">
               <span>XGBoost Gradient Boosted Trees</span>
               <span>|</span>
@@ -1764,8 +1764,8 @@ function ParamSlider({ label, value, onChange, min, max, step, format, rawValue 
   return (
     <div className="space-y-0.5">
       <div className="flex justify-between">
-        <Label className="text-[10px] text-[#808080]">{label}</Label>
-        <span className="text-[10px] text-[#e8e8e8] font-mono">{format(value)}</span>
+        <Label className="text-2xs text-[#808080]">{label}</Label>
+        <span className="text-2xs text-[#e8e8e8] font-mono">{format(value)}</span>
       </div>
       <Slider value={[rawValue ?? value]} onValueChange={([v]) => onChange(v)}
         min={min} max={max} step={step} className="w-full" />

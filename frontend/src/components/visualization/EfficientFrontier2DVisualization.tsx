@@ -403,7 +403,7 @@ export default function EfficientFrontier2DVisualization() {
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                         <Card className="mt-2 p-3 bg-card border-border space-y-3">
-                            <div className="text-[10px] text-[var(--dim)] font-mono uppercase tracking-wide flex items-center gap-1">
+                            <div className="text-2xs text-[var(--dim)] font-mono uppercase tracking-wide flex items-center gap-1">
                                 <div className="w-2 h-2 rounded-full bg-[var(--up)]" />OPTIMAL PORTFOLIO
                             </div>
                             <div className="flex justify-between font-mono"><span className="text-xs text-[var(--dim)]">RETURN</span><span className="text-sm text-[var(--up)]">{optimalPortfolio.ret.toFixed(2)}%</span></div>

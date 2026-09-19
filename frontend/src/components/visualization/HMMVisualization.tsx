@@ -1895,8 +1895,8 @@ export default function HMMVisualization() {
 
                       <div className="space-y-1">
                         <div className="flex justify-between">
-                          <Label className="text-[10px] text-[#808080]">Mean Return</Label>
-                          <span className="text-[10px] font-mono text-[#b0b0b0]">{regimes[s].meanReturn.toFixed(2)}%</span>
+                          <Label className="text-2xs text-[#808080]">Mean Return</Label>
+                          <span className="text-2xs font-mono text-[#b0b0b0]">{regimes[s].meanReturn.toFixed(2)}%</span>
                         </div>
                         <Slider value={[regimes[s].meanReturn]}
                           onValueChange={([v]) => updateRegime(s, 'meanReturn', v)}
@@ -1905,8 +1905,8 @@ export default function HMMVisualization() {
 
                       <div className="space-y-1">
                         <div className="flex justify-between">
-                          <Label className="text-[10px] text-[#808080]">Volatility</Label>
-                          <span className="text-[10px] font-mono text-[#b0b0b0]">{regimes[s].volatility.toFixed(1)}%</span>
+                          <Label className="text-2xs text-[#808080]">Volatility</Label>
+                          <span className="text-2xs font-mono text-[#b0b0b0]">{regimes[s].volatility.toFixed(1)}%</span>
                         </div>
                         <Slider value={[regimes[s].volatility]}
                           onValueChange={([v]) => updateRegime(s, 'volatility', v)}
@@ -1957,7 +1957,7 @@ export default function HMMVisualization() {
                         opacity: 0.6,
                       }} />
                     </div>
-                    <span className="text-[10px] font-mono" style={{ color: COLORS.regimes[s].color }}>
+                    <span className="text-2xs font-mono" style={{ color: COLORS.regimes[s].color }}>
                       {(prob * 100).toFixed(0)}%
                     </span>
                   </div>
@@ -2056,7 +2056,7 @@ export default function HMMVisualization() {
             onValueChange={([v]) => { if (isPlaying) setIsPlaying(false); setCurrentStep(v); }}
             min={0} max={Math.max(0, seqLen - 1)} step={1}
           />
-          <div className="flex items-center justify-between text-[10px] font-mono text-[#808080]">
+          <div className="flex items-center justify-between text-2xs font-mono text-[#808080]">
             <span>drag slider to scrub · drag canvas to pan · scroll to zoom · dbl-click canvas to reset view</span>
             <span>click a state to edit it</span>
           </div>

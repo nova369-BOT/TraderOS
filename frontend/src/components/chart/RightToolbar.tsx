@@ -462,7 +462,7 @@ function EconomicCalendarPanel() {
                     <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></svg>
                     <span className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Economic Calendar</span>
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground/50">
+                <span className="text-2xs font-mono text-muted-foreground/50">
                     {filtered.length} / {events?.length || 0}
                 </span>
             </div>
@@ -472,7 +472,7 @@ function EconomicCalendarPanel() {
                 <select
                     value={selectedCountry}
                     onChange={(e) => setSelectedCountry(e.target.value)}
-                    className="flex-1 bg-transparent border border-border/50 rounded px-2 py-1 text-[11px] font-mono text-muted-foreground focus:outline-none focus:border-foreground/30 focus:text-foreground transition-colors cursor-pointer appearance-none"
+                    className="flex-1 bg-transparent border border-border/50 rounded px-2 py-1 text-xs font-mono text-muted-foreground focus:outline-none focus:border-foreground/30 focus:text-foreground transition-colors cursor-pointer appearance-none"
                     style={{ WebkitAppearance: 'none', background: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%22%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2210%22%20height%3D%2210%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M5.516%207.548c0.436-0.446%201.043-0.481%201.576%200l3.908%203.747%203.908-3.747c0.533-0.481%201.141-0.446%201.574%200%200.436%200.445%200.408%201.197%200%201.615-0.406%200.418-4.695%204.502-4.695%204.502-0.217%200.223-0.502%200.335-0.787%200.335s-0.57-0.112-0.789-0.335c0%200-4.287-4.084-4.695-4.502s-0.436-1.17%200-1.615z%22%2F%3E%3C%2Fsvg%3E") no-repeat right 4px top 50%' }}
                 >
                     <option value="All Countries">All Countries</option>
@@ -484,7 +484,7 @@ function EconomicCalendarPanel() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setShowHighOnly(!showHighOnly)}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-mono border transition-all ${
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-2xs font-mono border transition-all ${
                             showHighOnly
                                 ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                                 : 'border-border/50 text-muted-foreground hover:border-foreground/20 hover:text-foreground'
@@ -513,7 +513,7 @@ function EconomicCalendarPanel() {
                                 {/* Date header */}
                                 <div className="sticky top-0 bg-card/95 backdrop-blur-sm z-10 px-1.5 py-1">
                                     <div className="flex items-center gap-2">
-                                        <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground/70">
+                                        <span className="text-2xs font-mono uppercase tracking-widest text-muted-foreground/70">
                                             {formatDate(date)}
                                         </span>
                                         <span className="text-[9px] font-mono text-muted-foreground/40">
@@ -532,7 +532,7 @@ function EconomicCalendarPanel() {
                                                     <div className={`h-2 w-2 rounded-full ${getImpactDotStyle(evt)}`} />
                                                 </div>
                                                 {/* Time */}
-                                                <span className="text-[10px] font-mono text-muted-foreground w-[50px] shrink-0 pt-0.5">
+                                                <span className="text-2xs font-mono text-muted-foreground w-[50px] shrink-0 pt-0.5">
                                                     {evt.time || 'All Day'}
                                                 </span>
                                                 {/* Content */}
@@ -541,7 +541,7 @@ function EconomicCalendarPanel() {
                                                         <span className="shrink-0 mt-[3px]" title={evt.region_code}>
                                                             <FlagImage countryCode={evt.region_code || ''} className="h-2.5" />
                                                         </span>
-                                                        <span className={`text-[11px] leading-tight ${hasForecast ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
+                                                        <span className={`text-xs leading-tight ${hasForecast ? 'font-semibold text-foreground' : 'font-medium text-foreground/80'}`}>
                                                             {evt.event}
                                                         </span>
                                                     </div>
@@ -553,17 +553,17 @@ function EconomicCalendarPanel() {
                                                             </span>
                                                         )}
                                                         {evt.actual && (
-                                                            <span className={`text-[10px] font-mono ${getActualStyle(evt.actual, evt.consensus || evt.forecast)}`}>
+                                                            <span className={`text-2xs font-mono ${getActualStyle(evt.actual, evt.consensus || evt.forecast)}`}>
                                                                 A: {evt.actual}
                                                             </span>
                                                         )}
                                                         {(evt.consensus || evt.forecast) && (
-                                                            <span className="text-[10px] font-mono text-sky-400/90 font-medium">
+                                                            <span className="text-2xs font-mono text-sky-400/90 font-medium">
                                                                 E: {evt.consensus || evt.forecast}
                                                             </span>
                                                         )}
                                                         {evt.previous && (
-                                                            <span className="text-[10px] font-mono text-muted-foreground/60">
+                                                            <span className="text-2xs font-mono text-muted-foreground/60">
                                                                 P: {evt.previous}
                                                             </span>
                                                         )}
@@ -581,7 +581,7 @@ function EconomicCalendarPanel() {
                 <div className="flex flex-col items-center py-8 text-muted-foreground">
                     <svg className="h-8 w-8 mb-2 opacity-20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></svg>
                     <span className="text-xs font-mono">No events match filters</span>
-                    <button onClick={() => { setSelectedCountry("All Countries"); setShowHighOnly(false); }} className="mt-1 text-[10px] font-mono text-sky-400 hover:underline">
+                    <button onClick={() => { setSelectedCountry("All Countries"); setShowHighOnly(false); }} className="mt-1 text-2xs font-mono text-sky-400 hover:underline">
                         Reset filters
                     </button>
                 </div>
@@ -589,7 +589,7 @@ function EconomicCalendarPanel() {
 
             {/* Footer */}
             <div className="px-3 py-2 border-t border-border/50 bg-muted/20">
-                <Link to="/calendar" className="text-[10px] text-muted-foreground hover:text-foreground flex items-center justify-between font-mono uppercase tracking-wider transition-colors">
+                <Link to="/calendar" className="text-2xs text-muted-foreground hover:text-foreground flex items-center justify-between font-mono uppercase tracking-wider transition-colors">
                     <span>→ Full Calendar</span>
                 </Link>
             </div>
@@ -685,7 +685,7 @@ function OptionsPDFPanel({ symbol }: { symbol?: string }) {
 
                     {/* Probability bar */}
                     <div className="mt-3 pt-2 border-t border-border/50">
-                        <div className="flex justify-between text-[10px] mb-1.5">
+                        <div className="flex justify-between text-2xs mb-1.5">
                             <span className="text-rose-400">↓ {((1 - (pdfData.prob_above || 0.5)) * 100).toFixed(0)}% Below</span>
                             <span className="text-emerald-400">{((pdfData.prob_above || 0.5) * 100).toFixed(0)}% Above ↑</span>
                         </div>
@@ -700,7 +700,7 @@ function OptionsPDFPanel({ symbol }: { symbol?: string }) {
                         </div>
                     </div>
 
-                    <div className="text-[10px] text-muted-foreground font-mono mt-2">
+                    <div className="text-2xs text-muted-foreground font-mono mt-2">
                         Updated: {new Date(pdfData.fetch_timestamp).toLocaleTimeString()}
                     </div>
                 </div>
@@ -1124,7 +1124,7 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                         <TooltipContent side="left" className="text-xs">Crosshair Style</TooltipContent>
                     </Tooltip>
                     <PopoverContent side="left" align="end" className="p-2 w-44">
-                        <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-2 px-1">Crosshair</div>
+                        <div className="text-2xs font-mono uppercase tracking-wider text-muted-foreground mb-2 px-1">Crosshair</div>
                         <div className="space-y-0.5">
                             {CROSSHAIR_STYLES.map(s => (
                                 <button
@@ -1139,7 +1139,7 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                                     <span className="shrink-0">{s.icon}</span>
                                     <span className="flex flex-col min-w-0">
                                         <span className="text-xs font-medium">{s.label}</span>
-                                        <span className="text-[10px] text-muted-foreground">{s.desc}</span>
+                                        <span className="text-2xs text-muted-foreground">{s.desc}</span>
                                     </span>
                                 </button>
                             ))}

@@ -954,7 +954,7 @@ export default function IndicatorSettings({
                     step={50}
                     className="mt-1"
                   />
-                  <p className="text-[10px] text-muted-foreground mt-0.5">0 = all visible bars</p>
+                  <p className="text-2xs text-muted-foreground mt-0.5">0 = all visible bars</p>
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1">

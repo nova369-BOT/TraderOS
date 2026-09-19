@@ -21,13 +21,19 @@ export default {
       // config entry rescales every text-* site uniformly; arbitrary
       // values like text-[10px] are already in band and stay literal.
       fontSize: {
-        xs: ['var(--t-sm, 11px)', { lineHeight: '1.3' }],
-        sm: ['var(--t-md, 12px)', { lineHeight: '1.35' }],
-        base: ['var(--t-xl, 13px)', { lineHeight: '1.3' }],
-        lg: ['var(--t-2xl, 14px)', { lineHeight: '1.25' }],
-        xl: ['var(--t-3xl, 16px)', { lineHeight: '1.25' }],
-        '2xl': ['var(--t-4xl, 18px)', { lineHeight: '1.2' }],
-        '3xl': ['var(--t-4xl, 18px)', { lineHeight: '1.2' }],
+        // '2xs' folds the old arbitrary text-[10px] micro sites into the
+        // density system so they flip with COMFY like everything else.
+        // Named sizes keep their v1 relationships (xs=body, sm=strong
+        // body, base=title step...); the --t-* tokens themselves carry
+        // the v2 step-down, so every site moves exactly one notch.
+        '2xs': ['var(--t-2xs, 9px)', { lineHeight: '1.2' }],
+        xs: ['var(--t-sm, 10.5px)', { lineHeight: '1.3' }],
+        sm: ['var(--t-md, 11px)', { lineHeight: '1.35' }],
+        base: ['var(--t-xl, 12px)', { lineHeight: '1.3' }],
+        lg: ['var(--t-2xl, 12.5px)', { lineHeight: '1.25' }],
+        xl: ['var(--t-3xl, 14px)', { lineHeight: '1.25' }],
+        '2xl': ['var(--t-4xl, 16px)', { lineHeight: '1.2' }],
+        '3xl': ['var(--t-4xl, 16px)', { lineHeight: '1.2' }],
       },
       colors: {
         // Base Colors

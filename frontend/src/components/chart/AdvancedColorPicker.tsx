@@ -76,7 +76,7 @@ export function AdvancedColorPicker({
       {showOpacity && onOpacityChange && (
         <div className="mt-3 pt-2 border-t border-border">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-muted-foreground">Opacity</span>
+            <span className="text-xs text-muted-foreground">Opacity</span>
             <div className="flex-1 relative h-5 flex items-center">
               {/* Custom gradient track */}
               <div
@@ -109,7 +109,7 @@ export function AdvancedColorPicker({
                 className="w-full"
               />
             </div>
-            <span className="text-[11px] text-muted-foreground w-9 text-right font-mono">{opacity}%</span>
+            <span className="text-xs text-muted-foreground w-9 text-right font-mono">{opacity}%</span>
           </div>
         </div>
       )}

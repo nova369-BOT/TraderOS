@@ -80,7 +80,7 @@ export default function CalendarPanel({
             : 'bg-muted/10 border-border/20 hover:bg-muted/20 hover:border-border/40'
             }`}
         >
-          <span className={`text-[11px] font-medium transition-colors duration-200 ${showEventsOnChart ? 'text-foreground' : 'text-muted-foreground'}`}>
+          <span className={`text-xs font-medium transition-colors duration-200 ${showEventsOnChart ? 'text-foreground' : 'text-muted-foreground'}`}>
             Show on Chart
           </span>
           <div className={`w-7 h-4 rounded-full relative transition-all duration-200 flex-shrink-0 ${showEventsOnChart ? 'bg-foreground/80' : 'bg-muted-foreground/20'}`}>
@@ -97,7 +97,7 @@ export default function CalendarPanel({
             <button
               key={key}
               onClick={() => onImpactFilterChange({ ...impactFilters, [key]: !impactFilters[key] })}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-semibold transition-all duration-150 cursor-pointer select-none"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-2xs font-semibold transition-all duration-150 cursor-pointer select-none"
               style={impactFilters[key] ? {
                 background: activeBg,
                 border: `1px solid ${activeBorder}`,
@@ -132,7 +132,7 @@ export default function CalendarPanel({
             <div className="text-center py-12 text-muted-foreground/40">
               <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-15" />
               <p className="text-xs font-medium">No upcoming events</p>
-              <p className="text-[10px] mt-1 text-muted-foreground/25">for this pair</p>
+              <p className="text-2xs mt-1 text-muted-foreground/25">for this pair</p>
             </div>
           ) : (() => {
             // Filter events by selected impact levels, then group by date
@@ -152,7 +152,7 @@ export default function CalendarPanel({
                 <div className="text-center py-12 text-muted-foreground/40">
                   <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-15" />
                   <p className="text-xs font-medium">No events match filters</p>
-                  <p className="text-[10px] mt-1 text-muted-foreground/25">Try adjusting impact levels</p>
+                  <p className="text-2xs mt-1 text-muted-foreground/25">Try adjusting impact levels</p>
                 </div>
               );
             }
@@ -181,13 +181,13 @@ export default function CalendarPanel({
                               <div className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full" style={{ backgroundColor: impactColor, opacity: impact === 'high' ? 0.7 : impact === 'medium' ? 0.5 : 0.3 }} />
                               <div className="pl-3 pr-2.5 py-2">
                                 <div className="flex items-start justify-between gap-1.5">
-                                  <Link to="/calendar" className="text-[11px] font-medium leading-[1.35] line-clamp-2 text-foreground/90 hover:text-foreground transition-colors flex-1 min-w-0">{event.event}</Link>
+                                  <Link to="/calendar" className="text-xs font-medium leading-[1.35] line-clamp-2 text-foreground/90 hover:text-foreground transition-colors flex-1 min-w-0">{event.event}</Link>
                                   <div className="flex items-center gap-1 flex-shrink-0 mt-0.5">
                                     <span className="w-[6px] h-[6px] rounded-full flex-shrink-0" style={{ backgroundColor: impactColor }} />
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  {flag && <span className="text-[10px] leading-none">{flag}</span>}
+                                  {flag && <span className="text-2xs leading-none">{flag}</span>}
                                   <span className="text-[9px] font-mono text-muted-foreground/60 uppercase font-medium">{(event.region_code || "").toUpperCase()}</span>
                                   <span className="text-muted-foreground/20">&middot;</span>
                                   <span className="text-[9px] text-muted-foreground/50 flex items-center gap-0.5">
@@ -197,9 +197,9 @@ export default function CalendarPanel({
                                 </div>
                                 {(event.actual || event.previous) && (
                                   <div className="flex items-center gap-3 mt-2 pt-1.5" style={{ borderTop: '1px solid var(--border)', borderTopColor: 'rgba(128,128,128,0.08)' }}>
-                                    {event.actual && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">ACT</span><span className="text-[11px] font-mono font-semibold text-foreground leading-none">{event.actual}</span></div>)}
-                                    {event.previous && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">PREV</span><span className="text-[11px] font-mono text-muted-foreground/60 leading-none">{event.previous}</span></div>)}
-                                    {event.forecast && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">FCST</span><span className="text-[11px] font-mono text-muted-foreground/50 leading-none">{event.forecast}</span></div>)}
+                                    {event.actual && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">ACT</span><span className="text-xs font-mono font-semibold text-foreground leading-none">{event.actual}</span></div>)}
+                                    {event.previous && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">PREV</span><span className="text-xs font-mono text-muted-foreground/60 leading-none">{event.previous}</span></div>)}
+                                    {event.forecast && (<div className="flex flex-col"><span className="text-[7px] font-semibold uppercase tracking-[0.05em] text-muted-foreground/40 mb-0.5">FCST</span><span className="text-xs font-mono text-muted-foreground/50 leading-none">{event.forecast}</span></div>)}
                                   </div>
                                 )}
                               </div>

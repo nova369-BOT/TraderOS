@@ -92,16 +92,19 @@ html:not(.dark) {
    reversal path, so this pass stays reversible by design.
    The chart canvas keeps its own 8–12px sizes: already in band. */
 html {
-  --t-2xs: 9.5px;  /* micro caps labels            (was 10)   */
-  --t-xs: 10.5px;  /* dim labels, section text     (was 11)   */
-  --t-sm: 11px;    /* body                         (was 12)   */
-  --t-md: 12px;    /* inputs, strong body, prices  (was 13)   */
-  --t-lg: 12.5px;  /* panel headers, toolbar       (was 14)   */
-  --t-xl: 13px;    /* page titles, big glyphs      (was 15-17)*/
-  --t-2xl: 14px;   /* display step (React text-lg) (was 18)   */
-  --t-3xl: 16px;   /* display step (React text-xl) (was 20)   */
-  --t-4xl: 18px;   /* display step (React text-2xl)(was 24)   */
-  --row-y: 2px;    /* dense-list row padding-y     (was 3-4)  */
+  /* v2 (owner: "shrink more", 2026-09-19): one full step below v1, into
+     the band CQG/TT-class terminals live in (10-10.5px body). Micro floor
+     lowered 9.5 -> 9 for caps labels only; body never below 10.5. */
+  --t-2xs: 9px;    /* micro caps labels            (v1 9.5)   */
+  --t-xs: 10px;    /* dim labels, section text     (v1 10.5)  */
+  --t-sm: 10.5px;  /* body                         (v1 11)    */
+  --t-md: 11px;    /* inputs, strong body, prices  (v1 12)    */
+  --t-lg: 11.5px;  /* panel headers, toolbar       (v1 12.5)  */
+  --t-xl: 12px;    /* page titles, big glyphs      (v1 13)    */
+  --t-2xl: 12.5px; /* display step (React text-lg) (v1 14)    */
+  --t-3xl: 14px;   /* display step (React text-xl) (v1 16)    */
+  --t-4xl: 16px;   /* display step (React text-2xl)(v1 18)    */
+  --row-y: 1px;    /* dense-list row padding-y     (v1 2)     */
 }
 html[data-density="comfortable"] {
   --t-2xs: 10px; --t-xs: 11px; --t-sm: 12px;
@@ -1813,7 +1816,7 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
   display: flex; align-items: center;
   background: none; border: none; border-bottom: 2px solid transparent;
   border-radius: 0; color: var(--dim); font-size: var(--t-sm); font-weight: 600;
-  letter-spacing: .09em; padding: 4px 12px 5px 12px;
+  letter-spacing: .09em; padding: 3px 10px 4px 10px;
 }
 .rail-btn:hover { color: var(--text); background: var(--hover); }
 .rail-btn.active { color: var(--text); border-bottom-color: var(--accent-bar); background: var(--active); }
@@ -1826,8 +1829,8 @@ html:not(.dark) .air-menu-item.on.sel { background: #c6cad1; }
    a light line ABOVE the label. Neutral chrome only (no saturated
    accents). */
 #subrail {
-  display: flex; justify-content: center; gap: 26px;
-  padding: 0 12px; border-bottom: 1px solid var(--edge);
+  display: flex; justify-content: center; gap: 18px;
+  padding: 0 10px; border-bottom: 1px solid var(--edge);
 }
 .subrail-btn {
   background: none; border: none; border-top: 2px solid transparent;

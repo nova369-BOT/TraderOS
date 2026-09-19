@@ -9635,7 +9635,7 @@ const ProChart: React.FC<ProChartProps> = ({
         >
           <button
             onClick={handleResetYAxis}
-            className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/20 hover:bg-primary/30 text-primary text-[10px] rounded border border-primary/30 transition-all"
+            className="flex items-center gap-1 px-1.5 py-0.5 bg-primary/20 hover:bg-primary/30 text-primary text-2xs rounded border border-primary/30 transition-all"
             title="Reset price scale to auto"
           >
             <svg viewBox="0 0 14 14" className="w-2.5 h-2.5" fill="currentColor">

@@ -564,7 +564,7 @@ function NewsPanel({ newsArticles, newsLoading }: NewsPanelProps) {
                 <div className="h-12 w-12 rounded-lg flex-shrink-0 bg-muted flex items-center justify-center"><NewspaperIcon className="h-4 w-4 text-muted-foreground" /></div>
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="text-[11px] font-medium line-clamp-2 leading-tight group-hover:text-foreground transition-colors">{article.title}</h3>
+                <h3 className="text-xs font-medium line-clamp-2 leading-tight group-hover:text-foreground transition-colors">{article.title}</h3>
                 <div className="flex items-center gap-1.5 mt-1">
                   {article.source_logo && <img src={article.source_logo} alt={article.source_name} className="h-3 w-3 rounded-full" loading="lazy" />}
                   <span className="text-[9px] text-muted-foreground truncate">{article.source_name}</span>

@@ -854,7 +854,7 @@ export default function IndicatorSelector({
                                 <span className="hidden sm:inline">Indicators, metrics, and strategies</span>
                             </h2>
                             {activeCount > 0 && (
-                                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-medium bg-blue-50 text-blue-600 rounded-full shrink-0">
+                                <span className="px-2 py-0.5 text-2xs sm:text-xs font-medium bg-blue-50 text-blue-600 rounded-full shrink-0">
                                     {activeCount} active
                                 </span>
                             )}
@@ -903,7 +903,7 @@ export default function IndicatorSelector({
                             <div className="py-2 sm:py-3">
                             {/* Section label for categories */}
                             <div className="px-2.5 sm:px-4 pb-1.5 pt-1">
-                                <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Built-in</span>
+                                <span className="text-2xs font-semibold text-gray-400 uppercase tracking-wider">Built-in</span>
                             </div>
                             {visibleCategories.map((cat) => {
                                 const isAll = cat === 'all';
@@ -924,10 +924,10 @@ export default function IndicatorSelector({
                                         {!isAll && catConfig && (
                                             <span className={cn("w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full shrink-0", catConfig.bgColor)} />
                                         )}
-                                        <span className="flex-1 text-left truncate text-[11px] sm:text-sm">
+                                        <span className="flex-1 text-left truncate text-xs sm:text-sm">
                                             {isAll ? 'All' : catConfig?.label}
                                         </span>
-                                        <span className="text-[10px] sm:text-[11px] text-gray-400">{count}</span>
+                                        <span className="text-2xs sm:text-xs text-gray-400">{count}</span>
                                     </button>
                                 );
                             })}
@@ -944,7 +944,7 @@ export default function IndicatorSelector({
                             {/* Column header like TradingView. Hidden on mobile to save vertical
                                space; the section is self-evident on small screens. */}
                             <div className="hidden sm:block px-5 py-2 border-b border-gray-100 sticky top-0 bg-white z-10">
-                                <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Script Name</span>
+                                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Script Name</span>
                             </div>
                             <div className="px-1.5 sm:px-3 pb-4 sm:pb-6">
                                 {filteredIndicators.length === 0 ? (
@@ -988,7 +988,7 @@ export default function IndicatorSelector({
                                                     {/* Name and description */}
                                                     <div className="flex-1 min-w-0">
                                                         <span className={cn(
-                                                            "text-[13px] sm:text-sm truncate block",
+                                                            "text-base sm:text-sm truncate block",
                                                             enabled ? "text-gray-900 font-medium" : "text-gray-700"
                                                         )}>
                                                             {indicator.name}

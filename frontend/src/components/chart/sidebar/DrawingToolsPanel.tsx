@@ -86,7 +86,7 @@ function ToolMenuItem({
 }) {
   {/* Compact menu item matching TradingView's tight, clean style:
       h-8 + px-3 for dense rows, gap-2.5 for icon-to-label spacing,
-      text-[13px] for the slightly smaller label font */}
+      text-base for the slightly smaller label font */}
   return (
     <Button
       variant="ghost"
@@ -96,7 +96,7 @@ function ToolMenuItem({
       onClick={onSelect}
     >
       {icon}
-      <span className="text-[13px] font-normal flex-1 text-left">{label}</span>
+      <span className="text-base font-normal flex-1 text-left">{label}</span>
       <button
         className={`ml-auto p-0.5 rounded transition-all ${drawingFavorites.includes(toolId) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); }}
@@ -270,7 +270,7 @@ export default function DrawingToolsPanel({
           ['trend', 'trendRay', 'parallelChannel', 'straightArrow'],
           trendIcons[selectedTrendTool],
           <div className="flex flex-col gap-px py-1">
-            <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Trend Lines</div>
+            <div className="px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">Trend Lines</div>
             {[
               { id: 'trend', label: 'Trend Line' },
               { id: 'trendRay', label: 'Trend Line Ray' },
@@ -287,7 +287,7 @@ export default function DrawingToolsPanel({
           ['horizontal', 'horizontalRay', 'vertical', 'line'],
           lineIcons[selectedLineTool],
           <div className="flex flex-col gap-px py-1">
-            <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Lines</div>
+            <div className="px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">Lines</div>
             {[
               { id: 'horizontal', label: 'Horizontal Line' },
               { id: 'horizontalRay', label: 'Horizontal Ray' },
@@ -304,7 +304,7 @@ export default function DrawingToolsPanel({
           ['fibonacci', 'fibExtension'],
           <svg className="h-5 w-5 lg:h-[38px] lg:w-[38px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="4" x2="21" y2="4" /><line x1="3" y1="9" x2="17" y2="9" opacity="0.7" /><line x1="3" y1="14" x2="13" y2="14" opacity="0.5" /><line x1="3" y1="19" x2="21" y2="19" /><line x1="18" y1="4" x2="6" y2="19" strokeWidth="1.5" strokeDasharray="3 2" /></svg>,
           <div className="flex flex-col gap-px py-1">
-            <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Fibonacci</div>
+            <div className="px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">Fibonacci</div>
             {[
               { id: 'fibonacci', label: 'Fib Retracement', icon: <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="4" x2="21" y2="4" /><line x1="3" y1="9" x2="17" y2="9" opacity="0.7" /><line x1="3" y1="14" x2="13" y2="14" opacity="0.5" /><line x1="3" y1="19" x2="21" y2="19" /><line x1="18" y1="4" x2="6" y2="19" strokeWidth="1.5" strokeDasharray="3 2" /></svg> },
               { id: 'fibExtension', label: 'Fib Extension', icon: <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="20" x2="21" y2="20" /><line x1="3" y1="14" x2="17" y2="14" opacity="0.7" /><line x1="3" y1="8" x2="13" y2="8" opacity="0.5" /><line x1="3" y1="3" x2="21" y2="3" /><line x1="6" y1="20" x2="18" y2="3" strokeWidth="1.5" strokeDasharray="3 2" /><polyline points="15,3 18,3 18,6" strokeWidth="1.5" /></svg> },
@@ -319,12 +319,12 @@ export default function DrawingToolsPanel({
           Object.keys(shapeIcons),
           shapeIcons[selectedShapeTool],
           <div className="flex flex-col gap-px py-1">
-            <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Shapes</div>
+            <div className="px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">Shapes</div>
             {['rectangle', 'square', 'circle', 'triangle', 'oval', 'freeTriangle', 'parallelogram', 'octagon'].map(id => (
               <ToolMenuItem key={id} toolId={id} label={id.charAt(0).toUpperCase() + id.slice(1).replace(/([A-Z])/g, ' $1')} icon={shapeIcons[id]} isActive={activeTool === id} drawingFavorites={drawingFavorites} onSelect={makeSelectHandler(setSelectedShapeTool, setShapeToolMenuOpen, id)} onToggleFavorite={handleToggleFavorite} />
             ))}
             {/* Visual separator between primary and secondary shape groups */}
-            <div className="px-3 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">More Shapes</div>
+            <div className="px-3 pt-2.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">More Shapes</div>
             {['diamond', 'pentagon', 'hexagon', 'star', 'cross', 'arrowBlock', 'wedge', 'heart'].map(id => (
               <ToolMenuItem key={id} toolId={id} label={id === 'arrowBlock' ? 'Arrow Block' : id.charAt(0).toUpperCase() + id.slice(1)} icon={shapeIcons[id]} isActive={activeTool === id} drawingFavorites={drawingFavorites} onSelect={makeSelectHandler(setSelectedShapeTool, setShapeToolMenuOpen, id)} onToggleFavorite={handleToggleFavorite} />
             ))}
@@ -336,7 +336,7 @@ export default function DrawingToolsPanel({
           ['brush', 'highlighter', 'arrow'],
           brushIcons[selectedBrushTool],
           <div className="flex flex-col gap-px py-1">
-            <div className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">Brushes</div>
+            <div className="px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50">Brushes</div>
             {[
               { id: 'brush', label: 'Brush' },
               { id: 'highlighter', label: 'Highlighter' },

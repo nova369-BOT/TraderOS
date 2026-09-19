@@ -57,7 +57,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider pt-1 pb-0.5">{children}</div>;
+  return <div className="text-2xs font-semibold text-muted-foreground uppercase tracking-wider pt-1 pb-0.5">{children}</div>;
 }
 
 function ColorPair({ bullColor, bearColor, onBull, onBear }: { bullColor: string; bearColor: string; onBull: (c: string) => void; onBear: (c: string) => void }) {

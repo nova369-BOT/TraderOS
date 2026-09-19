@@ -396,7 +396,7 @@ export const UnifiedLayoutButton = ({
             {/* the next button (Indicators) on iPad. Only desktop (>= lg) has */}
             {/* room for the text + chevron. */}
             <FolderOpen className="h-5 w-5 lg:hidden" />
-            <span className="text-[13px] font-medium whitespace-nowrap hidden lg:inline">Chart Layout</span>
+            <span className="text-base font-medium whitespace-nowrap hidden lg:inline">Chart Layout</span>
             <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60 hidden lg:inline" />
           </button>
         </PopoverTrigger>
@@ -462,7 +462,7 @@ export const UnifiedLayoutButton = ({
                             <div className="flex-1 min-w-0">
                               <div className={`text-sm truncate ${isActive ? 'font-semibold text-foreground' : 'font-medium'}`}>{layout.name}</div>
                               {layout.timeframe && (
-                                <div className="text-[11px] text-muted-foreground">{layout.timeframe}</div>
+                                <div className="text-xs text-muted-foreground">{layout.timeframe}</div>
                               )}
                             </div>
                           </div>
@@ -579,7 +579,7 @@ export function GridLayoutButton({
         >
           {/* Grid options */}
           <div className="p-3 pb-2">
-            <h3 className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Grid</h3>
+            <h3 className="text-2xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Grid</h3>
             <div className="space-y-1">
               {layoutGroups.map((group) => (
                 <div key={group.count} className="flex items-center gap-1">
@@ -606,7 +606,7 @@ export function GridLayoutButton({
           <Separator />
           {/* Sync settings */}
           <div className="px-3 py-2">
-            <h3 className="text-[10px] font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Sync In Layout</h3>
+            <h3 className="text-2xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Sync In Layout</h3>
             <div className="space-y-0">
               {([
                 { id: 'gs-symbol', label: 'Symbol', key: 'syncSymbol' as const, tip: 'Changing symbol updates all panels' },

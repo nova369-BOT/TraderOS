@@ -360,7 +360,7 @@ function EduPanel({ title, posterior, data, priorMean, isDark, caption }: {
         <text x={padL + plotW / 2} y={H - 6} textAnchor="middle" fontSize={11} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill={axisColor}>maturity (years)</text>
         <text x={14} y={padT + plotH / 2} textAnchor="middle" fontSize={11} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill={axisColor} transform={`rotate(-90, 14, ${padT + plotH / 2})`}>yield</text>
       </svg>
-      <div className="mt-2 px-1 text-[11px] text-[color:var(--dim)] font-mono leading-snug">{caption}</div>
+      <div className="mt-2 px-1 text-xs text-[color:var(--dim)] font-mono leading-snug">{caption}</div>
     </div>
   );
 }
@@ -1343,17 +1343,17 @@ export default function GaussianProcessVisualization() {
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[color:var(--dim)]">LENGTH SCALE (ℓ)</Label><span className="text-xs">{params.lengthScale.toFixed(2)}</span></div>
                 <Slider value={[params.lengthScale * 100]} onValueChange={([v]) => setParams(p => ({ ...p, lengthScale: v / 100 }))} min={20} max={400} step={5} />
-                <div className="text-[10px] text-[#808080] font-mono">smoothness — bigger = straighter</div>
+                <div className="text-2xs text-[#808080] font-mono">smoothness — bigger = straighter</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[color:var(--dim)]">SIGNAL σ_f</Label><span className="text-xs">{params.signalSigma.toFixed(2)}</span></div>
                 <Slider value={[params.signalSigma * 100]} onValueChange={([v]) => setParams(p => ({ ...p, signalSigma: v / 100 }))} min={20} max={250} step={5} />
-                <div className="text-[10px] text-[#808080] font-mono">vertical amplitude of the prior</div>
+                <div className="text-2xs text-[#808080] font-mono">vertical amplitude of the prior</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[color:var(--dim)]">NOISE σ_n</Label><span className="text-xs">{params.noiseSigma.toFixed(2)}</span></div>
                 <Slider value={[params.noiseSigma * 100]} onValueChange={([v]) => setParams(p => ({ ...p, noiseSigma: v / 100 }))} min={1} max={80} step={1} />
-                <div className="text-[10px] text-[#808080] font-mono">observation noise</div>
+                <div className="text-2xs text-[#808080] font-mono">observation noise</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[color:var(--dim)]">OBSERVATIONS</Label><span className="text-xs">{params.numObs}</span></div>
@@ -1405,7 +1405,7 @@ export default function GaussianProcessVisualization() {
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">log p(y|X)</span><span className="text-sm text-[color:var(--up)]">{stats.logLik.toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">AVG 95% CI</span><span className="text-sm">{stats.avgCIWidth.toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">RMSE vs TRUE</span><span className="text-sm">{stats.rmse.toFixed(3)}</span></div>
-                  <div className="pt-2 border-t border-border text-[10px] text-[color:var(--dim)] font-mono leading-relaxed">
+                  <div className="pt-2 border-t border-border text-2xs text-[color:var(--dim)] font-mono leading-relaxed">
                     The shaded band is ±2σ. It collapses tight where data arrives and
                     balloons where the kernel can't see the data. Log-likelihood
                     scores the kernel's marginal fit to the observed points.
@@ -1418,7 +1418,7 @@ export default function GaussianProcessVisualization() {
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">LENGTH SCALE ℓ</span><span className="text-sm">{params.lengthScale.toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">SIGNAL σ_f</span><span className="text-sm">{params.signalSigma.toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">PRIOR VAR</span><span className="text-sm">{(params.signalSigma * params.signalSigma).toFixed(2)}</span></div>
-                  <div className="pt-2 border-t border-border text-[10px] text-[color:var(--dim)] font-mono leading-relaxed">
+                  <div className="pt-2 border-t border-border text-2xs text-[color:var(--dim)] font-mono leading-relaxed">
                     These are functions drawn from the GP prior before any data.
                     Short ℓ → jagged samples; long ℓ → smooth glides. The spread
                     is set by σ_f. This is what the kernel considers plausible
@@ -1432,7 +1432,7 @@ export default function GaussianProcessVisualization() {
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">k(ℓ)</span><span className="text-sm text-[color:var(--up)]">{(params.signalSigma * params.signalSigma * Math.exp(-0.5)).toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">LENGTH SCALE ℓ</span><span className="text-sm">{params.lengthScale.toFixed(2)}</span></div>
                   <div className="flex justify-between font-mono"><span className="text-xs text-[color:var(--dim)]">EFFECTIVE RANGE</span><span className="text-sm">{(3 * params.lengthScale).toFixed(2)}</span></div>
-                  <div className="pt-2 border-t border-border text-[10px] text-[color:var(--dim)] font-mono leading-relaxed">
+                  <div className="pt-2 border-t border-border text-2xs text-[color:var(--dim)] font-mono leading-relaxed">
                     The RBF kernel decides how much two points covary based on
                     their distance. At Δ=ℓ correlation is e^(-½) ≈ 0.61 of peak.
                     Beyond 3ℓ points are essentially uncorrelated — that's the

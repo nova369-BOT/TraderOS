@@ -588,14 +588,14 @@ export default function PCAVisualization({ fitted }: { fitted?: PCAFitPayload })
                     <span className="font-medium">{fitted.n_bars.toLocaleString()} ({fitted.tf})</span>
                   </div>
                   <div className="pt-2" style={{ borderTop: '1px solid var(--edge)' }}>
-                    <div className="text-[10px] tracking-widest pb-1" style={{ color: 'var(--dim)' }}>
+                    <div className="text-2xs tracking-widest pb-1" style={{ color: 'var(--dim)' }}>
                       COLOR: {fitted.color_label.toUpperCase()}
                     </div>
                     <div style={{
                       height: 8, borderRadius: 2, border: '1px solid var(--edge)',
                       background: 'linear-gradient(90deg, var(--down), var(--dim), var(--up))',
                     }} />
-                    <div className="flex justify-between text-[10px]" style={{ color: 'var(--dim)' }}>
+                    <div className="flex justify-between text-2xs" style={{ color: 'var(--dim)' }}>
                       <span>-{fitted.color_lim}</span><span>0</span><span>+{fitted.color_lim}</span>
                     </div>
                   </div>
@@ -609,12 +609,12 @@ export default function PCAVisualization({ fitted }: { fitted?: PCAFitPayload })
           <Card className="p-4 bg-card border-border text-[var(--text)]">
             {topLoads.map((rows, k) => (
               <div key={k} className={k ? 'pt-2' : ''}>
-                <div className="text-[10px] tracking-widest pb-1" style={{ color: 'var(--dim)' }}>
+                <div className="text-2xs tracking-widest pb-1" style={{ color: 'var(--dim)' }}>
                   PC{k + 1} DRIVERS
                 </div>
                 {rows.map((r) => (
                   <div key={r.name} className="flex items-center gap-2 py-0.5">
-                    <span className="text-[11px] truncate" style={{ width: 92 }}>{r.name}</span>
+                    <span className="text-xs truncate" style={{ width: 92 }}>{r.name}</span>
                     <span style={{ flex: 1, position: 'relative', height: 4, background: 'var(--bg)', borderRadius: 2 }}>
                       <i style={{
                         position: 'absolute', top: 0, height: '100%', left: '50%', borderRadius: 2,
@@ -623,7 +623,7 @@ export default function PCAVisualization({ fitted }: { fitted?: PCAFitPayload })
                         transform: r.v < 0 ? 'translateX(-100%)' : undefined,
                       }} />
                     </span>
-                    <span className="text-[10px] tabular-nums" style={{ color: 'var(--dim)', width: 34, textAlign: 'right' }}>
+                    <span className="text-2xs tabular-nums" style={{ color: 'var(--dim)', width: 34, textAlign: 'right' }}>
                       {(r.v > 0 ? '+' : '') + r.v.toFixed(2)}
                     </span>
                   </div>
@@ -647,7 +647,7 @@ export default function PCAVisualization({ fitted }: { fitted?: PCAFitPayload })
 
       {/* Bottom hint strip, same idiom as the surface views */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 pointer-events-none">
-        <div className="bg-card rounded-lg px-4 py-2 border border-border flex items-center gap-6 text-[11px]" style={{ color: 'var(--dim)' }}>
+        <div className="bg-card rounded-lg px-4 py-2 border border-border flex items-center gap-6 text-xs" style={{ color: 'var(--dim)' }}>
           <span>Drag to rotate</span>
           <span>Scroll to zoom</span>
           <span>Right-click to pan</span>

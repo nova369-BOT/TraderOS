@@ -63,7 +63,7 @@ export default function LoginModal({ open, onOpenChange, title, message }: Login
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg text-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               background: '#ffffff',
               color: '#3c4043',

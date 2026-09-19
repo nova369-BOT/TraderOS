@@ -52,7 +52,7 @@ const TradeHistoryDialog = ({ trades, startingCapital }: TradeHistoryDialogProps
           <History className="h-3 w-3" />
           <span className="hidden sm:inline">History</span>
           {closedTrades.length > 0 && (
-            <Badge variant="outline" className="h-4 px-1 text-[10px] border-neon-gold/50 text-neon-gold">
+            <Badge variant="outline" className="h-4 px-1 text-2xs border-neon-gold/50 text-neon-gold">
               {closedTrades.length}
             </Badge>
           )}
@@ -69,19 +69,19 @@ const TradeHistoryDialog = ({ trades, startingCapital }: TradeHistoryDialogProps
         {/* Stats Summary */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div className="glass rounded-lg p-3 border border-border">
-            <div className="text-[10px] text-text-secondary uppercase mb-1">Total P&L</div>
+            <div className="text-2xs text-text-secondary uppercase mb-1">Total P&L</div>
             <div className={cn("text-lg font-bold font-mono", totalPnL >= 0 ? "text-neon-green" : "text-red-400")}>
               {totalPnL >= 0 ? '+' : ''}{totalPnL.toFixed(2)}
             </div>
           </div>
           <div className="glass rounded-lg p-3 border border-border">
-            <div className="text-[10px] text-text-secondary uppercase mb-1">Win Rate</div>
+            <div className="text-2xs text-text-secondary uppercase mb-1">Win Rate</div>
             <div className={cn("text-lg font-bold font-mono", winRate >= 50 ? "text-neon-green" : "text-red-400")}>
               {winRate.toFixed(1)}%
             </div>
           </div>
           <div className="glass rounded-lg p-3 border border-border">
-            <div className="text-[10px] text-text-secondary uppercase mb-1">Trades</div>
+            <div className="text-2xs text-text-secondary uppercase mb-1">Trades</div>
             <div className="text-lg font-bold font-mono text-text-primary">
               <span className="text-neon-green">{winningTrades.length}</span>
               <span className="text-text-secondary mx-1">/</span>
@@ -89,7 +89,7 @@ const TradeHistoryDialog = ({ trades, startingCapital }: TradeHistoryDialogProps
             </div>
           </div>
           <div className="glass rounded-lg p-3 border border-border">
-            <div className="text-[10px] text-text-secondary uppercase mb-1">Profit Factor</div>
+            <div className="text-2xs text-text-secondary uppercase mb-1">Profit Factor</div>
             <div className={cn("text-lg font-bold font-mono", profitFactor >= 1 ? "text-neon-green" : "text-red-400")}>
               {profitFactor === Infinity ? '∞' : profitFactor.toFixed(2)}
             </div>
@@ -137,7 +137,7 @@ const TradeHistoryDialog = ({ trades, startingCapital }: TradeHistoryDialogProps
                             <Badge 
                               variant="outline" 
                               className={cn(
-                                "text-[10px] py-0",
+                                "text-2xs py-0",
                                 trade.type === 'buy' ? "border-neon-green/50 text-neon-green" : "border-red-500/50 text-red-400"
                               )}
                             >
@@ -160,14 +160,14 @@ const TradeHistoryDialog = ({ trades, startingCapital }: TradeHistoryDialogProps
                         <div className={cn("text-sm font-bold font-mono", isWin ? "text-neon-green" : "text-red-400")}>
                           {pnl >= 0 ? '+' : ''}{pnl.toFixed(2)}
                         </div>
-                        <div className={cn("text-[10px] font-mono", isWin ? "text-neon-green/70" : "text-red-400/70")}>
+                        <div className={cn("text-2xs font-mono", isWin ? "text-neon-green/70" : "text-red-400/70")}>
                           {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
                         </div>
                       </div>
                     </div>
 
                     {/* Additional Details */}
-                    <div className="flex items-center gap-4 mt-2 pt-2 border-t border-border/50 text-[10px] text-text-secondary">
+                    <div className="flex items-center gap-4 mt-2 pt-2 border-t border-border/50 text-2xs text-text-secondary">
                       <div className="flex items-center gap-1">
                         <DollarSign className="h-3 w-3" />
                         <span>Size: ${(trade.lotSize * 100000).toLocaleString()}</span>

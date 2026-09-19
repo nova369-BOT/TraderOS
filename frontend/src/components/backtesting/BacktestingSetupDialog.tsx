@@ -350,7 +350,7 @@ export default function BacktestingSetupDialog({ open, onOpenChange }: Backtesti
                     ))}
                     {/* Reveals the next page as it scrolls into view. */}
                     {remainingPairs > 0 && (
-                      <div ref={setRevealSentinel} aria-hidden className="h-6 text-center text-[11px] text-muted-foreground pt-1">
+                      <div ref={setRevealSentinel} aria-hidden className="h-6 text-center text-xs text-muted-foreground pt-1">
                         Loading {remainingPairs} more...
                       </div>
                     )}
@@ -503,7 +503,7 @@ export default function BacktestingSetupDialog({ open, onOpenChange }: Backtesti
               step="0.1"
               min="0"
             />
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               Simulates broker spread. Buy orders execute at ask (mid + spread/2), sell at bid (mid - spread/2).
             </p>
           </div>

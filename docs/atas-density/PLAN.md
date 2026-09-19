@@ -157,3 +157,24 @@ Remaining limitations (nothing hidden):
   code surfaces keep editor ergonomics, chrome gets the density.
 - Corner radii (React rounded-lg) not touched: out of this task's scope,
   noted for a future chrome-consistency pass.
+
+## 8. Density v2 — "shrink more" (owner, same day)
+
+One further step, same mechanism, zero new surfaces:
+- Tokens: 2xs 9 / xs 10 / sm 10.5 (body) / md 11 / lg 11.5 / xl 12 /
+  2xl 12.5 / 3xl 14 / 4xl 16; --row-y 1px. Micro floor 9.5 -> 9 (caps
+  labels only); body floor 10.5 — the CQG/TT band.
+- Named tailwind sizes kept their v1 relationships so every site moved
+  exactly one notch (no double-step); fallbacks updated to v2 values.
+- Arbitrary text-[10..15px]/[24px] sites (183) folded into named sizes —
+  they now participate in the density system and flip with COMFY instead
+  of bypassing it. The 7-9px chart micro labels stay literal (below the
+  floor by design, canvas-adjacent).
+- Primitives second step: buttons 24/20/28, icon 24 (svg 12px), inputs /
+  selects / tabs 24px.
+- Rail chrome: rail-btn padding 4/12/5 -> 3/10/4; subrail gap 26 -> 18.
+
+Proof: tsc 0; vite build green; pytest 219/1; loopback TestClient sees
+v2 tokens + intact comfortable overrides; the live preview (same engine
+process) served the new sheet from disk immediately (curl confirmed
+`t-sm: 10.5px`). Comfortable remains the exact pre-v1 surface.

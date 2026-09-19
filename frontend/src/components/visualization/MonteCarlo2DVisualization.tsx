@@ -733,7 +733,7 @@ export default function MonteCarlo2DVisualization() {
 
               {/* Model Parameters with Tooltips */}
               <div className="pt-2 border-t border-border space-y-4">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Model Assumptions</div>
+                <div className="text-2xs text-muted-foreground font-mono uppercase tracking-wide">Model Assumptions</div>
 
                 <div className="space-y-2">
                   <TooltipProvider>
@@ -850,7 +850,7 @@ export default function MonteCarlo2DVisualization() {
 
               {/* Toggle Options with clear labels */}
               <div className="space-y-2">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Chart Elements</div>
+                <div className="text-2xs text-muted-foreground font-mono uppercase tracking-wide">Chart Elements</div>
 
                 <div className="flex items-center justify-between p-1.5 rounded-md hover:bg-muted/50 transition-colors">
                   <Label className="text-xs text-muted-foreground font-mono flex items-center gap-2">
@@ -921,7 +921,7 @@ export default function MonteCarlo2DVisualization() {
 
               {/* Highlighted Paths Section */}
               <div className="pt-3 border-t border-border space-y-3">
-                <div className="text-[10px] text-muted-foreground font-mono uppercase tracking-wide">Path Tracking</div>
+                <div className="text-2xs text-muted-foreground font-mono uppercase tracking-wide">Path Tracking</div>
 
                 <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 transition-colors">
                   <TooltipProvider>
@@ -971,7 +971,7 @@ export default function MonteCarlo2DVisualization() {
                         <button
                           key={idx}
                           onClick={() => setHighlightedPaths(prev => prev.filter(x => x !== idx))}
-                          className="text-[10px] px-1.5 py-0.5 rounded font-mono hover:opacity-70 transition-opacity cursor-pointer flex items-center gap-1"
+                          className="text-2xs px-1.5 py-0.5 rounded font-mono hover:opacity-70 transition-opacity cursor-pointer flex items-center gap-1"
                           style={{ backgroundColor: `${colors[i % colors.length]}33`, color: colors[i % colors.length] }}
                           title="Click to remove"
                         >

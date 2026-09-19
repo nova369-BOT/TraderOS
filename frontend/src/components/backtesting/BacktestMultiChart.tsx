@@ -204,7 +204,7 @@ export const BacktestMultiChart = ({
           >
             {/* Timeframe Badge - positioned bottom right to not block OHLC */}
             <div className="absolute bottom-1 right-1 z-10 flex items-center gap-1">
-              <span className={`px-1.5 py-0.5 text-[10px] font-mono rounded transition-colors ${
+              <span className={`px-1.5 py-0.5 text-2xs font-mono rounded transition-colors ${
                 isSelected 
                   ? 'bg-primary text-primary-foreground' 
                   : 'bg-muted/80 text-muted-foreground backdrop-blur-sm'

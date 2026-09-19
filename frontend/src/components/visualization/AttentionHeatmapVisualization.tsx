@@ -992,7 +992,7 @@ export default function AttentionHeatmapVisualization() {
             <div className="text-xl font-bold" style={{ color: HEAD_COLORS[head < N_HEADS ? head : 4] }}>
               {hover.w.toFixed(4)}
             </div>
-            <div className="text-muted-foreground text-[10px] mt-0.5">
+            <div className="text-muted-foreground text-2xs mt-0.5">
               {HEAD_LABELS[head]} softmax weight
             </div>
           </div>
@@ -1024,7 +1024,7 @@ export default function AttentionHeatmapVisualization() {
             Top <span className="text-foreground">{stats.topPair}</span>
           </span>
         )}
-        <div className="ml-auto text-muted-foreground/50 text-[10px]">
+        <div className="ml-auto text-muted-foreground/50 text-2xs">
           A = softmax(QK&#x1D40; / &radic;d&#x2096;)&nbsp;&nbsp;H=4&nbsp;&nbsp;d&#x2096;=3
         </div>
       </div>

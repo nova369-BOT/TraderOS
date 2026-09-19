@@ -166,7 +166,7 @@ export default function SymbolSearchPanel({
             placeholder="Search instruments"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-7 pl-7 pr-2 text-[11px] bg-background hover:bg-background focus:bg-background border border-border/50 focus-visible:border-border/70 shadow-none rounded-md focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 transition-colors"
+            className="h-7 pl-7 pr-2 text-xs bg-background hover:bg-background focus:bg-background border border-border/50 focus-visible:border-border/70 shadow-none rounded-md focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50 transition-colors"
           />
         </div>
       </div>
@@ -189,7 +189,7 @@ export default function SymbolSearchPanel({
                   <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${colors.bg} ${colors.text}`}>
                     {pair.symbol.charAt(0)}
                   </div>
-                  <span className="text-[11px] font-mono font-semibold tracking-tight truncate">{pair.symbol}</span>
+                  <span className="text-xs font-mono font-semibold tracking-tight truncate">{pair.symbol}</span>
                   <span className={`text-[8.5px] uppercase tracking-[0.06em] font-medium flex-shrink-0 ${colors.badge}`}>{pair.category}</span>
                 </div>
                 {watchlist.includes(pair.symbol) ? (
@@ -219,7 +219,7 @@ export default function SymbolSearchPanel({
           <div className="text-center py-12 text-muted-foreground/40">
             <Star className="h-8 w-8 mx-auto mb-2 opacity-15" />
             <p className="text-xs font-medium">No pairs in watchlist</p>
-            <p className="text-[10px] mt-1 text-muted-foreground/25">Search above to add instruments</p>
+            <p className="text-2xs mt-1 text-muted-foreground/25">Search above to add instruments</p>
           </div>
         ) : (
           groupedWatchlist.map(([cat, pairs]) => (
@@ -284,7 +284,7 @@ export default function SymbolSearchPanel({
                     </span>
 
                     {/* Last price: right-aligned, monospace, tabular figures */}
-                    <span className="w-[68px] text-right text-[11px] font-mono tabular-nums text-foreground/95 leading-none">
+                    <span className="w-[68px] text-right text-xs font-mono tabular-nums text-foreground/95 leading-none">
                       {priceData ? formatPrice(pair.category, priceData.price) : '--'}
                     </span>
 
@@ -336,12 +336,12 @@ export default function SymbolSearchPanel({
                 {d.image_path_light ? (
                   <ThemeLogo srcLight={d.image_path_light} srcDark={d.image_path_dark} alt="" className="w-7 h-7 rounded-full object-cover" />
                 ) : (
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${colors.bg} ${colors.text}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-2xs font-bold ${colors.bg} ${colors.text}`}>
                     {activePair.symbol.charAt(0)}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="text-[14px] font-bold leading-none tracking-tight">{activePair.symbol}</div>
+                  <div className="text-lg font-bold leading-none tracking-tight">{activePair.symbol}</div>
                   <div className="text-[10.5px] text-muted-foreground/55 truncate mt-0.5 max-w-[180px]">
                     {d.nickname || activePair.symbol} <span className="opacity-40 mx-1">&bull;</span> <span className="opacity-50">{activePair.category}</span>
                   </div>
@@ -355,7 +355,7 @@ export default function SymbolSearchPanel({
 
               {/* Price + change inline. Big tabular price, change as plain colored text. */}
               <div className="flex items-baseline gap-2">
-                <span className="text-[24px] font-mono font-bold tracking-tight text-foreground leading-none tabular-nums">
+                <span className="text-3xl font-mono font-bold tracking-tight text-foreground leading-none tabular-nums">
                   {p.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec })}
                 </span>
                 <span className="text-[9.5px] font-mono text-muted-foreground/50 font-semibold leading-none">
@@ -363,10 +363,10 @@ export default function SymbolSearchPanel({
                 </span>
               </div>
               <div className="flex items-center gap-2 mt-1.5">
-                <span className={`text-[12px] font-mono tabular-nums font-medium ${pos ? 'text-up' : 'text-down'}`}>
+                <span className={`text-sm font-mono tabular-nums font-medium ${pos ? 'text-up' : 'text-down'}`}>
                   {absChg != null ? `${absChg >= 0 ? '+' : ''}${absChg.toFixed(dec)}` : '--'}
                 </span>
-                <span className={`text-[11px] font-mono tabular-nums font-semibold ${pos ? 'text-up' : 'text-down'}`}>
+                <span className={`text-xs font-mono tabular-nums font-semibold ${pos ? 'text-up' : 'text-down'}`}>
                   {pos ? '+' : ''}{d.change.toFixed(2)}%
                 </span>
               </div>
@@ -378,23 +378,23 @@ export default function SymbolSearchPanel({
               <div className="grid grid-cols-2 gap-1.5">
                 <div className="bg-card/70 border border-border/30 rounded-md px-3 py-2">
                   <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">24h Change</div>
-                  <div className={`text-[12px] font-mono font-semibold tabular-nums ${pos ? 'text-up' : 'text-down'}`}>
+                  <div className={`text-sm font-mono font-semibold tabular-nums ${pos ? 'text-up' : 'text-down'}`}>
                     {pos ? '+' : ''}{d.change.toFixed(2)}%
                   </div>
                 </div>
                 <div className="bg-card/70 border border-border/30 rounded-md px-3 py-2">
                   <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">7D Change</div>
                   {d.changeWeekly != null ? (
-                    <div className={`text-[12px] font-mono font-semibold tabular-nums ${d.changeWeekly >= 0 ? 'text-up' : 'text-down'}`}>
+                    <div className={`text-sm font-mono font-semibold tabular-nums ${d.changeWeekly >= 0 ? 'text-up' : 'text-down'}`}>
                       {d.changeWeekly >= 0 ? '+' : ''}{d.changeWeekly.toFixed(2)}%
                     </div>
                   ) : (
-                    <div className="text-[12px] font-mono text-muted-foreground/35">{'--'}</div>
+                    <div className="text-sm font-mono text-muted-foreground/35">{'--'}</div>
                   )}
                 </div>
                 <div className="bg-card/70 border border-border/30 rounded-md px-3 py-2">
                   <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">Open</div>
-                  <div className="text-[12px] font-mono font-medium tabular-nums text-foreground/90">
+                  <div className="text-sm font-mono font-medium tabular-nums text-foreground/90">
                     {d.open ? d.open.toFixed(dec) : '--'}
                   </div>
                 </div>
@@ -402,7 +402,7 @@ export default function SymbolSearchPanel({
                   <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">
                     {d.marketCap ? 'Market Cap' : 'H / L'}
                   </div>
-                  <div className="text-[12px] font-mono font-medium tabular-nums text-foreground/90">
+                  <div className="text-sm font-mono font-medium tabular-nums text-foreground/90">
                     {d.marketCap
                       ? formatMarketCap(d.marketCap)
                       : (d.high && d.low ? `${d.high.toFixed(dec > 3 ? 2 : dec)} / ${d.low.toFixed(dec > 3 ? 2 : dec)}` : '--')
@@ -413,13 +413,13 @@ export default function SymbolSearchPanel({
                   <>
                     <div className="bg-card/70 border border-border/30 rounded-md px-3 py-2">
                       <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">High</div>
-                      <div className="text-[12px] font-mono font-medium tabular-nums text-up/90">
+                      <div className="text-sm font-mono font-medium tabular-nums text-up/90">
                         {d.high.toFixed(dec)}
                       </div>
                     </div>
                     <div className="bg-card/70 border border-border/30 rounded-md px-3 py-2">
                       <div className="text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5">Low</div>
-                      <div className="text-[12px] font-mono font-medium tabular-nums text-down/90">
+                      <div className="text-sm font-mono font-medium tabular-nums text-down/90">
                         {d.low.toFixed(dec)}
                       </div>
                     </div>
@@ -450,7 +450,7 @@ export default function SymbolSearchPanel({
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[10px] font-medium line-clamp-2 leading-tight group-hover/news:text-foreground transition-colors">{article.title}</h4>
+                        <h4 className="text-2xs font-medium line-clamp-2 leading-tight group-hover/news:text-foreground transition-colors">{article.title}</h4>
                         <div className="flex items-center gap-1 mt-0.5">
                           <span className="text-[8px] text-muted-foreground/40 truncate">{article.source_name}</span>
                           <span className="text-[8px] text-muted-foreground/25">&bull;</span>
