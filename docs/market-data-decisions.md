@@ -58,3 +58,29 @@ infrastructure), and dated historical narrative in
 docs/market-data-recovery/REPORT.md (rewriting the record would violate
 the working standard this repo runs on).
 Reverse: `git checkout` the pre-D13 tree — at the owner's word only.
+
+## D14 — Geo-blocked egress? Ladder to Binance's public data mirror, never a transport swap (2026-09-19)
+
+Owner hit the real thing in the wild: "klines REST HTTP 451 — Service
+unavailable from a restricted location" — and asked for "the binance from
+ccxt". Measured first: ccxt speaks to the SAME WAF-gated trade domains
+(api/fapi.binance.com), so a 451 (legal eligibility answer) or a TLS/ISP
+drop hits ccxt identically; this sandbox drops every Binance domain at
+TLS, the owner's environment gets 451 — two shapes, one law: the TRADE
+domains are not reliably visible from realistic egresses. The cure is
+Binance's own public market-data mirror — data-api.binance.vision (REST)
+and data-stream.binance.vision (WS), spot shape, no eligibility gate.
+
+Shipped: every network face of providers/binance.py is now a two-rung
+ladder — venue first, mirror on the trigger set (HTTP 451/418/403 or any
+connectivity failure); the first success PINS the winner (chart paths
+never re-race a dead hop); the venue label follows the rung everywhere it
+matters (candles df.attrs venue, provider venue → tick badge) so a
+mirror-served frame says "binance-spot" honestly. 429 NEVER flips the
+ladder (a rate answer is about load, not geography — masking it would be
+the old sin). The mirror's spot depth shape (bids/asks, no event stamps)
+parses with receipt-time honesty. 5 new protocol-pinned tests; the geo
+flip, the stick, the never-flip-on-429, the WS dial flip, and the spot
+frame shape are all pinned.
+Reverse: delist the mirror rungs in providers/binance.py — only on the
+owner's word, and only if every target egress can see the trade venue.

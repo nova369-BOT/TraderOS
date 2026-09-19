@@ -9,7 +9,19 @@ in memory (nothing is ever downloaded to answer the sidebar), the
 combined-stream socket doing all live work, candles over the public
 klines REST. Written against the same rules as providers/coinbase.py.
 
-Protocol facts (Binance USD-M public market data, keyless):
+Geo law (D14): the trading domains (fapi/api.binance.com) answer
+geo-restricted egresses with HTTP 451 and datacenter/ISP egresses with
+WAF 418/TLS drops — a LEGAL/ network answer, not something any transport
+(ccxt included) out-codes. What serves market data regardless is
+Binance's own PUBLIC data mirror (data-api.binance.vision /
+data-stream.binance.vision — spot shape, no eligibility gate). So every
+network face here is a two-rung ladder: venue first, mirror on the
+geo/WAF/unreachable trigger list, winner pinned after first success so
+chart paths never re-race. The venue label ALWAYS says which rung fed
+the data ("binance" / "binance-spot") — a spot-labelled frame is the
+honesty, not a bug.
+
+Protocol facts (Binance public market data, keyless on both rungs):
 
 - REST klines: ``GET /fapi/v1/klines?symbol&interval&limit&startTime&
   endTime``, request cap 1500 rows; 4h is a NATIVE interval on this
@@ -61,6 +73,14 @@ log = logging.getLogger("lse_terminal")
 
 WS_BASE = os.environ.get("BINANCE_WS", "wss://fstream.binance.com")
 REST_BASE = os.environ.get("BINANCE_REST", "https://fapi.binance.com")
+SPOT_WS_BASE = os.environ.get(
+    "BINANCE_SPOT_WS", "wss://data-stream.binance.vision")
+SPOT_REST_BASE = os.environ.get(
+    "BINANCE_SPOT_REST", "https://data-api.binance.vision")
+
+# HTTP answers that mean "this egress may not see the trading venue" —
+# never 429 (that is a RATE answer about load, flipped-on would be a lie).
+_GEO_HTTP = (451, 418, 403)
 
 # The book's day-one list: one row per supported symbol is the whole
 # change to add another; nothing else is downloaded at any point.
@@ -116,7 +136,7 @@ class BinanceProvider(Provider):
 
     name = "binance"
     title = "Binance USD-M Futures (direct, keyless)"
-    venue = "binance"
+    venue = "binance"          # default label; instance attrs may narrow it
     timeframes = list(_TIMEFRAMES)
     deterministic = False
 
@@ -124,6 +144,13 @@ class BinanceProvider(Provider):
         self._backoff_base = backoff_base
         # Tests bound the reconnect loop; production reconnects forever.
         self.max_reconnects: Optional[int] = None
+        # Ladder state (D14): which rung serves this process. 0 = the
+        # trade venue, 1 = the public data mirror; a success PINS the
+        # winner (ticks and candles both read self.venue live, so the
+        # venue badge flips the moment the mirror takes over).
+        self.venue = "binance"
+        self._rest_rung = 0
+        self._ws_rung = 0
 
     # -- the ONLY socket touchpoint; tests drive everything else ----------
 
@@ -131,6 +158,17 @@ class BinanceProvider(Provider):
         import websockets
         return await websockets.connect(
             url, max_size=8 * 1024 * 1024, open_timeout=_WS_OPEN_TIMEOUT_S)
+
+    # -- the D14 ladders (module constants are the test seam) --------------
+
+    @staticmethod
+    def _rest_rungs():
+        return (("binance", REST_BASE, "/fapi/v1/klines"),
+                ("binance-spot", SPOT_REST_BASE, "/api/v3/klines"))
+
+    @staticmethod
+    def _ws_rungs():
+        return (("binance", WS_BASE), ("binance-spot", SPOT_WS_BASE))
 
     # -- catalog (memory — the D12 rule: this list IS the book) -----------
 
@@ -173,30 +211,47 @@ class BinanceProvider(Provider):
         end_s = _to_s(end) or int(time.time())
         start_s = _to_s(start)
 
+        # REST ladder (D14): pinned winner first; a geo/WAF/unreachable
+        # answer advances the rung INSIDE this call; everything else
+        # (429, empty book) is the venue's truth and surfaces verbatim.
         rows: List[list] = []
         window_end = end_s
+        serving_venue = None
         while len(rows) < limit:
+            rungs = self._rest_rungs()
+            venue, base, path = rungs[self._rest_rung]
             want = min(_MAX_REST_CANDLES, limit - len(rows))
             window_start = window_end - want * tf_s + tf_s
             if start_s is not None:
                 window_start = max(window_start, start_s)
                 if window_start > window_end:
                     break
-            url = (f"{REST_BASE}/fapi/v1/klines?symbol={symbol}"
+            url = (f"{base}{path}?symbol={symbol}"
                    f"&interval={interval}&limit={want}"
                    f"&startTime={window_start * 1000}"
                    f"&endTime={window_end * 1000}")
             try:
                 with urllib.request.urlopen(url, timeout=15) as resp:
                     batch = json.loads(resp.read().decode())
+                serving_venue = venue
             except urllib.error.HTTPError as e:
                 body = e.read().decode(errors="replace")[:200]
+                if e.code in _GEO_HTTP and                         self._rest_rung < len(rungs) - 1 and not rows:
+                    # Eligibility/WAF answer: this egress may not touch
+                    # the venue — move to the public data mirror and take
+                    # the same symbols in the venue's own spot shape.
+                    self._rest_rung += 1
+                    continue
                 # Venue errors keep the venue's words — a 429 says 429.
                 raise NotSupported(
-                    f"binance: klines REST HTTP {e.code}: {body}") from e
+                    f"{venue}: klines REST HTTP {e.code}: {body}") from e
             except Exception as e:  # noqa: BLE001
+                if self._rest_rung < len(rungs) - 1 and not rows:
+                    # TLS drop / ISP block / DNS poison: same ladder move.
+                    self._rest_rung += 1
+                    continue
                 raise NotSupported(
-                    f"binance: klines REST failed: {e}") from e
+                    f"{venue}: klines REST failed: {e}") from e
             got = 0
             for k in batch or []:
                 try:
@@ -219,7 +274,10 @@ class BinanceProvider(Provider):
             raise NotSupported(
                 f"binance: venue served no history for {symbol} {timeframe}")
         df = pd.DataFrame(rows[-limit:], columns=CANDLE_COLUMNS)
-        df.attrs["venue"] = self.venue
+        if serving_venue is None:
+            serving_venue = self._rest_rungs()[self._rest_rung][0]
+        df.attrs["venue"] = serving_venue
+        self.venue = serving_venue     # the tick badge flips with the rung
         return df
 
     # -- live ticks (aggTrade) --------------------------------------------
@@ -270,14 +328,34 @@ class BinanceProvider(Provider):
                 parts.append(f"{s.lower()}@aggTrade")
             if "depth" in want:
                 parts.append(f"{s.lower()}@depth20@100ms")
-        url = f"{WS_BASE}/stream?streams={'/'.join(parts)}"
+        streams = '/'.join(parts)
         seen_ids: Dict[str, deque] = {s: deque(maxlen=4096)
                                       for s in symbols}
         attempt = 0
         while True:
             ws = None
+            # WS ladder (D14): dial the pinned rung; a dial failure (TLS
+            # drop, refused, WAF close) advances to the public data
+            # mirror inside this cycle. A CONNECTED socket then pins the
+            # rung and narrows the venue label; a dead socket re-dials
+            # the pinned winner without re-racing.
             try:
-                ws = await self._connect(url)
+                rungs = self._ws_rungs()
+                venue, base = rungs[self._ws_rung]
+                url = f"{base}/stream?streams={streams}"
+                try:
+                    ws = await self._connect(url)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:  # noqa: BLE001
+                    if self._ws_rung < len(rungs) - 1:
+                        self._ws_rung += 1
+                        venue, base = rungs[self._ws_rung]
+                        url = f"{base}/stream?streams={streams}"
+                        ws = await self._connect(url)
+                    else:
+                        raise
+                self.venue = venue
                 attempt = 0
                 async for raw in ws:
                     env = json.loads(raw)
@@ -306,14 +384,20 @@ class BinanceProvider(Provider):
                                      size=float(data["q"]), side=side,
                                      trade_id=trade_id)
                     elif "@depth" in stream_name:
-                        # Partial book: a COMPLETE top-20 per frame.
+                        # Partial book: a COMPLETE top-20 per frame. USD-M
+                        # keys are b/a with E/T stamps; the public mirror's
+                        # spot shape is bids/asks, timestamp-free.
                         ts_ms = data.get("E") or data.get("T")
                         ts = (int(ts_ms) / 1000.0) if ts_ms else time.time()
                         bids = sorted(((float(p), float(q))
-                                       for p, q in data.get("b") or []),
+                                       for p, q in
+                                       data.get("b") or data.get("bids")
+                                       or []),
                                       key=lambda x: -x[0])
                         asks = sorted(((float(p), float(q))
-                                       for p, q in data.get("a") or []),
+                                       for p, q in
+                                       data.get("a") or data.get("asks")
+                                       or []),
                                       key=lambda x: x[0])
                         _diag.observe("binance", symbol, ts, kind="book")
                         yield DepthEvent(symbol=symbol, ts=ts,
@@ -334,7 +418,7 @@ class BinanceProvider(Provider):
                     attempt > self.max_reconnects:
                 raise ConnectionError(
                     f"binance unreachable after {attempt} attempts "
-                    f"({WS_BASE})")
+                    f"(last tried: {self._ws_rungs()[self._ws_rung][1]})")
             delay = min(_BACKOFF_CAP_S,
                         self._backoff_base * (2 ** min(attempt, 6)))
             log.info("binance reconnect in %.1fs (attempt %d)", delay, attempt)

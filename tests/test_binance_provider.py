@@ -16,6 +16,7 @@ so status codes are real. No external network anywhere.
 import asyncio
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -366,3 +367,94 @@ def test_candles_429_surfaces_the_venue_status(monkeypatch):
             BinanceProvider().candles("BTCUSDT", "1m", 10)
     assert "429" in str(ei.value)
     assert "Way too many requests" in str(ei.value)   # the venue's words
+
+
+# ── D14: the venue ladder (geo-blocked egress -> public data mirror) ---------
+
+def test_geo_451_flips_rest_to_mirror_and_sticks(monkeypatch):
+    rows = [_kline(i) for i in range(6)]
+    with _Klines(status=451,
+                 body=b'{"code":0,"msg":"Service unavailable from a restricted location"}') as geo, \
+            _Klines(rows=rows) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{geo.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 6, end=1686300000 + 10 * 60)
+        assert df.attrs["venue"] == "binance-spot"   # labelled for what it IS
+        assert p.venue == "binance-spot"             # tick badge flips too
+        assert len(df) == 6
+        hits_after_first = len(geo.queries)
+        # The winner is PINNED: a second frame never re-pays the dead hop.
+        df2 = p.candles("BTCUSDT", "1m", 6, end=1686300000 + 10 * 60)
+        assert len(geo.queries) == hits_after_first
+        assert df2.attrs["venue"] == "binance-spot"
+
+
+def test_tls_drop_flips_rest_to_mirror(monkeypatch):
+    # A port nothing listens on = the sandbox/ISP TLS-drop shape.
+    rows = [_kline(i) for i in range(12)]   # seed spans the request window
+    with _Klines(rows=rows) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE", "http://127.0.0.1:9")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 4, end=1686300000 + 10 * 60)
+    assert df.attrs["venue"] == "binance-spot"
+    assert 0 < len(df) <= 4
+
+
+def test_rate_limit_never_flips_the_ladder(monkeypatch):
+    with _Klines(status=429) as geo, _Klines(rows=[_kline(0)]) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{geo.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        with pytest.raises(NotSupported) as ei:
+            p.candles("BTCUSDT", "1m", 10, end=1686300000 + 10 * 60)
+    assert "429" in str(ei.value)          # the venue's own words, unmasked
+    assert p.venue == "binance"            # NO flip on a rate answer
+    assert mirror.queries == []            # mirror never touched
+
+
+def test_ws_dial_failure_flips_to_mirror_and_sticks():
+    ws = FakeWS([_agg(a=7, T=1686349175396)])
+    p = BinanceProvider(backoff_base=0.001)
+    p._dialed = []
+
+    async def _connect(url):
+        p._dialed.append(url)
+        if url.startswith("wss://dead"):
+            raise OSError("TLS handshake dropped")
+        return ws
+
+    import lse_terminal.providers.binance as b
+    old = b.WS_BASE, b.SPOT_WS_BASE
+    b.WS_BASE, b.SPOT_WS_BASE = "wss://dead", "wss://mirror"
+    try:
+        p._connect = _connect
+        ticks = _take(p.stream(["BTCUSDT"]), 1)
+    finally:
+        b.WS_BASE, b.SPOT_WS_BASE = old
+    assert ticks[0]["trade_id"] == 7
+    assert p._dialed[0].startswith("wss://dead")          # venue tried first
+    assert p._dialed[1].startswith("wss://mirror")        # ladder moved on
+    assert p._ws_rung == 1 and p.venue == "binance-spot"  # pinned + labelled
+
+
+def test_spot_partial_book_frame_shape_reads_clean():
+    # The mirror serves SPOT frames: no "s", no E/T — routing+ts degrade
+    # to the stream name and receipt time, never to invented fields.
+    frame = json.dumps({"stream": "btcusdt@depth20@100ms", "data": {
+        "lastUpdateId": 99,
+        "bids": [["42000.0", "1.0"]], "asks": [["42001.0", "2.0"]]}})
+    ws = FakeWS([frame])
+    p, _ = _provider(ws)
+    events = _take(p.depth_stream(["BTCUSDT"]), 1)
+    ev = events[0]
+    assert ev.symbol == "BTCUSDT"               # from the stream name
+    assert ev.type == DEPTH_SNAPSHOT
+    assert ev.bids == [(42000.0, 1.0)] and ev.asks == [(42001.0, 2.0)]
+    assert abs(ev.ts - time.time()) < 5         # receipt time, honestly
