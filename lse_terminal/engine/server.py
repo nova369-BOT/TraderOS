@@ -799,13 +799,28 @@ def create_app() -> FastAPI:
     def candles(provider: str, symbol: str, timeframe: str = "1h",
                 limit: int = 5000, indicators: str = "",
                 start: str | None = None, end: str | None = None):
+        def _window(v):
+            # The shell sends start/end as epoch seconds (ints on klines
+            # books, fractions on tick — same-second prints are distinct
+            # bars) while other callers send ISO. Providers take either,
+            # so normalise the numeric strings here instead of letting a
+            # bare "1789845907" fall into the ISO parser and 404.
+            if v is None:
+                return None
+            s = str(v).strip()
+            try:
+                f = float(s)
+            except ValueError:
+                return v                     # ISO — the provider parses it
+            return int(f) if f.is_integer() else f
         try:
             p = reg.get(provider)
-            # start/end are ISO timestamps. Every provider's candles() already
-            # takes them (the manual-backtest replay needs "history up to the
-            # session start" and windowed scrollback, not just "latest N").
+            # start/end are ISO timestamps or epoch seconds. Every
+            # provider's candles() already takes them (the manual-backtest
+            # replay needs "history up to the session start" and windowed
+            # scrollback, not just "latest N").
             df = p.candles(symbol, timeframe, limit=min(int(limit), 5000),
-                           start=start, end=end)
+                           start=_window(start), end=_window(end))
         except ValueError as e:
             raise HTTPException(404, str(e))
         except Exception as e:
@@ -829,9 +844,13 @@ def create_app() -> FastAPI:
             # venue honesty: binance futures vs the spot mirror, so the pane
             # badge can say exactly which book the candles came from
             "venue": getattr(df, "attrs", {}).get("venue", provider),
-            # Explicit int ts: .values.tolist() would upcast the whole frame
-            # to float64 and ship epoch seconds as floats.
-            "candles": [[int(r.ts), r.open, r.high, r.low, r.close, r.volume]
+            # Compact ts: ints stay ints (klines bars), but a tick bar's
+            # sub-second fraction survives — int() would merge every pair
+            # of same-second prints into one bogus timestamp. The client
+            # multiplies anything < 1e12 by 1000, integer or not.
+            "candles": [[(int(r.ts) if float(r.ts).is_integer()
+                          else float(r.ts)),
+                         r.open, r.high, r.low, r.close, r.volume]
                         for r in df.itertuples(index=False)],
             "indicators": {},
         }

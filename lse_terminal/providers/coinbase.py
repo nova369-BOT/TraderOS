@@ -95,8 +95,9 @@ _PRODUCTS = {p: s for s, p in SYMBOLS.items()}   # product id -> canonical
 # or weekly granularity exists on this venue, and synthesizing either
 # from finer bars would present an aggregated window as if the venue
 # served it. Sub-minute bars come from the venue's own trade tape
-# (market trades REST, 220-print window) bucketed by seconds; tick = one
-# bar per print. The `_TIMEFRAMES` keys double as the klines ladder.
+# (Get Public Market Trades: `limit` page size, `start`/`end`
+# UNIX-seconds window — paged backward like Binance); tick = one bar per
+# print. The `_TIMEFRAMES` keys double as the klines ladder.
 _TIMEFRAMES = {"1m": ("ONE_MINUTE", 60), "5m": ("FIVE_MINUTE", 300),
                "15m": ("FIFTEEN_MINUTE", 900),
                "30m": ("THIRTY_MINUTE", 1800), "1h": ("ONE_HOUR", 3600),
@@ -109,6 +110,10 @@ LADDER = ["tick", "1s", "15s", "30s",
           "1m", "5m", "15m", "30m", "1h", "1d"]
 
 _SEC_BUCKET = re.compile(r"^(\d+)s$")
+
+# Market-trades page size: the docs name `limit` required but print no
+# maximum — ask 1000 (the venue truncates to its truth) and page by end.
+_TAPE_PAGE = 1000
 
 _MAX_REST_CANDLES = 300           # documented request cap
 _WS_OPEN_TIMEOUT_S = 8.0
@@ -311,61 +316,79 @@ class CoinbaseProvider(Provider):
 
     def _candles_tape(self, product: str, symbol: str, timeframe: str,
                       step: int, limit: int, start, end):
-        # Get Market Trades: newest-first, 220-print cap — the honest
-        # depth of a sub-minute chart on this venue (seconds to a few
-        # minutes, liquidity-dependent; no older windows are invented).
-        url = (f"{REST_BASE}/api/v3/brokerage/market/products/"
-               f"{product}/ticker?limit=220")
-        try:
-            with urllib.request.urlopen(url, timeout=15) as resp:
-                payload = json.loads(resp.read().decode())
-        except urllib.error.HTTPError as e:
-            body = e.read().decode(errors="replace")[:200]
-            raise NotSupported(
-                f"{self.name}: market trades REST HTTP {e.code}: {body}"
-                ) from e
-        except Exception as e:  # noqa: BLE001
-            raise NotSupported(
-                f"{self.name}: market trades REST failed: {e}") from e
-        rows = payload.get("trades") or []
-        end_s = int(_iso_s(end)) if isinstance(end, str) else             (int(end) if end else int(time.time()))
-        start_s = int(_iso_s(start)) if isinstance(start, str) else             (int(start) if start else None)
-        tapes = []
-        for tr in rows:
+        end_s = int(_iso_s(end)) if isinstance(end, str) else \
+            (int(end) if end else int(time.time()))
+        start_s = int(_iso_s(start)) if isinstance(start, str) else \
+            (int(start) if start else None)
+        # Get Public Market Trades (June 2026 docs): `limit` is the page
+        # size (the docs print no max — ask 1000 and take what comes) and
+        # `start`/`end` are UNIX-SECONDS window bounds. Same law as
+        # Binance: page BACKWARD by end, each page the venue's newest
+        # prints inside [start?, page_end]; <=12 pages is the rate guard
+        # (~12k prints of real tape) — deeper windows are refused, never
+        # filled. Seams dedup by trade_id: venue window bounds are
+        # second-grained, print times are not.
+        tapes: list = []
+        seen_ids: set = set()
+        page_end = end_s
+        prev_oldest = None
+        for _page in range(12):
+            q = f"limit={_TAPE_PAGE}"
+            if start_s is not None:
+                q += f"&start={start_s}"
+            q += f"&end={page_end}"
+            url = (f"{REST_BASE}/api/v3/brokerage/market/products/"
+                   f"{product}/ticker?{q}")
             try:
-                t_s = _iso_s(tr["time"])
-                tapes.append({"T": int(t_s * 1000), "p": tr["price"],
-                              "q": tr["size"]})
-            except (KeyError, TypeError, ValueError):
-                continue
+                with urllib.request.urlopen(url, timeout=15) as resp:
+                    payload = json.loads(resp.read().decode())
+            except urllib.error.HTTPError as e:
+                body = e.read().decode(errors="replace")[:200]
+                raise NotSupported(
+                    f"{self.name}: market trades REST HTTP {e.code}: "
+                    f"{body}") from e
+            except Exception as e:  # noqa: BLE001
+                raise NotSupported(
+                    f"{self.name}: market trades REST failed: {e}") from e
+            parsed = []
+            for tr in payload.get("trades") or []:
+                try:
+                    parsed.append({
+                        "T": int(_iso_s(tr["time"]) * 1000),
+                        "p": tr["price"], "q": tr["size"],
+                        "id": str(tr.get("trade_id") or "")})
+                except (KeyError, TypeError, ValueError):
+                    continue
+            rows = [r for r in parsed
+                    if r["T"] <= page_end * 1000 and
+                    (start_s is None or r["T"] >= start_s * 1000)]
+            fresh = [r for r in rows if r["id"] not in seen_ids]
+            for r in fresh:
+                seen_ids.add(r["id"])
+            tapes = fresh + tapes
+            oldest = min((r["T"] for r in fresh), default=None)
+            if (not fresh or len(rows) < _TAPE_PAGE
+                    or (prev_oldest is not None
+                        and (oldest is None or oldest >= prev_oldest))
+                    or (start_s is not None and oldest is not None
+                        and oldest <= start_s * 1000)):
+                break
+            prev_oldest = oldest
+            page_end = oldest // 1000
+        if not tapes:
+            raise NotSupported(
+                f"{self.name}: the venue served no prints inside "
+                f"{symbol} {timeframe} for that window — tick and <n>s "
+                f"bars are real trades only, never a fabricated fill")
         # The venue's tape is NEWEST-first; bucketing needs chronological
         # prints or every bucket's open/close swaps (high/low survive).
         tapes.sort(key=lambda r: r["T"])
-        # Window-vs-tape honesty: the words name WHICH side missed, with
-        # the tape's real bounds — never a generic shrug, never a fill.
-        newest_ms = tapes[-1]["T"] if tapes else None
-        tapes = [r for r in tapes if r["T"] <= end_s * 1000]
-        if tapes:
-            oldest_ms = tapes[0]["T"]
-        if newest_ms is not None and not tapes:
-            raise NotSupported(
-                f"{self.name}: your window ends "
-                f"{(end_s * 1000 - newest_ms) / 1000:.0f}s before this "
-                f"venue's tape even begins — the tape holds only the "
-                f"most recent prints (seconds-to-minutes deep)")
-        if start_s is not None:
-            tapes = [r for r in tapes if r["T"] >= start_s * 1000]
-            if not tapes:
-                raise NotSupported(
-                    f"{self.name}: the tape's newest print "
-                    f"(t-{(end_s * 1000 - newest_ms) / 1000:.0f}s) is "
-                    f"older than your window — nothing that recent is "
-                    f"on the venue's tape yet")
         bars = tape_to_candles(tapes, step, limit)
         if not bars:
             raise NotSupported(
-                f"{self.name}: no prints inside {symbol} {timeframe} "
-                f"on the venue's recent tape")
+                f"{self.name}: the venue served no prints inside "
+                f"{symbol} {timeframe} for that window — tick and <n>s "
+                f"bars are real trades only, never a fabricated fill")
         df = pd.DataFrame(bars, columns=CANDLE_COLUMNS)
         df.attrs["venue"] = self.venue
         return df

@@ -39,6 +39,15 @@ from urllib.parse import urlparse, parse_qs
 from websockets.sync.server import serve
 
 
+def _epoch_s(ts: str) -> float:
+    """RFC3339 (any fractional width) -> epoch seconds; harness-local."""
+    t = ts.strip().replace("Z", "+00:00")
+    head, _, _frac = t.partition(".")
+    sec = datetime.strptime(head, "%Y-%m-%dT%H:%M:%S").replace(
+        tzinfo=timezone.utc).timestamp()
+    return sec
+
+
 def _ns_ts(t: float | None = None) -> str:
     """RFC3339 with nanosecond fraction, exactly the docs' print shape."""
     now = time.time() if t is None else t
@@ -130,14 +139,26 @@ class FakeCoinbase:
             def do_GET(self):
                 u = urlparse(self.path)
                 if "/ticker" in u.path:
-                    # Get Market Trades: {"trades": [...]} NEWEST first,
-                    # documented cap 220 (limit param, default 10).
+                    # Get Public Market Trades (June 2026 docs): limit is
+                    # the page size; start/end are UNIX-SECONDS window
+                    # bounds; rows newest first inside the window.
                     q = parse_qs(u.query)
-                    lim = min(220, int(q.get("limit", ["10"])[0]))
+                    lim = int(q.get("limit", ["10"])[0])
+                    win_start = q.get("start", [None])[0]
+                    win_end = q.get("end", [None])[0]
                     pid = u.path.rsplit("/ticker", 1)[0].rsplit("/", 1)[-1]
                     with fake._lock:
                         rows = [t for t in reversed(fake.trades)
-                                if t["product_id"] == pid][:lim]
+                                if t["product_id"] == pid]
+                        if win_start is not None:
+                            rows = [t for t in rows
+                                    if _epoch_s(t["time"]) >=
+                                    float(win_start)]
+                        if win_end is not None:
+                            rows = [t for t in rows
+                                    if _epoch_s(t["time"]) <=
+                                    float(win_end)]
+                        rows = rows[:lim]
                         st = fake.products.get(pid, {"price": 1.0})
                     self._json({"trades": rows,
                                 "best_bid": f"{st['price'] * 0.9999:.2f}",

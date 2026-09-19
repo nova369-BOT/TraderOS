@@ -115,6 +115,88 @@ const onCtxRowIn = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style
 const onCtxRowOut = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = 'transparent'; };
 
 function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'candlestick', trades = [], engineIndicators, indicatorPatch = null, quote = null, positions = [], onPositionModify, onPositionClose, autoSelectPositionId = null }: TerminalChartProps) {
+  // ── infinite scrollback (D17) ──────────────────────────────────────────
+  // ProChart scrolls only within the candles it holds and clamps at the
+  // oldest loaded bar; upstream drives more history through onLoadMore,
+  // which this mount never used to wire - so every timeframe stopped at
+  // the first load, and sub-minute books (tape-built, shallow by venue
+  // design) hit that wall in seconds. Here: each edge-touch pages the
+  // engine once for bars strictly older than the oldest held, prepends
+  // them, and bumps prependShift so ProChart's view-shift math keeps the
+  // viewport on the same candles. The server does the venue part (klines
+  // paging, or the real trade tape for tick/<n>s); a window the venue
+  // cannot serve marks the edge exhausted instead of fabricating bars.
+  const scrollKey = `${provider}|${symbol}|${timeframe}`;
+  const [hist, setHist] = useState<{ key: string; older: Candle[]; shift: number }>(
+    { key: scrollKey, older: [], shift: 0 });
+  // New instrument/timeframe: the older pages belong to the old base and
+  // the prepend count no longer means anything for the new one. Reset
+  // during render (React's endorsed "derived state from props" pattern),
+  // and the `key` on ProChart remounts it so its own view state resets too.
+  if (hist.key !== scrollKey) setHist({ key: scrollKey, older: [], shift: 0 });
+  const olderExhaustedRef = useRef<string | null>(null);   // key whose left edge is the venue truth
+  const olderLoadingRef = useRef(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const allCandles = useMemo(() => {
+    if (!hist.older.length || !candles.length) return candles;
+    // The base array is re-pushed wholesale by the shell (tail merges, full
+    // reloads), so whatever overlaps the base must not be drawn twice.
+    const head = candles[0].time;
+    return [...hist.older.filter((c) => c.time < head), ...candles];
+  }, [hist.older, candles]);
+  const handleLoadMore = useCallback(async () => {
+    // 50k bars held is the honest capacity ceiling: past it, older pages
+    // stop rather than let an unbounded tape chew the browser.
+    const MAX_HELD = 50000;
+    if (olderLoadingRef.current) return;
+    if (olderExhaustedRef.current === scrollKey) return;
+    const held = allCandles;
+    if (!held.length || held.length >= MAX_HELD) return;
+    // Re-entrancy against the newest in-flight payload, not a stale closure.
+    const keyNow = scrollKey;
+    const oldest = held[0].time;                            // ms (chart clock)
+    olderLoadingRef.current = true;
+    setIsLoadingMore(true);
+    try {
+      const q = `/api/candles?provider=${encodeURIComponent(provider)}` +
+        `&symbol=${encodeURIComponent(symbol)}` +
+        `&timeframe=${encodeURIComponent(timeframe)}&limit=5000` +
+        `&end=${encodeURIComponent(new Date(oldest).toISOString())}`;
+      const res = await fetch(q);
+      if (!res.ok) {
+        // Venue ran out (engine says so in words): this book's left edge is
+        // documented truth, stop paging. Anything else is transient and may
+        // retry on the next edge-touch.
+        let detail = '';
+        try { detail = String((await res.json()).detail || ''); } catch { /* keep */ }
+        if (/no (history|prints|data)|served no|no real candles/i.test(detail)) {
+          olderExhaustedRef.current = keyNow;
+        }
+        return;
+      }
+      const j = await res.json();
+      const fresh: Candle[] = (j.candles || [])
+        .map(([t, o, h, l, c, v]: number[]) => ({
+          time: (t < 1e12 ? t * 1000 : t) as number, open: o, high: h,
+          low: l, close: c, volume: v,
+        }))
+        .filter((c: Candle) => c.time < oldest);   // inclusive end re-serves the seam bar
+      if (!fresh.length) {
+        olderExhaustedRef.current = keyNow;
+        return;
+      }
+      setHist((prev) => prev.key !== keyNow
+        ? prev
+        : { key: keyNow, older: [...fresh, ...prev.older],
+            shift: prev.shift + fresh.length });
+    } catch {
+      // network blip: leave history as-is; a later edge-touch retries
+    } finally {
+      olderLoadingRef.current = false;
+      setIsLoadingMore(false);
+    }
+  }, [allCandles, provider, symbol, timeframe, scrollKey]);
+
   const [converter, setConverter] = useState<Converter | null>(null);
   const [activeTool, setActiveTool] = useState<DrawingTool>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
@@ -365,10 +447,10 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
   // so they draw alongside the chart's own registry rather than in a separate
   // widget. Recomputed only when the candles or the payload change.
   const withEngineIndicators = useMemo(() => {
-    const custom = toCustomIndicators(engineIndicators, candles);
+    const custom = toCustomIndicators(engineIndicators, allCandles);
     if (!custom.length) return indicators;
     return { ...indicators, customIndicators: custom } as IndicatorConfig;
-  }, [indicators, engineIndicators, candles]);
+  }, [indicators, engineIndicators, allCandles]);
 
   // Candle/background/grid colours come from the user's saved chart settings
   // (the Appearance panel edits them); without this the colors prop is static
@@ -551,10 +633,14 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           />
         ) : (<>
         <ProChart
-          candles={candles}
+          key={scrollKey}
+          candles={allCandles}
           symbol={symbol}
           timeframe={timeframe}
           chartType={chartType}
+          onLoadMore={handleLoadMore}
+          isLoadingMore={isLoadingMore}
+          prependShift={hist.shift}
           livePrice={livePrice}
           countdown={countdown}
           timezone={chartTimezone}

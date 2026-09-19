@@ -146,3 +146,58 @@ Proof: targeted tape/ladder tests both suites + full suite 243 passed /
 `1s/15s/45s` (tape, ≤10 ms), `3m/1w` (native, ≤5 ms); coinbase `tick/15s`
 (tape, ≤5 ms), `30m/2h/6h` (native, ≤6 ms); `coinbase 4h` and
 `binance 3w` refuse with 404s quoting the real ladders.
+
+## D17 — infinite scrollback on the terminal chart + windowed tape (2026-09-19)
+
+Owner's question: "why is it that i dont have the ability to scroll
+backward on the 30s or 1s or ticks" — two gates were stacked, both now
+fixed without changing a single data law.
+
+1. **The terminal chart never asked for older data.** ProChart scrolls
+   within held candles and clamps at the oldest loaded bar; upstream
+   drives history through `onLoadMore`, and the terminal embedding
+   (`frontend/src/mount.tsx`) never wired it (the app's
+   `BTCandlestickChart` had). Now wired for every book: each left-edge
+   touch pages `/api/candles?end=<oldest>` once and prepends; the
+   existing `prependShift` useLayoutEffect keeps the viewport glued.
+   ProChart remounts per `provider|symbol|timeframe` key (the prepend
+   counter belongs to a base; remount resets it cleanly). Venue-exhausted
+   windows are parsed by their own words ("no history/prints/data" /
+   "served no") and mark the left edge honestly — no spinner-forever.
+   Held bars cap at 50k (browser-truth ceiling).
+2. **Coinbase tape was tail-only.** The June 2026 docs for *Get Public
+   Market Trades* document `start`/`end` UNIX-seconds windows and a
+   `limit` page size (no printed max — page size asked at 1000, venue
+   truncates to its truth). `_candles_tape` now pages backward by `end`
+   exactly like Binance aggTrades: ≤12 pages (~12k prints), seam-deduped
+   by `trade_id` (venue window bounds are second-grained). Windows the
+   venue cannot serve refuse with the tape law in words; D16's printed
+   "220-print window" was my conservative cap, not a venue truth —
+   corrected in code, fakes and docs.
+
+Two wire laws this exposed and fixed:
+
+- **Tick ts must survive the wire.** `/api/candles` emitted `int(ts)` —
+   two prints in one second merged into one bogus timestamp. Integral
+   seconds still emit as ints (klines shape), fractional tick times emit
+   as floats; the client's `<1e12 ⇒ ×1000` law absorbs both.
+- **Epoch window params must parse.** The shell's tail-reload sends
+  `start=<epoch seconds>`; that went straight into the RFC3339 parser
+  and 404'd — so the tail-reload safety net has been silently dead for
+  every timeframe (masked whenever the WS was healthy: chart moved
+  anyway). The endpoint now accepts epoch numbers (fraction included,
+  for tick seams) AND ISO strings.
+
+Fakes grew teeth accordingly: `fake_coinbase` `/ticker` honours
+`start`/`end`/`limit`; `fake_binance` klines honour
+`startTime`/`endTime`/`limit` ascending like the real venue (the
+unfiltered book was masking merge bugs in exactly this scrollback
+shape).
+
+Verify: targeted suites (binance 38, coinbase 26, api incl. 2 new wire
+pins) + full suite **247 passed / 1 skipped**; frontend build clean,
+bundle +1.25 kB, typecheck delta 0. Live engine: initial loads coinbase
+15s 68 bars (3 tape pages, 67 ms) / tick 1998 prints; older window
+fetches — coinbase 15s 34 bars 26 ms, tick 998 prints 40 ms, binance 15m
+300 bars 9 ms; exhaust edges refuse with the venue's words (~2 ms);
+tick tail-reload with epoch start 200/121 bars 20 ms.

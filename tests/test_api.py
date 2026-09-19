@@ -443,3 +443,59 @@ def test_lse_candles_page_past_the_gate_cap(monkeypatch):
     calls.clear()
     df = p.candles("EUR/USD", "1h", limit=5000)
     assert len(df) == 5000 and len(calls) == 1 and list(df["ts"]) == all_ts[-5000:]
+
+
+def test_tick_ts_fraction_survives_the_wire(client, monkeypatch):
+    """Two prints in the same second are DISTINCT tick bars: the endpoint
+    must never int()-merge them (the D17 wire law)."""
+    import pandas as pd
+    from lse_terminal.providers import demo
+
+    def fake_candles(self, symbol, timeframe="tick", limit=5000,
+                     start=None, end=None):
+        df = pd.DataFrame(
+            [(1789845907.0, 100.0, 100.0, 100.0, 100.0, 1.0),
+             (1789845907.5, 101.0, 101.0, 101.0, 101.0, 1.0)],
+            columns=["ts", "open", "high", "low", "close", "volume"])
+        df.attrs["venue"] = "demo"
+        return df
+
+    monkeypatch.setattr(demo.DemoProvider, "candles", fake_candles)
+    r = client.get("/api/candles", params={
+        "provider": "demo", "symbol": "DEMO:BTC", "timeframe": "tick"})
+    assert r.status_code == 200
+    ts = [row[0] for row in r.json()["candles"]]
+    assert ts == [1789845907, 1789845907.5]      # never collapsed
+    assert len(set(ts)) == 2
+
+
+def test_window_params_accept_epoch_strings_and_iso(client, monkeypatch):
+    """The shell's tail-reload sends start=<epoch seconds> (int on klines,
+    fractional on tick); other callers send ISO. Both are windows, not
+    404s — a bare epoch string must never reach the ISO parser."""
+    import pandas as pd
+    from lse_terminal.providers import demo
+    seen = {}
+
+    def fake_candles(self, symbol, timeframe="1h", limit=5000,
+                     start=None, end=None):
+        seen["start"], seen["end"] = start, end
+        df = pd.DataFrame(
+            [(1789845900, 100.0, 101.0, 99.0, 100.5, 1.0)],
+            columns=["ts", "open", "high", "low", "close", "volume"])
+        df.attrs["venue"] = "demo"
+        return df
+
+    monkeypatch.setattr(demo.DemoProvider, "candles", fake_candles)
+    r = client.get("/api/candles", params={
+        "provider": "demo", "symbol": "DEMO:BTC", "timeframe": "1h",
+        "start": "1789845907", "end": "1789845907.5"})
+    assert r.status_code == 200
+    assert seen["start"] == 1789845907            # int epoch number
+    assert seen["end"] == 1789845907.5            # fraction preserved
+    r2 = client.get("/api/candles", params={
+        "provider": "demo", "symbol": "DEMO:BTC", "timeframe": "1h",
+        "start": "2026-09-19T19:00:00Z"})
+    assert r2.status_code == 200
+    assert seen["start"] == "2026-09-19T19:00:00Z"   # ISO passes through
+

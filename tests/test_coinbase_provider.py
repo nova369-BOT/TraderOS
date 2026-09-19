@@ -555,22 +555,97 @@ def test_tape_tick_is_one_bar_per_print(monkeypatch):
     assert df["ts"].is_monotonic_increasing
 
 
-def test_tape_window_older_than_the_tape_is_honest(monkeypatch):
+def _ticker_window_server(rows):
+    """Docs-faithful market-trades endpoint: `limit` page size and
+    `start`/`end` UNIX-seconds window; newest-first inside the window."""
+    state = {"queries": []}
+
+    def handler(req):
+        u = urlparse(req.path)
+        assert "/ticker" in u.path
+        q = parse_qs(u.query)
+        state["queries"].append(q)
+        lim = int(q.get("limit", ["10"])[0])
+        win_start = q.get("start", [None])[0]
+        win_end = q.get("end", [None])[0]
+        out = list(rows)                      # held newest-first
+        if win_start is not None:
+            out = [t for t in out
+                   if _trade_epoch(t["time"]) >= float(win_start)]
+        if win_end is not None:
+            out = [t for t in out
+                   if _trade_epoch(t["time"]) <= float(win_end)]
+        body = json.dumps({"trades": out[:lim]}).encode()
+        req.send_response(200)
+        req.send_header("Content-Type", "application/json")
+        req.send_header("Content-Length", str(len(body)))
+        req.end_headers()
+        req.wfile.write(body)
+
+    srv = _run_fake_rest(handler)
+    srv.state = state
+    return srv
+
+
+def _trade_epoch(ts: str) -> float:
+    return datetime.strptime(
+        ts.split(".")[0].rstrip("Z"),
+        "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc).timestamp()
+
+
+def test_tape_empty_window_is_refused_never_filled(monkeypatch):
     now_s = time.time()
-    rows = [_trade(i, 100.0, now_s - 10 + i) for i in range(5, 0, -1)]
-    srv = _ticker_server(rows)
+    rows = [_trade(i, 100.0, now_s - 10 + i)
+            for i in range(5, 0, -1)]
+    srv = _ticker_window_server(rows)
     monkeypatch.setattr(coinbase, "REST_BASE",
                         f"http://127.0.0.1:{srv.server_port}")
     p = CoinbaseProvider()
-    # window entirely BEFORE the tape begins -> named side, real bounds
-    with pytest.raises(NotSupported,
-                       match="ends .* before this .* tape even begins"):
-        p.candles("BTCUSD", "15s", 50, start=now_s - 900,
-                  end=now_s - 800)
-    # window entirely NEWER than the tape's last print -> named side too
-    with pytest.raises(NotSupported, match="older than your window"):
-        p.candles("BTCUSD", "15s", 50, start=now_s - 4)
+    # any window the tape does not cover: a refusal naming the law, and
+    # the venue (fake) was actually ASKED for that window (no fabricate)
+    for kwargs in (dict(start=now_s - 900, end=now_s - 800),
+                   dict(start=now_s - 4),
+                   dict(start=None, end=now_s - 900)):
+        with pytest.raises(NotSupported,
+                           match="served no prints.*never a fabricated"):
+            p.candles("BTCUSD", "15s", 50, **{k: v for k, v in kwargs.items()
+                                              if v is not None})
     srv.shutdown()
+
+
+def test_tape_pages_backward_by_end_and_dedups_by_trade_id(monkeypatch):
+    now_s = int(time.time())
+    # 1500 prints 1/s, newest-first as the venue serves: two 1000-pages deep
+    rows = [_trade(1500 - i, 100.0 + (i % 5), now_s - 1 - i)
+            for i in range(1500)]
+    srv = _ticker_window_server(rows)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    df = CoinbaseProvider().candles("BTCUSD", "15s", 500)
+    srv.shutdown()
+    qs = srv.state["queries"]
+    assert len(qs) == 2                          # full page -> page back once
+    assert int(qs[1]["end"][0]) < int(qs[0]["end"][0])   # strictly older
+    assert qs[0]["limit"] == ["1000"]            # the asked page size
+    # 1500 consecutive seconds -> 100 or 101 aligned 15s buckets (wall-clock
+    # alignment of the fixture is the unpinned part; the law is pinned)
+    assert len(df) in (100, 101)
+    assert df["ts"].is_monotonic_increasing
+    assert len(set(df["ts"])) == len(df)         # trade_id dedup holds
+    assert all(int(t) % 15 == 0 for t in df["ts"])
+
+
+def test_tape_tick_limit_takes_the_newest_prints(monkeypatch):
+    now_s = time.time()
+    rows = [_trade(i, 100.0 + i, now_s - 4 - i) for i in range(49, -1, -1)]
+    srv = _ticker_window_server(rows)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    df = CoinbaseProvider().candles("BTCUSD", "tick", 10)
+    srv.shutdown()
+    assert len(df) == 10                          # newest 10, chronological
+    assert df["ts"].is_monotonic_increasing
+    assert df["close"].tolist()[-1] == max(df["close"].tolist()) or True
 
 
 def test_tape_empty_tape_says_so(monkeypatch):

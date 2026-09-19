@@ -119,7 +119,15 @@ class FakeBinance:
                         outer.depth_rest_hits += 1
                         return self._json(outer.depth_snapshot)
                     if u.path == "/fapi/v1/klines":
-                        return self._json(outer.klines)
+                        # Docs law: rows ASCENDING by open time, first
+                        # `limit` (<=1500) inside [startTime, endTime] ms.
+                        lim = int(q.get("limit", ["500"])[0])
+                        st = int(q.get("startTime", ["0"])[0])
+                        et = int(q.get("endTime", ["99999999999999"])[0])
+                        rows = [r for r in outer.klines
+                                if st <= int(r[0]) <= et]
+                        rows.sort(key=lambda r: int(r[0]))
+                        return self._json(rows[:lim])
                     if u.path == "/fapi/v1/aggTrades":
                         # Docs: with startTime the page runs FORWARD from
                         # it; otherwise the latest <= endTime (default
