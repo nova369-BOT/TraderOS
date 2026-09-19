@@ -462,13 +462,78 @@ function connectStream() {
       if (!/does not stream/i.test(m.message || "")) status(`stream: ${m.message}`);
       return;
     }
-    if (m.type === "tick") onTick(m);
+    // The engine coalesces wire frames to ~30 Hz / symbol (latest state
+    // wins); one batch message carries them, the legacy single-tick shape
+    // stays handled so an older engine still paints.
+    if (m.type === "tick") onTick(m, performance.now());
+    else if (m.type === "ticks") {
+      const tRecv = performance.now();
+      for (const t of m.ticks) onTick(t, tRecv);
+    }
   };
   ws.onclose = () => { if (state.ws === ws) state.ws = null; };
   state.ws = ws;
 }
 
-function onTick(t) {
+/* Controlled render (recovery §22): raw ticks NEVER re-render the chart
+   directly — at crypto bursts that was hundreds of full chart renders a
+   second, each re-serializing the whole candle model. Tick handlers mutate
+   the forming bar; ONE animation-frame flush paints per frame. The wire
+   path stays streaming (coalescing is at the fan-out and the pixel, where
+   the chart's own contract is whole-array), §21 stands. */
+let _chartFlush = null;
+function scheduleChartFlush(tick, tRecvPerf) {
+  if (!_chartFlush) {
+    _chartFlush = { tick, tRecvPerf };
+  } else {
+    _chartFlush.tick = tick;   // newest state; first recv stamp keeps the
+                               // sample about the FIRST event in this frame
+  }
+  if (_scheduledFlush) return;
+  _scheduledFlush = true;
+  requestAnimationFrame(() => {
+    _scheduledFlush = false;
+    const job = _chartFlush; _chartFlush = null;
+    if (!job || !state.candleData) return;
+    state.candleData = state.candleData.slice();
+    pushToChart();
+    // a second frame boundary ≈ "rendered" (T8): the paint that followed
+    // this state commit has completed when the next rAF fires.
+    requestAnimationFrame(() => diagSampleTick(job.tick, job.tRecvPerf));
+  });
+}
+let _scheduledFlush = false;
+
+/* Recovery instrumentation (T1..T8): the browser reports its own boundary
+   stamps back to the engine for the /api/diag/latency aggregates. Sampled
+   (1 in 20 flushes — plenty at 60 fps) and batched every 5s; telemetry
+   must never cost more than the pipeline it measures. */
+const _diagSamples = [];
+let _diagEvery = 0;
+function diagSampleTick(tick, tRecvPerf) {
+  if (!tick || tick.emit_ts == null || tick.ts == null || !tick.provider) return;
+  if (++_diagEvery % 20 !== 0) return;
+  const renderPerf = performance.now();
+  const renderEpoch = Date.now() / 1000;
+  _diagSamples.push({
+    provider: tick.provider, symbol: tick.symbol,
+    recv: renderEpoch - (renderPerf - tRecvPerf) / 1000,
+    render: renderEpoch, emit: tick.emit_ts, venue_ts: tick.ts,
+  });
+  if (_diagSamples.length > 400) _diagSamples.splice(0, 200);
+}
+setInterval(async () => {
+  if (document.hidden || !_diagSamples.length) return;
+  const samples = _diagSamples.splice(0);
+  try {
+    await fetch(`${API_PREFIX}/api/diag/ingest`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ samples }),
+    });
+  } catch (e) { /* silent: telemetry never surfaces as an app error */ }
+}, 5000);
+
+function onTick(t, tRecvPerf) {
   const prev = state.prices[t.symbol];
   state.prices[t.symbol] = t.price;
   if (state.staleFromCache) state.staleFromCache.delete(t.symbol);
@@ -511,8 +576,7 @@ function onTick(t) {
       state.candleData = state.candleData.slice(-TICK_MAX_BARS);
     }
     state.lastBar = bar;
-    state.candleData = state.candleData.slice();
-    pushToChart();
+    scheduleChartFlush(t, tRecvPerf);
     return;
   }
   if (!state.lastBar) return;
@@ -528,10 +592,11 @@ function onTick(t) {
     state.candleData[state.candleData.length - 1] = bar;
   }
   state.lastBar = bar;
-  // Replace the array identity so the chart's props compare as changed and
-  // the new/updated bar actually repaints.
-  state.candleData = state.candleData.slice();
-  pushToChart();
+  // Identity replacement and the chart call happen once per frame inside
+  // scheduleChartFlush now, not once per tick (the whole point of recovery
+  // §22; pushToChart's props-compare needs a fresh array, which the flush
+  // produces).
+  scheduleChartFlush(t, tRecvPerf);
 }
 
 /* ---------- indicator picker ---------- */
@@ -788,6 +853,7 @@ const SOURCE_BOOKS = {
   lse:       { label: "London Strategic Edge",      hint: "equities · FX · indices" },
   binance:   { label: "Binance (futures & spot)",   hint: "crypto · keyless" },
   edgedepth: { label: "EdgeDepth — Binance gateway", hint: "crypto · engine-owned" },
+  coinbase:  { label: "Coinbase",                    hint: "USD spot · keyless direct" },
 };
 function setupSourcePanel() {
   const btn = $("src-open");
@@ -1194,7 +1260,8 @@ function isLiveSource(name) {
   // (their universes ship with the engine, no vendor key to configure), so
   // the MARKETS surface treats them identically: charts, stream, watchlist
   // section.
-  if (name === "lse" || name === "binance" || name === "edgedepth") return true;
+  if (name === "lse" || name === "binance" || name === "edgedepth"
+      || name === "coinbase") return true;
   const p = state.providers.find((x) => x.name === name);
   return !!(p && (p.custom || p.broker));
 }
@@ -1384,7 +1451,7 @@ async function openConnMenu() {
   // Switching is a plain enterLiveSource: their universes need no key to
   // prove. Rows share SOURCE_BOOKS copy with the toolbar dropdown, so a
   // book reads the same in every surface.
-  for (const key of ["binance", "edgedepth"]) {
+  for (const key of ["binance", "edgedepth", "coinbase"]) {
     if (!SOURCE_BOOKS[key] || !state.providers.some((p) => p.name === key)) continue;
     const row = document.createElement("div");
     row.className = "conn-row";
@@ -2801,7 +2868,7 @@ async function runSwitchProvider(name) {
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
   renderTimeframes();
-  if (name === "binance" || name === "edgedepth") {
+  if (name === "binance" || name === "edgedepth" || name === "coinbase") {
     // The crypto books are zero-config, so their chart must NOT wait for
     // the catalog: the exchange's own book is the slowest fetch on this page
     // (a multi-megabyte cold download, raced small->large server-side,
@@ -2810,8 +2877,9 @@ async function runSwitchProvider(name) {
     // charting FIRST there matters at least as much). Chart the flagship
     // pair NOW and let the sidebar fill in behind it when the catalog
     // lands. LSE keeps the catalog-first boot: its first row is the natural
-    // default and its catalog is small and key-gated.
-    state.symbol = "BTCUSDT";
+    // default and its catalog is small and key-gated. (Canonical symbols
+    // differ per book: USD-M perps are BTCUSDT, the spot books BTCUSD.)
+    state.symbol = name === "coinbase" ? "BTCUSD" : "BTCUSDT";
     // Never paint the previous provider's rows under this source: clear
     // the list, show the (empty) watchlist, and let the real book land.
     state.instruments = [];

@@ -25,6 +25,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+
+from lse_terminal.engine.datadiag import diag as _diag
 import time
 from dataclasses import dataclass, field
 from typing import AsyncIterator, List, Optional
@@ -282,6 +284,8 @@ class EdgeDepthClient:
                         continue
                     if kind == "stale":
                         continue
+                    _diag.observe("edgedepth", symbol,
+                                  update.timestamp_ms / 1000.0, kind="book")
                     yield DepthEvent(
                         symbol=symbol,
                         ts=update.timestamp_ms / 1000.0,
@@ -291,6 +295,8 @@ class EdgeDepthClient:
                     )
                 elif payload.stream == STREAM_TRADES:
                     t = parse_trade(payload.data)
+                    _diag.observe("edgedepth", symbol,
+                                  t.timestamp_ms / 1000.0, kind="trade")
                     yield TradeEvent(
                         symbol=symbol,
                         ts=t.timestamp_ms / 1000.0,
@@ -373,6 +379,8 @@ class EdgeDepthClient:
                         continue
                     if kind == "stale":
                         continue
+                    _diag.observe("edgedepth", symbol,
+                                  update.timestamp_ms / 1000.0, kind="book")
                     yield DepthEvent(
                         symbol=symbol, ts=update.timestamp_ms / 1000.0,
                         type=kind,
@@ -380,6 +388,8 @@ class EdgeDepthClient:
                         asks=[(lv.price, lv.size) for lv in update.asks])
                 elif payload.stream == STREAM_TRADES:
                     t = parse_trade(payload.data)
+                    _diag.observe("edgedepth", symbol,
+                                  t.timestamp_ms / 1000.0, kind="trade")
                     yield TradeEvent(
                         symbol=symbol, ts=t.timestamp_ms / 1000.0,
                         price=t.price, size=t.qty,

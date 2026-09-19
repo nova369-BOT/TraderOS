@@ -87,6 +87,8 @@ def run_async(coro):
 class EdgeDepthProvider(Provider):
     name = "edgedepth"
     title = "Binance USD-M Futures (EdgeDepth gateway)"
+    # The gateway is a wire, not a venue: events originate at Binance.
+    venue = "binance"
     timeframes = list(_TIMEFRAMES)
     deterministic = False
 

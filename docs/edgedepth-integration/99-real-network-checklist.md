@@ -107,6 +107,13 @@ Legend: `[ ] to-do` / `[x] done (date, evidence)`.
       request hangs, chart included). Ops choices, owner-level: keep-alive
       pinger hitting /api/health every < 15 min, or a paid instance. The
       post-wake first tap is covered by D9's boot prewarm.
+* [ ] **Coinbase chain on a real network.** From the Render service (the
+  sandbox cannot reach either venue): Source -> Coinbase, BTCUSD — candles
+  arrive through the provider's REST path; ticks move; /api/diag/health
+  shows coinbase LIVE with by_kind.trade growing; /api/diag/latency reports
+  real segment percentiles. Repeat with Source -> EdgeDepth (gateway chain)
+  and Source -> Binance (direct). Every /api/ws tick carries
+  provider/venue — a wire trace proves §25 provenance end to end.
 * [ ] **Restart-budget tuning.** Defaults (3 spawns / 120s, 30s stable
       reset) are desktop-reasonable; on a server make sure an orchestrator
       (systemd/docker) owns restarts instead: set

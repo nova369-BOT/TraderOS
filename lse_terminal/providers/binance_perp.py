@@ -29,6 +29,8 @@ import asyncio
 import gzip
 import json
 import logging
+
+from lse_terminal.engine.datadiag import diag as _diag
 import os
 import random
 import threading
@@ -559,6 +561,8 @@ class BookFeed:
 
     # emission helpers -----------------------------------------------------
     def _emit_delta(self, d: dict) -> None:
+        _diag.observe("binance", self.symbol.upper(), d["E"] / 1000.0,
+                      kind="book")
         self.events.append(DepthEvent(
             symbol=self.symbol.upper(), ts=d["E"] / 1000.0, type=DEPTH_DELTA,
             bids=[(float(p), float(s)) for p, s in d.get("b", [])],
@@ -702,6 +706,7 @@ class BookFeed:
 
 class BinancePerpProvider(Provider):
     name = "binance"
+    venue = "binance"
     # The book the deployment actually serves can be the futures edge or the
     # spot mirror (whichever answers this egress), so the title names the
     # exchange, not the book — the venue badge and the catalog's categories
@@ -1086,6 +1091,7 @@ class BinancePerpProvider(Provider):
             q = quotes.get(sym)
             if q:
                 tick["bid"], tick["ask"] = q
+            _diag.observe("binance", sym, tick["ts"], kind="trade")
             out_q.put_nowait(tick)
 
         task = asyncio.create_task(

@@ -7127,6 +7127,20 @@ def create_app() -> FastAPI:
         import urllib.parse
         return await _sim_relay("POST", f"/sim/positions/close?account_id={account_id}&symbol={urllib.parse.quote(symbol, safe='')}")
 
+    # Live ticks ride a latest-state-wins coalescer (max ~30 Hz per
+    # symbol): a high-tps crypto book used to serialize one JSON frame per
+    # trade — several hundred per second — and the browser then re-rendered
+    # its full candle model per frame, which is the measured frontend
+    # bottleneck of the recovery diagnostic. Raw event flow upstream is
+    # untouched (streaming stays streaming, §21); only the UI fan-out
+    # coalesces, exactly like orderflow's ~15 Hz topic below, and the
+    # browser now re-renders at animation-frame cadence. Every tick also
+    # carries provenance (provider/venue) per the recovery task's §25.
+    from lse_terminal.engine.datadiag import diag as _datadiag
+    import asyncio as _asyncio
+
+    _TICK_FLUSH_S = 1.0 / 30.0
+
     @app.websocket("/api/ws")
     async def ws(websocket: WebSocket, provider: str, symbols: str):
         await websocket.accept()
@@ -7138,23 +7152,99 @@ def create_app() -> FastAPI:
             await websocket.send_json({"type": "error", "message": str(e)})
             await websocket.close()
             return
+        _datadiag.watch_open(p.name)
+        latest: dict = {}
+        err: dict = {}
+        wake = _asyncio.Event()
+
+        async def _drain():
+            try:
+                async for item in agen:
+                    if "error" in item:
+                        err["message"] = item["error"]
+                        wake.set()
+                        return
+                    latest[item["symbol"]] = item   # latest state wins
+                    wake.set()
+            except Exception as e:  # noqa: BLE001
+                err["message"] = str(e)[:200]
+                wake.set()
+
+        task = _asyncio.create_task(_drain())
         try:
-            async for item in agen:
-                if "error" in item:
-                    await websocket.send_json({"type": "error",
-                                               "message": item["error"]})
-                    break
-                item["type"] = "tick"
-                await websocket.send_json(item)
+            while True:
+                try:
+                    await _asyncio.wait_for(wake.wait(), timeout=_TICK_FLUSH_S)
+                except _asyncio.TimeoutError:
+                    pass
+                if wake.is_set():
+                    wake.clear()
+                if "message" in err:
+                    await websocket.send_json(
+                        {"type": "error", "message": err["message"]})
+                    # An ASGI handler's return closes NOTHING: close must
+                    # ride the wire explicitly or the client waits forever.
+                    await websocket.close()
+                    return
+                if not latest:
+                    if task.done():
+                        await websocket.close()
+                        return
+                    continue
+                batch = list(latest.values())
+                latest.clear()
+                venue = getattr(p, "venue", p.name)
+                now = time.time()
+                for v in batch:
+                    v["type"] = "tick"
+                    v["provider"] = p.name
+                    v["venue"] = venue
+                    v["emit_ts"] = now
+                    _datadiag.emit(p.name, v["symbol"], now)
+                await websocket.send_json({"type": "ticks", "ticks": batch})
         except WebSocketDisconnect:
             pass
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             try:
-                await websocket.send_json({"type": "error", "message": str(e)[:200]})
+                await websocket.send_json(
+                    {"type": "error", "message": str(e)[:200]})
             except Exception:
                 pass
         finally:
-            await agen.aclose()
+            task.cancel()
+            try:
+                await agen.aclose()
+            except Exception:  # noqa: BLE001
+                pass
+            _datadiag.watch_close(p.name)
+
+    # —— live-data diagnostics (recovery task §7/§20/§26/§27) ————————
+    # Health answers data RECENCY, never socket state; latency returns the
+    # T1..T8 segment percentiles per provider. The browser posts its own
+    # receive/render stamps to /api/diag/ingest.
+    @app.get("/api/diag/health")
+    def diag_health():
+        return _datadiag.health()
+
+    @app.get("/api/diag/latency")
+    def diag_latency(provider: str | None = None):
+        return _datadiag.latency(provider or None)
+
+    class _BrowserDiagSample(BaseModel):
+        provider: str
+        symbol: str
+        recv: float
+        render: float
+        emit: float | None = None
+        venue_ts: float | None = None
+
+    class _BrowserDiagBatch(BaseModel):
+        samples: list[_BrowserDiagSample]
+
+    @app.post("/api/diag/ingest")
+    def diag_ingest(body: _BrowserDiagBatch):
+        _datadiag.ingest_browser([s.model_dump() for s in body.samples])
+        return {"ok": True, "accepted": len(body.samples)}
 
     # ── Order flow: Depth Heat (F1 Phase 1) ─────────────────────────────
     #

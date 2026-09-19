@@ -146,8 +146,15 @@ def test_ws_streams_demo_ticks(client):
     with client.websocket_connect("/api/ws?provider=demo&symbols=DEMO:BTC,DEMO:VIX",
                                   headers={"host": "127.0.0.1"}) as ws:
         msg = ws.receive_json()
-    assert msg["type"] == "tick"
-    assert msg["symbol"] in ("DEMO:BTC", "DEMO:VIX")
+    # Live ticks ride the coalesced batch wire (recovery §22): one batch
+    # message carries the window's latest per-symbol ticks, each a full
+    # tick dict with provenance stamped on.
+    assert msg["type"] == "ticks"
+    assert msg["ticks"], "batch must carry at least one tick"
+    for t in msg["ticks"]:
+        assert t["type"] == "tick"
+        assert t["symbol"] in ("DEMO:BTC", "DEMO:VIX")
+        assert t["provider"] == "demo"
 
 
 def test_ui_served(client):

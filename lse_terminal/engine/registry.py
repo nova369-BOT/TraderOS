@@ -66,9 +66,10 @@ class Registry:
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
     from lse_terminal.providers import (BinancePerpProvider,
-                                        CryptoL2Provider, DemoProvider,
-                                        EdgeDepthProvider, LseProvider,
-                                        MboProvider, UserDataProvider)
+                                        CoinbaseProvider, CryptoL2Provider,
+                                        DemoProvider, EdgeDepthProvider,
+                                        LseProvider, MboProvider,
+                                        UserDataProvider)
 
     reg.register(UserDataProvider())
     reg.register(DemoProvider())
@@ -87,6 +88,10 @@ def load_builtins(reg: Registry) -> None:
     # Merged Phase-0 spine: Binance USD-M futures direct, ported 1:1 from the
     # gateway's adapter (company-owned MIT). Zero config, zero extra services.
     reg.register(BinancePerpProvider())
+    # Coinbase spot direct (recovery task): Advanced Trade public market
+    # data, keyless by docs — trades, level2 book, candle history. Second
+    # independent pipeline next to the gateway's Binance book.
+    reg.register(CoinbaseProvider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous
     # Strategy-subclass engine went with it. Both are archived under

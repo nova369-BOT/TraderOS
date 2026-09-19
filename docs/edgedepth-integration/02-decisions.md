@@ -158,3 +158,33 @@ real-network checklist.
   empty answers; `edgedepth` book only — other providers untouched.
 Reverse: remove `prewarm`, the memo block in `candles()`, and
 `_edgedepth_boot_warm`; the book returns to hop-per-tap pricing.
+
+## D10 — the bottleneck was the render law, not the data law (2026-09-19)
+
+The market-data recovery diagnostic (docs/market-data-recovery/REPORT.md)
+measured every boundary before changing anything: venue→normalized ≈
+0.6 ms median, normalized→WS-emit ≈ 0.1 ms. The slowness lived in the
+frontend: every trade tick rebuilt the chart's whole candle model
+(O(n)·ticks/s), and the wire shipped one JSON frame per trade.
+
+**Decision.** Raw event flow stays untouched and streaming; display-side
+coalescing follows the same law the orderflow topic already used:
+- /api/ws emits latest-state-wins batches at ~30 Hz/symbol with
+  provenance (provider, venue, emit_ts) on every tick, and closes its
+  socket explicitly (an ASGI handler-return closes nothing).
+- The chart mutates the forming bar per tick and paints once per
+  animation frame; the chart component's whole-array contract is honored
+  unchanged.
+- Telemetry (datadiag) is permanent, lock-free, ring-bounded: health is
+  data recency (connected-silent is STALE; no waiting consumer is IDLE),
+  latency is per-segment percentiles with the cross-clock skew caveat.
+
+**Coinbase** joins as a second independent pipeline written only from
+current Coinbase docs: Advanced Trade public WS (subscribe-before-feed,
+envelope+sequence_num, market_trades, level2 with snapshot/update and
+quantity-removal, gap→resync) + public REST candles (documented
+granularities; 4h honestly absent, 300-cap paginated). Normalization
+happens only after Coinbase-specific rules are applied; never invented
+fields, never synthesized rungs.
+Reverse: revert /api/ws + app.js render flush + datadiag + coinbase.py +
+its registrations; the pipeline returns to per-print charts.
