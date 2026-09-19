@@ -344,8 +344,8 @@ function ChartLeftSidebarInner(props: ChartLeftSidebarProps) {
             <div className="hidden md:block lg:hidden">
               <Popover open={hamburgerOpen} onOpenChange={setHamburgerOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant="ghost" size="icon" className={`h-7 w-7 md:h-10 md:w-10 rounded-md transition-all ${hamburgerOpen ? 'text-foreground bg-muted/50' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`}>
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="15" y2="6" /><line x1="3" y1="12" x2="13" y2="12" /><line x1="3" y1="18" x2="15" y2="18" /><circle cx="19" cy="14" r="4" /><circle cx="19" cy="14" r="1.5" fill="currentColor" /></svg>
+                  <Button variant="ghost" size="icon" className={`h-7 w-7 md:h-7 md:w-7 rounded-md transition-all ${hamburgerOpen ? 'text-foreground bg-muted/50' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`}>
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="15" y2="6" /><line x1="3" y1="12" x2="13" y2="12" /><line x1="3" y1="18" x2="15" y2="18" /><circle cx="19" cy="14" r="4" /><circle cx="19" cy="14" r="1.5" fill="currentColor" /></svg>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent side="right" align="start" className="w-56 p-0 bg-card border border-border shadow-xl rounded-lg overflow-hidden z-[100]" sideOffset={4}>
@@ -380,10 +380,10 @@ function ChartLeftSidebarInner(props: ChartLeftSidebarProps) {
               as the calendar/bell/settings sibling icons; active state fills the
               star so it visibly latches when the panel is open. shadcn Button
               bakes in `[&_svg]:size-4`, so the `!h-5 !w-5` override is required;
-              a plain `h-5 w-5` is silently clobbered by the descendant rule. */}
+              a plain `h-4 w-4` is silently clobbered by the descendant rule. */}
           <div className="flex flex-col items-center pt-1 md:pt-2">
             <TooltipProvider delayDuration={300}><Tooltip><TooltipTrigger asChild>
-              <Button variant="ghost" size="icon" className={`relative h-10 w-10 rounded-none transition-all ${activePanel === 'watchlist' ? 'text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`} onClick={() => togglePanel('watchlist')}>
+              <Button variant="ghost" size="icon" className={`relative h-7 w-7 rounded-none transition-all ${activePanel === 'watchlist' ? 'text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`} onClick={() => togglePanel('watchlist')}>
                 <Star className="!h-5 !w-5" strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" fill={activePanel === 'watchlist' ? 'currentColor' : 'none'} />
               </Button>
             </TooltipTrigger><TooltipContent side="right" className="text-xs">Watchlist</TooltipContent></Tooltip></TooltipProvider>
@@ -399,8 +399,8 @@ function ChartLeftSidebarInner(props: ChartLeftSidebarProps) {
             {/* the folder (layout) and settings icons inside DrawingToolsPanel. */}
             <div className="hidden md:block">
               <TooltipProvider delayDuration={300}><Tooltip><TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" className={`relative h-10 w-10 rounded-none transition-all ${activePanel === 'calendar' ? 'text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`} onClick={() => togglePanel('calendar')}>
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /><circle cx="17.5" cy="17.5" r="4" fill="var(--background, white)" stroke="currentColor" strokeWidth="1.75" /><line x1="17.5" y1="15.5" x2="17.5" y2="17.5" /><line x1="17.5" y1="17.5" x2="19" y2="18.5" /></svg>
+                <Button variant="ghost" size="icon" className={`relative h-7 w-7 rounded-none transition-all ${activePanel === 'calendar' ? 'text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r' : 'text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground'}`} onClick={() => togglePanel('calendar')}>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /><circle cx="17.5" cy="17.5" r="4" fill="var(--background, white)" stroke="currentColor" strokeWidth="1.75" /><line x1="17.5" y1="15.5" x2="17.5" y2="17.5" /><line x1="17.5" y1="17.5" x2="19" y2="18.5" /></svg>
                 </Button>
               </TooltipTrigger><TooltipContent side="right" className="text-xs">Calendar</TooltipContent></Tooltip></TooltipProvider>
             </div>

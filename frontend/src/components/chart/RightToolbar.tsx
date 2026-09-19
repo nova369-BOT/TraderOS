@@ -12,11 +12,12 @@ import { BarChart3, PieChart, Search, User, LogIn, LogOut, Moon, Sun, FlaskConic
 import { getEventImpact } from "@/lib/eventImpact";
 
 
-// Single source of truth for the RightToolbar width (Tailwind w-12 = 48px).
+// Single source of truth for the RightToolbar width (Tailwind w-8 = 32px;
+// 48px pre-density-v3, shrunk with the owner's "shrink the columns" pass).
 // Import this constant anywhere you need to account for the toolbar overlay
-// instead of hardcoding 48. The desktop PRICE_AXIS_WIDTH (110px) includes
-// this value: 62px base axis + 48px toolbar overlay = 110px total.
-export const RIGHT_TOOLBAR_WIDTH = 48;
+// instead of hardcoding the width. The desktop price axis adds its own base
+// on top of this value via calculatePriceAxisWidth().
+export const RIGHT_TOOLBAR_WIDTH = 32;
 
 interface RightToolbarProps {
     currentSymbol?: string;
@@ -278,7 +279,7 @@ function SectorSentimentPanel() {
 // CUSTOM ICONS
 // ============================================================================
 const SearchIcon = () => (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="11" cy="11" r="7" />
         <path d="M21 21l-4.35-4.35" />
         <path d="M11 8v6" />
@@ -287,7 +288,7 @@ const SearchIcon = () => (
 );
 
 const COTIcon = () => (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M3 21V3" />
         <path d="M3 21h18" />
         <rect x="6" y="12" width="3" height="7" rx="0.5" fill="currentColor" opacity="0.3" stroke="none" />
@@ -297,7 +298,7 @@ const COTIcon = () => (
 );
 
 const SectorIcon = () => (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <circle cx="12" cy="12" r="9" strokeDasharray="28.27 56.55" strokeDashoffset="0" />
         <circle cx="12" cy="12" r="9" strokeDasharray="14.14 56.55" strokeDashoffset="-28.27" />
         <circle cx="12" cy="12" r="9" strokeDasharray="14.14 56.55" strokeDashoffset="-42.41" />
@@ -598,7 +599,7 @@ function EconomicCalendarPanel() {
 }
 
 const OptionsPDFIcon = () => (
-    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="3" y="3" width="18" height="18" rx="2" />
         <path d="M3 12h3" strokeWidth="2" />
         <path d="M3 8h5" strokeWidth="1.5" opacity="0.6" />
@@ -720,7 +721,7 @@ const CROSSHAIR_STYLES = [
     label: 'Standard',
     desc: 'Dashed cross',
     icon: (
-      <svg viewBox="0 0 28 28" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg viewBox="0 0 28 28" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="14" y1="2" x2="14" y2="26" strokeDasharray="3 2" />
         <line x1="2" y1="14" x2="26" y2="14" strokeDasharray="3 2" />
       </svg>
@@ -731,7 +732,7 @@ const CROSSHAIR_STYLES = [
     label: 'Blade',
     desc: 'Solid thin cross',
     icon: (
-      <svg viewBox="0 0 28 28" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1">
+      <svg viewBox="0 0 28 28" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1">
         <line x1="14" y1="2" x2="14" y2="26" />
         <line x1="2" y1="14" x2="26" y2="14" />
       </svg>
@@ -742,7 +743,7 @@ const CROSSHAIR_STYLES = [
     label: 'Scope',
     desc: 'Dashed cross + reticle',
     icon: (
-      <svg viewBox="0 0 28 28" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg viewBox="0 0 28 28" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="14" y1="2" x2="14" y2="9" strokeDasharray="3 2" />
         <line x1="14" y1="19" x2="14" y2="26" strokeDasharray="3 2" />
         <line x1="2" y1="14" x2="9" y2="14" strokeDasharray="3 2" />
@@ -756,7 +757,7 @@ const CROSSHAIR_STYLES = [
     label: 'Ghost',
     desc: 'Faint solid cross',
     icon: (
-      <svg viewBox="0 0 28 28" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
+      <svg viewBox="0 0 28 28" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
         <line x1="14" y1="2" x2="14" y2="26" />
         <line x1="2" y1="14" x2="26" y2="14" />
       </svg>
@@ -767,7 +768,7 @@ const CROSSHAIR_STYLES = [
     label: 'Price Line',
     desc: 'Horizontal only',
     icon: (
-      <svg viewBox="0 0 28 28" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <svg viewBox="0 0 28 28" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5">
         <line x1="2" y1="14" x2="26" y2="14" />
         <circle cx="14" cy="14" r="2" fill="currentColor" />
       </svg>
@@ -821,14 +822,14 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                             button that has an open panel or an active feature. data-state=open
                             is set by Radix Popover on the trigger automatically. */}
                         <button
-                            className="w-12 h-[46px] flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-colors data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
+                            className="w-8 h-8 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-colors data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
                         >
                             {user?.email ? (
                                 <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-semibold text-foreground border border-border">
                                     {user.email.charAt(0).toUpperCase()}
                                 </div>
                             ) : (
-                                <User className="h-5 w-5" />
+                                <User className="h-4 w-4" />
                             )}
                         </button>
                     </PopoverTrigger>
@@ -956,7 +957,7 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                             <TooltipTrigger asChild>
                                 <PopoverTrigger asChild>
                                     <button
-                                        className="w-12 h-12 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
+                                        className="w-8 h-8 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
                                     >
                                         <btn.Icon />
                                     </button>
@@ -974,7 +975,7 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button
-                            className={`w-12 h-12 flex items-center justify-center transition-all ${optionsPdfEnabled
+                            className={`w-8 h-8 flex items-center justify-center transition-all ${optionsPdfEnabled
                                 ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                 : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                                 }`}
@@ -995,13 +996,13 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`w-12 h-12 flex items-center justify-center transition-all ${showBrueEditor
+                                className={`w-8 h-8 flex items-center justify-center transition-all ${showBrueEditor
                                     ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                     : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                 onClick={onBrueToggle}
                             >
-                                <Code2 className="h-6 w-6" />
+                                <Code2 className="h-5 w-5" />
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="text-xs">
@@ -1017,13 +1018,13 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`w-12 h-12 flex items-center justify-center transition-all ${l2DepthOpen
+                                className={`w-8 h-8 flex items-center justify-center transition-all ${l2DepthOpen
                                     ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                     : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                 onClick={onL2DepthToggle}
                             >
-                                <BookOpen className="h-6 w-6" />
+                                <BookOpen className="h-5 w-5" />
                             </button>
                         </TooltipTrigger>
                         <TooltipContent side="left" className="text-xs">
@@ -1040,14 +1041,14 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`w-12 h-12 flex items-center justify-center transition-all ${optionsFlowEnabled
+                                className={`w-8 h-8 flex items-center justify-center transition-all ${optionsFlowEnabled
                                     ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                     : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                 onClick={onOptionsFlowToggle}
                                 aria-label="Toggle options flow overlay"
                             >
-                                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                     {/* Calls (green): short bars top half, longer toward middle */}
                                     <line x1="14" y1="5"  x2="21" y2="5"  />
                                     <line x1="11" y1="8"  x2="21" y2="8"  />
@@ -1074,14 +1075,14 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <button
-                                className={`w-12 h-12 flex items-center justify-center transition-all ${obProfileEnabled
+                                className={`w-8 h-8 flex items-center justify-center transition-all ${obProfileEnabled
                                     ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                     : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                                     }`}
                                 onClick={onObProfileToggle}
                                 aria-label="Toggle OB Profile overlay"
                             >
-                                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="3"  y="6"  width="6" height="2" />
                                     <rect x="3"  y="10" width="9" height="2" />
                                     <rect x="3"  y="14" width="4" height="2" />
@@ -1110,7 +1111,7 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                         <TooltipTrigger asChild>
                             <PopoverTrigger asChild>
                                 <button
-                                    className={`w-12 h-12 flex items-center justify-center transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10 ${
+                                    className={`w-8 h-8 flex items-center justify-center transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10 ${
                                         crosshairStyle !== 'standard'
                                             ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                             : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
@@ -1154,14 +1155,14 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button
-                            className={`w-12 h-12 flex items-center justify-center transition-all ${
+                            className={`w-8 h-8 flex items-center justify-center transition-all ${
                                 showFavoritesToolbar
                                     ? 'text-[#2962ff] bg-[#2962ff]/10 hover:bg-[#2962ff]/20'
                                     : 'text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10'
                             }`}
                             onClick={onFavoritesToolbarToggle}
                         >
-                            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
                                 <path d="m15 5 4 4" />
                             </svg>
@@ -1178,9 +1179,9 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                         <TooltipTrigger asChild>
                             <PopoverTrigger asChild>
                                 <button
-                                    className="w-12 h-12 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
+                                    className="w-8 h-8 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 transition-all data-[state=open]:text-[#2962ff] data-[state=open]:bg-[#2962ff]/10"
                                 >
-                                    <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></svg>
+                                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="16" y1="2" x2="16" y2="6" /></svg>
                                 </button>
                             </PopoverTrigger>
                         </TooltipTrigger>
@@ -1195,10 +1196,10 @@ export default function RightToolbar({ currentSymbol, optionsPdfEnabled, onOptio
                 <Tooltip>
                     <TooltipTrigger asChild>
                         <button
-                            className="w-12 h-12 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground transition-all"
+                            className="w-8 h-8 flex items-center justify-center text-foreground/80 hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground transition-all"
                             onClick={() => onOpenSettings?.()}
                         >
-                            <Settings className="h-6 w-6" />
+                            <Settings className="h-5 w-5" />
                         </button>
                     </TooltipTrigger>
                     <TooltipContent side="left" className="text-xs">Chart Settings</TooltipContent>

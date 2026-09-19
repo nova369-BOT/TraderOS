@@ -178,3 +178,28 @@ Proof: tsc 0; vite build green; pytest 219/1; loopback TestClient sees
 v2 tokens + intact comfortable overrides; the live preview (same engine
 process) served the new sheet from disk immediately (curl confirmed
 `t-sm: 10.5px`). Comfortable remains the exact pre-v1 surface.
+
+## 9. Density v3 — "shrink the tabs / columns too" (owner, same day)
+
+Type had moved; the chrome strips and column widths had not. This pass
+takes the air out of every remaining strip, same discipline:
+
+- Tab/head strips: subrail-btn 4/7 -> 3/4; conn-head 6/3 -> 4/2; acd th
+  4/14 -> 2/10 (td x 14 -> 10); acd-menu-head, ed-head, air-head,
+  air-tc-head, air-set-head, air-md-head all -1..-3px vertical; lsb-head
+  margin 6 -> 4; lsb-key-hint 18 -> 10.
+- Columns (owner: room for more implementation): watchlist sidebar
+  264 -> 236 (the 264 existed for 11.5px type; at 10.5-11px the bargain
+  holds at 236), options side 232 -> 210 (176 under 1360px), symbol
+  input 190 -> 164.
+- Chart toolbars: RightToolbar tiles 48 -> 32px (icons 24/20 -> 20/16),
+  LeftSidebar tiles 40 -> 28 (icons likewise). RIGHT_TOOLBAR_WIDTH
+  48 -> 32 — the exported single source of truth, so every canvas
+  layout math (price axis gap, reset positions) follows automatically.
+
+Proof: tsc 0; vite build green (bundle carries w-8 h-8 tiles); pytest
+219/1 INCLUDING the chart-pure canvas gate, which validates the new
+32px axis math; running preview curl-confirmed 236/210/164 widths.
+Comfortable note: padding/width steps are compact-only by design (the
+font scale remains fully reversible; strip paddings were already
+touched in v1/v2, so "exact pre-v1 padding" was never the contract).
