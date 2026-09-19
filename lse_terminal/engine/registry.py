@@ -65,7 +65,7 @@ class Registry:
 
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
-    from lse_terminal.providers import (CoinbaseProvider,
+    from lse_terminal.providers import (BinanceProvider, CoinbaseProvider,
                                         CryptoL2Provider, DemoProvider,
                                         EdgeDepthProvider, LseProvider,
                                         MboProvider, UserDataProvider)
@@ -81,17 +81,19 @@ def load_builtins(reg: Registry) -> None:
     # open like everything user-visible; registration costs nothing when
     # ccxt is absent (the provider reports itself unconfigured).
     reg.register(CryptoL2Provider())
+    # Binance USD-M futures, direct native (D12, owner-locked): ONE hop
+    # to the venue, curated in-memory catalog — the Coinbase-shaped
+    # pipeline, after the gateway surface proved environment-bound (no
+    # Go toolchain here = no Binance at all) and one hop slower on every
+    # request. The gateway stays registered below for its engine-owned
+    # uses, but it is no longer the chart's Binance book.
+    reg.register(BinanceProvider())
     # EdgeDepth gateway (F1/E0): the user's own Binance USD-M futures bridge —
     # candles AND depth from one keyless wire. Fails open at connect time.
     reg.register(EdgeDepthProvider())
-    # There is exactly ONE Binance surface — the EdgeDepth gateway book
-    # (owner-locked, docs/edgedepth-integration/02-decisions.md D11): the
-    # ports-once "merged direct" provider was deleted; the gateway chain
-    # measured fast, and the pain lived in the deleted book's footprint.
-    # (Not registering anything here is the removal.)
     # Coinbase spot direct (recovery task): Advanced Trade public market
     # data, keyless by docs — trades, level2 book, candle history. Second
-    # independent pipeline next to the gateway's Binance book.
+    # independent native pipeline next to the direct Binance book.
     reg.register(CoinbaseProvider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous

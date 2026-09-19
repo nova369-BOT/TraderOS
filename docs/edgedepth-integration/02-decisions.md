@@ -191,6 +191,8 @@ its registrations; the pipeline returns to per-print charts.
 
 ## D11 — ONE Binance surface: the EdgeDepth gateway book; the direct book is deleted (2026-09-19)
 
+**(SUPERSEDED by D12, same day: the gateway-as-surface ruling was based on segment measurements that missed the environment/hop costs; the surface is direct native now. Kept for the record — its root-cause analysis of the deleted book and the render law still stands.)**
+
 Owner report after the recovery shipped: Binance "still slow" — and two
 Binance entries made the cause unreadable. Owner instruction: find the
 root cause, delete the other Binance, keep only the EdgeDepth gateway;
@@ -234,3 +236,62 @@ Reverse: restore binance_perp.py, tests/test_binance_perp.py, the
 prewarm block, and the six app.js anchors from commit 9c13b80 — the
 single-surface rule is the owner's, though, so treat this reversal as
 thrown only on account of the owner asking.
+
+## D12 — D11 SUPERSEDED: the chart's Binance surface is again DIRECT NATIVE, built the Coinbase way (2026-09-19)
+
+D11 kept the EdgeDepth gateway as the single Binance surface and deleted
+the whole-exchange direct book. The owner then reported Binance "still
+slow" again and asked the straight question: build Binance the way
+Coinbase was built instead of the gateway — would that load faster?
+
+Measured before answering (working standard), two structural facts:
+
+1. The gateway surface hard-fails in the development environment: one
+   request returned "candles failed: no edgedepth-gateway binary on PATH
+   and no Go >= 1.24 toolchain". No Go toolchain = no child = NO Binance
+   at all. That is not a tuning problem; the surface cannot exist there.
+2. Where the child does run (Render), every request pays
+   engine → child → Binance: an extra process hop plus the child's
+   cold-boot after every deploy and its restart budget. The Coinbase
+   book pays engine → venue, one hop, nothing to boot.
+
+So yes: native is structurally faster to load AND works everywhere, and
+the D10-order-flow stack (Coinbase primary / Kraken fallback) already
+proves the direct-native pattern inside this codebase. D11's premise
+("the gateway chain measured fast") was true of its SEGMENTS and remains
+true — but segments were never the user's complaint; the user's
+complaint was a book that cannot boot here and costs a hop there. The
+replacement test the master brief set ("prove incapable or
+architecturally misplaced for the task") is now met by measurement
+twice over, and the owner directed the change directly.
+
+What shipped (providers/binance.py, Coinbase-shaped):
+- Curated in-memory catalog — the SAME 8 rows the gateway book showed;
+  nothing is ever downloaded to answer /api/instruments (9-19 ms mean
+  probe).
+- Candles: public USD-M klines REST, paginated at the documented 1500
+  cap, ascending, venue's own 429 text surfaced verbatim. 4h is NATIVE
+  here (Coinbase had to refuse it; Binance serves it).
+- Live: combined WS stream — aggTrade with agg-id identity dedupe,
+  buyer-maker = taker-sold side rule; the book legs are the venue's
+  PARTIAL top-20 frames (each complete — no U/u/pu patch chain, so no
+  sequencer and nothing to poison).
+- Reconnect = redial = resubscribe (subscriptions live in the URL);
+  capped backoff; the failure after the test cap is an honest error.
+- Engine rail: registered as `binance`; LSE_EXTRA_PROVIDERS default
+  "binance,coinbase"; diag stamps (_diag.observe trade/book) flow into
+  /api/diag/health and /api/diag/latency exactly like Coinbase.
+
+The gateway is NOT deleted: its child management, admin chip/panel, and
+provider stay in the tree for engine-owned uses, but it leaves the
+chart's Source menu and is no longer the Binance book (a provider being
+registered ≠ a book being offered; the menu is SOURCE_BOOKS ∩ listed).
+
+Runtime proof (sandbox, fake venue on the Binance wire): instruments 8
+rows in 19 ms; candles frame in 22 ms; /api/ws 8 batched tick messages
+in 1.9 s (30 Hz latest-state-wins batches with provenance, the D10
+render law untouched); /api/diag/health shows binance LIVE, venue-origin
+lag 1 ms. Suite: 262 passed / 7 skipped.
+Reverse: delist `binance` from LSE_EXTRA_PROVIDERS, point SOURCE_BOOKS /
+menu anchors back at `edgedepth` — the D11 commit chain has the inverse
+edits. Only the owner reverses this one.

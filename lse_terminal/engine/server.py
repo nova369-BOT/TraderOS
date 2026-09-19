@@ -654,7 +654,7 @@ def create_app() -> FastAPI:
         # for everything else; this only ever ADDS names, and a name must
         # exist in the registry (a typo lists nothing).
         extra = {s.strip() for s in os.environ.get(
-            "LSE_EXTRA_PROVIDERS", "edgedepth,coinbase").split(",")
+            "LSE_EXTRA_PROVIDERS", "binance,coinbase").split(",")
             if s.strip()}
         out = []
         for p in reg.all():

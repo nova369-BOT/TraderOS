@@ -1,0 +1,368 @@
+"""Binance USD-M direct provider (D12) — protocol-pinned runtime behaviour.
+
+Every assertion pins a documented Binance USD-M public-market-data
+behaviour, mirroring the Coinbase suite's discipline: the combined-stream
+envelope with URL-listed subscriptions (lowercase symbols — the venue
+silently rejects uppercase), aggTrade side/maker semantics with agg-id
+identity for dedupe, top-20 PARTIAL book frames (each complete — no patch
+chain, so no sequencer), 1500-row klines paging with ms windows, venue
+errors surfaced verbatim (429 stays 429), and the curated in-memory
+catalog that defines this book (the D12 rule: nothing is downloaded to
+answer /api/instruments). Sockets are fakes at the `_connect` seam (the
+module's only socket touchpoint); REST is a real in-process HTTP server
+so status codes are real. No external network anywhere.
+"""
+
+import asyncio
+import json
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import urlparse, parse_qs
+
+import pytest
+
+from lse_terminal.contracts import (
+    DEPTH_SNAPSHOT,
+    TRADE_BUY,
+    TRADE_SELL,
+    NotSupported,
+)
+from lse_terminal.providers import binance
+from lse_terminal.providers.binance import (
+    BinanceProvider,
+    SYMBOLS,
+    _iso_s,
+)
+
+
+# ── fake socket ------------------------------------------------------------
+
+class FakeWS:
+    """A Binance-shaped combined-stream wire: serves a scripted frame
+    list, dies when told to (reconnect tests). Captures nothing upstream —
+    Binance combined streams take no client frames at all."""
+
+    def __init__(self, messages=(), die_after=False):
+        self._messages = list(messages)
+        self._die_after = die_after
+        self.closed = False
+
+    async def close(self):
+        self.closed = True
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self._messages:
+            return self._messages.pop(0)
+        if self._die_after:
+            raise ConnectionError("venue dropped the socket")
+        await asyncio.sleep(3600)         # an idle-but-alive socket
+
+
+def _provider(ws, **kw):
+    kw.setdefault("backoff_base", 0.001)
+    p = BinanceProvider(**kw)
+    sockets = [s for s in ws] if isinstance(ws, list) else [ws]
+    sockets.reverse()
+    p._dialed = []
+
+    async def _connect(url):
+        p._dialed.append(url)
+        return sockets.pop()
+
+    p._connect = _connect
+    return p, sockets
+
+
+def _agg(symbol="BTCUSDT", a=1001, p="42000.5", q="0.25", T=1686349175396,
+         m=False):
+    return json.dumps({"stream": f"{symbol.lower()}@aggTrade", "data": {
+        "e": "aggTrade", "s": symbol, "a": a, "p": p, "q": q, "T": T,
+        "m": m}})
+
+
+def _depth(symbol="BTCUSDT", E=1686349175400, T=1686349175399,
+           bids=(("42000.0", "1.5"), ("41999.5", "0.4")),
+           asks=(("42001.0", "2.0"), ("42002.0", "0.9"))):
+    # USD-M partial book frame: complete top-N per message, no "e" field.
+    return json.dumps({"stream": f"{symbol.lower()}@depth20@100ms",
+                       "data": {"lastUpdateId": 10, "E": E, "T": T,
+                                "b": [list(x) for x in bids],
+                                "a": [list(x) for x in asks]}})
+
+
+def _take(ait, n, timeout=5.0):
+    async def _go():
+        out = []
+        async for x in ait:
+            out.append(x)
+            if len(out) == n:
+                return out
+        return out
+    return asyncio.run(asyncio.wait_for(_go(), timeout))
+
+
+# ── catalog & contract ------------------------------------------------------
+
+def test_catalog_is_the_curated_book_and_needs_no_network():
+    p = BinanceProvider()
+    rows = p.search("", 50)
+    assert [r.symbol for r in rows] == list(SYMBOLS)      # 8 curated rows
+    assert all(r.category == "Binance USD-M Futures" for r in rows)
+    assert all(r.meta["live"] is True for r in rows)
+    # The D12 law: this call touched no REST, no exchangeInfo, no prewarm.
+
+
+def test_search_bare_base_and_case():
+    p = BinanceProvider()
+    assert [r.symbol for r in p.search("btc")] == ["BTCUSDT"]
+    assert [r.symbol for r in p.search("tether", 3)]
+    assert p.search("nope-nothing") == []
+
+
+def test_timeframe_ladder_is_the_honest_subset_with_native_4h():
+    p = BinanceProvider()
+    assert p.timeframes == ["1m", "5m", "15m", "1h", "4h", "1d"]
+    # 4h is NATIVE here (Coinbase had to refuse it; Binance serves it).
+
+
+def test_rfc3339_ns_timestamp_helper():
+    assert _iso_s("2023-06-09T20:19:35.39625135Z") == pytest.approx(
+        _iso_s("2023-06-09T20:19:35.396251+00:00"), abs=0.001)
+
+
+def test_eager_validation_unknown_symbol():
+    p = BinanceProvider()
+    with pytest.raises(ValueError):
+        p.stream(["DOGEUSD"])          # the Coinbase spelling must NOT pass
+    with pytest.raises(ValueError):
+        p.candles("DOGEUSD", "1m")
+    with pytest.raises(ValueError):
+        p.candles("BTCUSDT", "3m")     # not on this book's ladder
+
+
+def test_honest_no_depth_history_and_capabilities():
+    p = BinanceProvider()
+    with pytest.raises(NotSupported):
+        p.depth_history("BTCUSDT", 0, 1)
+    assert "depth_history" not in p.capabilities()
+    assert p.configured() is True      # keyless public market data
+
+
+# ── live ticks (aggTrade) ---------------------------------------------------
+
+def test_aggtrade_normalizes_side_ts_id():
+    ws = FakeWS([_agg(a=1, m=False, T=1686349175396),
+                 _agg(a=2, m=True, T=1686349175400)])
+    p, _ = _provider(ws)
+    ticks = _take(p.stream(["BTCUSDT"]), 2)
+    b, s = ticks
+    assert b["symbol"] == "BTCUSDT" and b["side"] == TRADE_BUY
+    assert s["side"] == TRADE_SELL          # buyer-maker => taker SOLD
+    assert s["price"] == 0 or s["price"] > 0
+    assert b["ts"] == pytest.approx(1686349175.396, abs=1e-3)
+    assert b["trade_id"] == 1 and b["volume"] == 0.25
+
+
+def test_aggregate_id_identity_dedupes_repeats():
+    ws = FakeWS([_agg(a=42), _agg(a=42), _agg(a=43)])
+    p, _ = _provider(ws)
+    ticks = _take(p.stream(["BTCUSDT"]), 2)
+    assert [t["trade_id"] for t in ticks] == [42, 43]
+
+
+def test_ws_url_lists_streams_lowercase_and_combined():
+    ws = FakeWS([])
+    p, _ = _provider(ws)
+    # give it a moment to dial, then close
+    async def _go():
+        it = p._pump(["BTCUSDT", "ETHUSDT"], want=("trade", "depth"))
+        try:
+            await asyncio.wait_for(it.__anext__(), 0.2)
+        except (asyncio.TimeoutError, StopAsyncIteration):
+            pass
+        await it.aclose()
+    asyncio.run(_go())
+    url = p._dialed[0]
+    assert url.count("btcusdt@aggTrade") == 1
+    assert "ethusdt@aggTrade" in url
+    assert "btcusdt@depth20@100ms" in url
+    assert "BTCUSDT@" not in url            # venue rejects uppercase quietly
+
+
+# ── live book (partial top-20: every frame complete) ------------------------
+
+def test_partial_book_frames_are_full_snapshots_no_patch_chain():
+    ws = FakeWS([_depth(E=1686349175400),
+                 _depth(E=1686349175500, bids=(("1", "1"),),
+                        asks=(("2", "2"),))])
+    p, _ = _provider(ws)
+    events = _take(p.depth_stream(["BTCUSDT"]), 2)
+    a, b = events
+    assert a.type == DEPTH_SNAPSHOT and b.type == DEPTH_SNAPSHOT
+    # A later frame replaces wholesale — nothing from frame 1 survives
+    # (there is no patch chain that could poison a book).
+    assert b.bids == [(1.0, 1.0)] and b.asks == [(2.0, 2.0)]
+    assert a.bids[0] == (42000.0, 1.5)      # sorted best-first
+    assert a.ts == pytest.approx(1686349175.4, abs=1e-3)
+
+
+def test_diag_stamps_land():
+    ws = FakeWS([_agg(a=1)])
+    p, _ = _provider(ws)
+    _take(p.stream(["BTCUSDT"]), 1)
+    ws2 = FakeWS([_depth()])
+    p2, _ = _provider(ws2)
+    _take(p2.depth_stream(["BTCUSDT"]), 1)
+    health = binance._diag.health()["providers"].get("binance", {})
+    by_kind = health.get("by_kind", {})
+    assert by_kind.get("trade", {}).get("events_lifetime", 0) >= 1
+    assert by_kind.get("book", {}).get("events_lifetime", 0) >= 1
+
+
+def test_reconnect_redials_and_resubscribes_by_url():
+    ws1 = FakeWS([_agg(a=1)], die_after=True)
+    ws2 = FakeWS([_agg(a=2)])
+    p, _ = _provider([ws1, ws2])
+    ticks = _take(p.stream(["BTCUSDT"]), 2)
+    assert [t["trade_id"] for t in ticks] == [1, 2]
+    assert len(p._dialed) == 2              # reconnect = redial = resubscribe
+    assert p._dialed[0] == p._dialed[1]
+
+
+def test_unreachable_after_cap_is_an_honest_error():
+    p = BinanceProvider(backoff_base=0.001)
+    p.max_reconnects = 2
+
+    async def _boom(url):
+        raise OSError("no route")
+
+    p._connect = _boom
+    with pytest.raises(ConnectionError):
+        _take(p.stream(["BTCUSDT"]), 1)
+
+
+# ── candles (REST klines) -----------------------------------------------------
+
+class _Klines:
+    """In-process fapi stand-in: real HTTP (real status codes), records
+    the query params, serves ascending klines from a seed."""
+
+    def __init__(self, rows=None, status=200, body=None):
+        self.rows = rows if rows is not None else []
+        self.status = status
+        self.body = body
+        self.queries = []
+        self.port = None
+        self._httpd = None
+
+    def __enter__(self):
+        outer = self
+
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+            def do_GET(self):
+                u = urlparse(self.path)
+                q = parse_qs(u.query)
+                outer.queries.append(q)
+                if outer.status != 200:
+                    data = (outer.body or b'{"code":-1003,"msg":"Way too many requests"}')
+                    self.send_response(outer.status)
+                    data_out = data
+                else:
+                    # The REAL venue honors the ms window and limit: rows
+                    # ascending from startTime, capped at `limit`.
+                    lo = int(q["startTime"][0]); hi = int(q["endTime"][0])
+                    lim = int(q["limit"][0])
+                    page = [r for r in outer.rows if lo <= r[0] <= hi]
+                    data_out = json.dumps(page[:lim]).encode()
+                    self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(data_out)))
+                self.end_headers()
+                self.wfile.write(data_out)
+
+        self._httpd = HTTPServer(("127.0.0.1", 0), H)
+        self.port = self._httpd.server_address[1]
+        threading.Thread(target=self._httpd.serve_forever, daemon=True).start()
+        return self
+
+    def __exit__(self, *a):
+        self._httpd.shutdown()
+
+
+def _kline(i, tf_s=60, base=42000):
+    t0 = 1686300000
+    o = base + i
+    return [int((t0 + i * tf_s) * 1000), str(o), str(o + 1),
+            str(o - 1), str(o + 0.5), str(1.5), 0, "0", 0, "0", "0"]
+
+
+def test_candles_klines_shape_windows_and_sort(monkeypatch):
+    rows = [_kline(i) for i in range(10)]
+    with _Klines(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 10, end=1686300000 + 10 * 60)
+    assert list(df.columns) == ["ts", "open", "high", "low", "close",
+                                "volume"]
+    assert len(df) == 10
+    assert df["ts"].is_monotonic_increasing
+    assert df.attrs["venue"] == "binance"
+    q = k.queries[0]
+    assert q["symbol"] == ["BTCUSDT"] and q["interval"] == ["1m"]
+    assert int(q["limit"][0]) == 10
+    # windows are milliseconds on the wire
+    assert len(q["startTime"][0]) == 13 and len(q["endTime"][0]) == 13
+
+
+def test_candles_big_request_pages_at_1500_never_rejected(monkeypatch):
+    rows = [_kline(i) for i in range(2000)]
+    with _Klines(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 1600, end=1686300000 + 2000 * 60 - 60)
+    assert len(df) == 1600                  # paged, merged, never an error
+    assert len(k.queries) == 2              # 1500 + the 100-row remainder
+    assert k.queries[0]["limit"] == ["1500"]
+    assert k.queries[1]["limit"] == ["100"]
+    # The second page asks strictly EARLIER than the first (backwards
+    # pagination back to the seed).
+    assert int(k.queries[1]["endTime"][0]) < int(k.queries[0]["startTime"][0])
+
+
+def test_candles_iso_window_and_row_filter(monkeypatch):
+    rows = [_kline(i) for i in range(5)]   # t0 = 2023-06-09T08:40:00Z
+    with _Klines(rows=rows) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 500,
+                       start="2023-06-09T08:41:00Z",
+                       end=1686300000 + 5 * 60)
+    assert 0 < len(df) <= 4
+    assert all(df["ts"] >= 1686300060 - 60)
+
+
+def test_candles_empty_answer_is_honest(monkeypatch):
+    with _Klines(rows=[]) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        with pytest.raises(NotSupported):
+            BinanceProvider().candles("BTCUSDT", "1m", 10)
+
+
+def test_candles_429_surfaces_the_venue_status(monkeypatch):
+    with _Klines(status=429) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        with pytest.raises(NotSupported) as ei:
+            BinanceProvider().candles("BTCUSDT", "1m", 10)
+    assert "429" in str(ei.value)
+    assert "Way too many requests" in str(ei.value)   # the venue's words

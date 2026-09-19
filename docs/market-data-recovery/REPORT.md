@@ -218,3 +218,16 @@ gateway chain measured clean throughout. Coinbase-style direct-native was
 evaluated and rejected for Binance (a second protocol implementation to
 maintain for a measured ~0 gain; the gateway is the master-brief
 authority and not incapable).
+
+
+## Second addendum (2026-09-19): the Binance surface moves to direct native (D12)
+
+Owner-driven, measurement-backed reversal of the D11 surface ruling: the
+chart's Binance book is now providers/binance.py — Coinbase-shaped direct
+native (curated 8-row catalog in memory, one hop, combined WS with
+agg-id dedupe, partial top-20 books, paginated klines with native 4h,
+venue-verbatim 429s). The EdgeDepth gateway stays in the tree for
+engine-owned uses but leaves the chart Source menu: it hard-fails
+wherever no Go toolchain exists (measured) and adds a hop where it does.
+Suite 262 passed / 7 skipped; engine-preview proof: instruments 19 ms,
+candles 22 ms, ws batched ticks LIVE at 1 ms venue-origin lag.
