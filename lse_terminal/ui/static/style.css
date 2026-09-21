@@ -4254,3 +4254,51 @@ aside#tool-rail {
 #status.ok { color: var(--up); border-color: rgba(47, 208, 138, .4); background: rgba(47, 208, 138, .08); }
 /* tool rail sits flush, not a card */
 aside#tool-rail { border: none; border-right: 1px solid var(--edge); border-radius: 0; background: var(--bg2); }
+
+/* ── WORKSTATION E-3: backtest analysis band + navigator pills ─────── */
+#backtest {
+  display: grid; grid-template-columns: 44% 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+#bt-editor { grid: 1 / 1; width: auto; }
+#bt-results { grid: 1 / 2; }
+#backtest #bt-stats { display: none; }   /* mirrored into the band */
+#bt-band {
+  grid-column: 1 / -1; grid-row: 2;
+  background: var(--bg2); border-top: 1px solid var(--edge);
+}
+#btb-tabs { display: flex; gap: 16px; padding: 0 12px; border-bottom: 1px solid var(--edge); }
+.btb-tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  color: var(--dim); font-size: var(--t-xs); font-weight: 600;
+  letter-spacing: .07em; text-transform: uppercase; padding: 6px 2px 7px;
+}
+.btb-tab:hover { color: var(--text); }
+.btb-tab.active { color: var(--text); border-bottom-color: var(--accent); }
+#btb-body {
+  display: grid; grid-template-columns: 1.05fr 1.5fr 1fr; gap: 12px;
+  padding: 10px 12px; max-height: 232px; overflow: auto;
+}
+#btb-body[data-view="trades"], #btb-body[data-view="run"] { grid-template-columns: 1fr; }
+#btb-body[data-view="trades"] #btb-overview, #btb-body[data-view="trades"] #btb-run,
+#btb-body[data-view="run"] #btb-overview, #btb-body[data-view="run"] #btb-trades { display: none; }
+#btb-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; align-content: start; }
+#btb-metrics .stat {
+  background: none; border: none; border-bottom: 1px solid var(--edge); border-radius: 0;
+  padding: 3px 2px; min-width: 0; display: flex; justify-content: space-between;
+  align-items: baseline; gap: 8px;
+}
+#btb-metrics .stat .v { font-size: var(--t-sm); }
+#btb-trades-t { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: var(--t-xs); }
+#btb-trades-t th {
+  color: var(--title); text-transform: uppercase; font-size: var(--t-2xs);
+  letter-spacing: .06em; text-align: left; padding: 2px 6px;
+  border-bottom: 1px solid var(--edge);
+}
+#btb-trades-t td { padding: 2px 6px; border-bottom: 1px solid rgba(27, 36, 54, .6); font-variant-numeric: tabular-nums; }
+/* Navigator rows wear the violet pill like the watchlist */
+.tree-row.active {
+  background: var(--accent); box-shadow: none; border-radius: 8px;
+  margin: 1px 6px; color: #fff;
+}
+.tree-row.active * { color: #fff; }

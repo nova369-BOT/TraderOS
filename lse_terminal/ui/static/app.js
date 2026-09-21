@@ -18039,3 +18039,98 @@ function scrShowCard(r) {
   }, 800);
   if (state.symbol) { lastSym = state.symbol; renderRegime(state.symbol, state.provider); }
 })();
+
+/* ── WORKSTATION E-3: backtest analysis band ─────────────────────────
+   Fills the reference-style bottom band from the REAL run responses:
+   metrics mirror (bt-stats), trade list (r.trades), run summary card.
+   Wraps the three render fns; fully wrapped, additive only. */
+(function () {
+  var $id = function (i) { return document.getElementById(i); };
+  var band = $id("bt-band");
+  if (!band) return;
+
+  band.querySelectorAll(".btb-tab").forEach(function (b) {
+    b.addEventListener("click", function () {
+      band.querySelectorAll(".btb-tab").forEach(function (x) {
+        x.classList.toggle("active", x === b);
+      });
+      var body = $id("btb-body");
+      if (body) body.setAttribute("data-view", b.getAttribute("data-btb"));
+    });
+  });
+
+  function syncStats() {
+    var m = $id("btb-metrics"), s = $id("bt-stats");
+    if (m && s) m.innerHTML = s.innerHTML;
+  }
+  function fillTrades(trades) {
+    var tb = document.querySelector("#btb-trades-t tbody");
+    if (!tb || !trades) return;
+    tb.innerHTML = trades.slice(0, 120).map(function (t, i) {
+      var pnl = t.pnl == null ? "–" :
+        (t.pnl >= 0 ? "+$" + t.pnl.toFixed(2) : "-$" + Math.abs(t.pnl).toFixed(2));
+      var col = t.pnl == null ? "var(--text)" : (t.pnl >= 0 ? "var(--up)" : "var(--down)");
+      return "<tr><td>" + (i + 1) + "</td><td>" +
+        (t.direction === "long" ? "LONG" : "SHORT") + "</td><td>" +
+        (t.entry_ts || "–") + "</td><td>" +
+        (t.entry_price != null ? fmt(t.entry_price) : "–") + "</td><td>" +
+        (t.exit_ts || "–") + "</td><td>" +
+        (t.exit_price != null ? fmt(t.exit_price) : "–") + "</td><td style='color:" +
+        col + "'>" + pnl + "</td></tr>";
+    }).join("");
+  }
+  function fillRun(extra) {
+    var c = $id("btb-runcard");
+    if (!c) return;
+    var rows = [
+      ["RUN ID", new Date().toISOString().replace(/\D/g, "").slice(0, 12)],
+      ["MODE", $id("bt-mode") ? $id("bt-mode").value : "run"],
+      ["SYMBOL", state.symbol || "–"],
+      ["TIMEFRAME", state.timeframe || "–"],
+      ["FROM", ($id("bt-from") && $id("bt-from").value) || "–"],
+      ["TO", ($id("bt-to") && $id("bt-to").value) || "–"],
+      ["STATUS", "Completed"]
+    ].concat(extra || []);
+    c.innerHTML = "";
+    rows.forEach(function (kv) {
+      var d = document.createElement("div"); d.className = "st-row";
+      var i = document.createElement("i"); i.textContent = kv[0];
+      var b = document.createElement("b"); b.textContent = kv[1];
+      d.appendChild(i); d.appendChild(b); c.appendChild(d);
+    });
+  }
+
+  if (typeof renderBacktest === "function") {
+    var _rb = renderBacktest;
+    renderBacktest = function (r) {
+      _rb(r);
+      try {
+        syncStats(); fillTrades(r.trades);
+        fillRun([["TRADES", String((r.trades || []).length)],
+                 ["NET", fmtMoney(r.net_profit)]]);
+      } catch (e) {}
+    };
+  }
+  if (typeof renderMonteCarlo === "function") {
+    var _rm = renderMonteCarlo;
+    renderMonteCarlo = function (m) {
+      _rm(m);
+      try {
+        syncStats();
+        fillRun([["PATHS", String(m.runs)],
+                 ["P(LOSS)", (m.probLoss * 100).toFixed(1) + "%"]]);
+      } catch (e) {}
+    };
+  }
+  if (typeof renderWalkforward === "function") {
+    var _rw = renderWalkforward;
+    renderWalkforward = function (w) {
+      _rw(w);
+      try {
+        syncStats();
+        fillRun([["FOLDS", String(w.folds.length)],
+                 ["OOS NET", fmtMoney(w.totalOosNetProfit)]]);
+      } catch (e) {}
+    };
+  }
+})();

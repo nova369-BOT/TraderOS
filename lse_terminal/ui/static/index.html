@@ -429,6 +429,25 @@ def my_ind(df, length=20):
         <div id="bt-equity-label">Equity curve</div>
         <div id="bt-equity"></div>
       </div>
+      <!-- WORKSTATION E-3: the reference's bottom analysis band, filled only
+           from real run responses (metrics mirror, trade list, run summary). -->
+      <div id="bt-band">
+        <nav id="btb-tabs">
+          <button class="btb-tab active" data-btb="overview">Overview</button>
+          <button class="btb-tab" data-btb="trades">Trades</button>
+          <button class="btb-tab" data-btb="run">Run Summary</button>
+        </nav>
+        <div id="btb-body" data-view="overview">
+          <div id="btb-overview" class="btb-pane"><div id="btb-metrics"></div></div>
+          <div id="btb-trades" class="btb-pane">
+            <table class="qt" id="btb-trades-t">
+              <thead><tr><th>#</th><th>Side</th><th>Entry</th><th>Entry Px</th><th>Exit</th><th>Exit Px</th><th>P&amp;L</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div id="btb-run" class="btb-pane"><div id="btb-runcard"></div></div>
+        </div>
+      </div>
     </div>
   </section>
   <!-- The BACKTEST mode chooser page ("Choose how you want to test") was
