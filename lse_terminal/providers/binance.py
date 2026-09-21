@@ -340,24 +340,39 @@ class BinanceProvider(Provider):
                     code, body = _pool_for(host).get(host, qpath)
                 except Exception as e:  # noqa: BLE001
                     # TLS drop / ISP block / DNS poison: same ladder move.
+                    # Under parallel windows many pages may fail on the
+                    # SAME dead rung at once (D14 parallel law): the
+                    # first to lock FLIPS the rung; siblings — whose rung
+                    # already moved — just RETRY on the newly pinned
+                    # rung. Serial law to the letter: no page ever
+                    # surfaces a dead-rung error while a better rung
+                    # exists and nothing has rows yet.
                     with rung_lock:
-                        can_flip = (self._rest_rung < len(rungs) - 1
-                                    and not state["any_rows"])
-                        if can_flip:
-                            self._rest_rung += 1
-                    if can_flip:
+                        if state["any_rows"]:
+                            follow = False
+                        elif self._rest_rung == idx:
+                            follow = self._rest_rung < len(rungs) - 1
+                            if follow:
+                                self._rest_rung += 1
+                        else:
+                            follow = True       # rung moved beneath us
+                    if follow:
                         continue
                     raise NotSupported(
                         f"{venue}: klines REST failed: {e}") from e
                 if code != 200:
                     text = body.decode(errors="replace")[:200]
                     with rung_lock:
-                        can_flip = (code in _GEO_HTTP
-                                    and self._rest_rung < len(rungs) - 1
-                                    and not state["any_rows"])
-                        if can_flip:
-                            self._rest_rung += 1
-                    if can_flip:
+                        if code in _GEO_HTTP and not state["any_rows"]:
+                            if self._rest_rung == idx:
+                                follow = self._rest_rung < len(rungs) - 1
+                                if follow:
+                                    self._rest_rung += 1
+                            else:
+                                follow = True   # rung moved beneath us
+                        else:
+                            follow = False
+                    if follow:
                         # Eligibility/WAF answer: this egress may not
                         # touch the venue — move to the public data
                         # mirror and take the same symbols in the

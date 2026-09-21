@@ -348,3 +348,30 @@ before battery 60 REST hits / 1 kline-stream client; five warm
 cost ~40 request weight). Coinbase fall-through byte-identical (no
 candle stream → plain candles() route, unchanged numbers).
 Full suite **268 passed / 1 skipped**.
+
+### D19 erratum — the parallel ladder flip race (fixed 2026-09-21)
+
+Owner's follow-up error: `candles failed: binance: klines REST HTTP 451
+(Service unavailable from a restricted location ...)`. On a geo-blocked
+machine the futures hop 451s EVERY klines page — and D19's parallel
+paging made four windows fail at once. The first to lock flipped the
+rung exactly as the serial law does; its SIBLINGS then observed "last
+rung" inside the guard and RAISED the dead-rung 451 instead of
+following the flip. The serial loop could never hit this (pages fail
+one at a time, flip on the first).
+
+Fix (kline fetch only; tape pages are serial and untouched): inside the
+rung lock, a failing window (a) flips the rung if IT is the first
+(`rest_rung == idx` it fetched with), (b) RETRIES on the newly pinned
+rung when the rung already moved beneath it, and (c) surfaces the
+venue's words only when the rung it actually failed on is the last one
+— or when rows already exist (the serial partial-law, verbatim). The
+exception branch (TLS drop/refused/DNS) is fixed the same way. 429
+still surfaces verbatim and never flips, under any interleaving.
+
+Pins: futures rung 451 on four parallel windows → flips once, all
+siblings follow, venue labelled binance-spot, rung pinned thereafter;
+both-rungs-dead → the surfaced error names the LAST rung tried;
+429-everywhere → verbatim raise, rung untouched, mirror never dialed;
+dead-socket four-window twin → same follow law. Deterministic (latency-
+injected stubs, run three times). Suite: 272 passed / 1 skipped.

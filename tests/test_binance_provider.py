@@ -745,3 +745,99 @@ def test_candle_stream_skips_malformed_frames_never_invents_fields():
     p, _ = _provider(ws)
     out = _take(p.candle_stream(["BTCUSDT"], "1m"), 1)
     assert len(out) == 1 and out[0]["close"] == 42001.0
+
+
+def test_parallel_windows_all_geo_blocked_never_surface_the_dead_rung(monkeypatch):
+    """The owner's 2026-09-21 451: four precomputed windows fire at the
+    futures rung in PARALLEL — every one gets the venue's eligibility
+    451. Serial law says: flip once, retry on the mirror, serve. The
+    bug being pinned: the first flipper moved the rung and the SIBLING
+    windows (observing 'last rung') raised the dead-rung error instead
+    of following the flip. All siblings must follow; the only error a
+    geo-blocked session may ever see is one where every rung is dead.
+    """
+    rows = [_kline(i) for i in range(2200)]
+    with _Klines(status=451,
+                 body=b'{"code":0,"msg":"Service unavailable from a restricted location"}',
+                 latency=0.0) as geo, \
+            _Klines(rows=rows, latency=0.02) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{geo.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 2200,
+                       end=1686300000 + 2200 * 60)      # 4+ parallel pages
+        assert df.attrs["venue"] == "binance-spot"
+        assert len(df) == 2200
+        assert p._rest_rung == 1                    # winner pinned once
+        # Every broken window retried on the mirror — none surfaced the
+        # geo answer, and one flip was enough for all of them.
+        assert len(mirror.queries) >= 1
+        flips_after = len(geo.queries)
+        df2 = p.candles("BTCUSDT", "1m", 2200,
+                        end=1686300000 + 2200 * 60)
+        assert len(df2) == 2200
+        assert len(geo.queries) == flips_after      # pinned rung sticks
+
+
+def test_parallel_windows_geo_on_every_rung_surfaces_only_last_venue(monkeypatch):
+    """ALL rungs geo-dead = the honest refusal shape: the surfaced words
+    belong to the LAST rung tried, never the one already donated."""
+    with _Klines(status=451, body=b'{"code":0,"msg":"geo"}',
+                 latency=0.0) as geo1, \
+            _Klines(status=451, body=b'{"code":0,"msg":"geo"}',
+                 latency=0.0) as geo2:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{geo1.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{geo2.port}")
+        p = BinanceProvider()
+        with pytest.raises(NotSupported) as exc:
+            p.candles("BTCUSDT", "1m", 2200, end=1686300000 + 2200 * 60)
+        assert "binance-spot" in str(exc.value)      # the rung it died on
+        assert "451" in str(exc.value)
+
+
+def test_parallel_windows_429_everywhere_surfaces_verbatim_never_flips(monkeypatch):
+    """429 law under parallelism: NO flip, NO retry race — the venue's
+    words come up verbatim exactly once per ask."""
+    with _Klines(status=429, body=b'{"code":-1003,"msg":"Way too many requests"}',
+                 latency=0.0) as limited, \
+            _Klines(rows=[_kline(i) for i in range(2200)],
+                 latency=0.0) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{limited.port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        with pytest.raises(NotSupported) as exc:
+            p.candles("BTCUSDT", "1m", 2200, end=1686300000 + 2200 * 60)
+        assert "429" in str(exc.value)
+        assert "Way too many requests" in str(exc.value)
+        assert p._rest_rung == 0                     # 429 never flips (D14)
+        assert mirror.queries == []                # mirror never touched
+
+
+def test_parallel_windows_dead_socket_never_surfaces_the_dead_rung(monkeypatch):
+    """The TLS-drop twin of the 451 race: a futures hop nobody listens
+    on, four windows refusing CONCURRENTLY. First refuser flips, the
+    rest follow the newly pinned mirror — a dead rung's socket error
+    never surfaces while a live rung exists."""
+    import socket
+    dead = socket.socket()
+    dead.bind(("127.0.0.1", 0))
+    dead_port = dead.getsockname()[1]
+    dead.close()                                   # port now refuses
+    rows = [_kline(i) for i in range(2200)]
+    with _Klines(rows=rows, latency=0.02) as mirror:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{dead_port}")
+        monkeypatch.setattr(binance, "SPOT_REST_BASE",
+                            f"http://127.0.0.1:{mirror.port}")
+        p = BinanceProvider()
+        df = p.candles("BTCUSDT", "1m", 2200,
+                       end=1686300000 + 2200 * 60)
+        assert df.attrs["venue"] == "binance-spot"
+        assert len(df) == 2200
+        assert p._rest_rung == 1
