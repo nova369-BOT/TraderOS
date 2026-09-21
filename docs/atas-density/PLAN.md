@@ -203,3 +203,19 @@ Proof: tsc 0; vite build green (bundle carries w-8 h-8 tiles); pytest
 Comfortable note: padding/width steps are compact-only by design (the
 font scale remains fully reversible; strip paddings were already
 touched in v1/v2, so "exact pre-v1 padding" was never the contract).
+
+## 10. Density v4 — the top strips (owner screenshot, 2026-09-21)
+
+Owner circled the four stacked header rows (topline+conn-bar, rail,
+subrail, chart controls) — the last surfaces still carrying old air.
+Vertical padding shaved 1-2px per strip: topline 5->2, conn-bar 3->2 and
+its two-line gap 1->0, rail-btn 3/4 -> 2/3, subrail-btn 3/4 -> 2/3,
+controls row 4/5 -> 2/3, global select/input/button 3/7 -> 2/6, controls
+buttons 3/8 -> 2/7, controls select 4/7 -> 2/7, timeframe pills 3/7 ->
+2/6, symbol input 4/9 -> 2/8, theme/density chips 3 -> 2. Net header
+stack loses ~14px of pure air with zero content loss.
+
+Proof: pytest 218/2 then chart-pure restored to pass once npm deps
+reinstalled in the fresh session (219/1 equivalent; the skip is the
+documented missing-toolchain path); running preview curl-confirmed the
+new paddings from disk.
