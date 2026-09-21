@@ -11,39 +11,35 @@
    tokens key off the same class; the calendar reads these same vars). Never
    hardcode a hex below the two palette blocks. */
 :root {
-  /* DARK (default): neutral charcoal, no deep blacks anywhere (supersedes
-     the old pixel-sampled #0d0d0d canvas). Every surface lifted
-     ~0x12-0x14 with the ladder relationships kept (bg < bg2 < panel <
-     hover < edge < active). STILL strictly neutral: an earlier
-     blue-charcoal pass was rejected; color lives only in market data
-     (teal up / red-pink down, matching Workspace sparklines). */
-  /* Page floor one step below the old #212121: the panels tile visibly on
-     top of it; depth comes from the floor/surface gap, still nowhere near
-     the banned deep blacks. */
-  --bg: #1c1c1c; --panel: #2a2a2a; --edge: #3a3a3a;
+  /* CARBON INSTITUTIONAL (2026-09-21, owner: "interactive and professional,
+     this is serious — users' investments"). Bloomberg-lineage discipline on
+     modern tokens: near-black layered carbon, exact 1px borders, amber as
+     the ONLY chrome voice (selection/command/active), teal/rose reserved
+     for market direction. Density scale (--t-*) unchanged above. */
+  --bg: #0b0c0e; --panel: #121316; --edge: #2a2d31;
   /* Machined top edge for major surfaces; invisible in light theme. */
   --hairline: rgba(255, 255, 255, .045);
-  /* --dim readability floor; neutral grey. */
-  /* --dim lifted one step for the compact scale: at 10.5–11px labels the
-     old #b0b0b0 sat a touch low on contrast; #b9b9b9 keeps ≥7:1 on --bg. */
-  --text: #e8e8e8; --dim: #b9b9b9; --up: #21b3a4; --down: #f0426c;
+  --text: #d6d9dc; --dim: #969ca3; --up: #21b3a4; --down: #f0426c;
+  /* Amber: selection, active tab, command cursor, focus. The phosphor
+     proven softer on the eye for all-day sessions. */
+  --amber: #ffb000;
   /* The brand mark's own two candles (public/lse-favicon.svg): a navy down
      candle and a green up candle. The navy is #1a1a2e, which is invisible on
      this near-black panel, so the dark theme keeps the brand green and draws
      the other candle in the panel's ink. The logo's SHAPE is what identifies
      it; a candle nobody can see identifies nothing. */
   --logo-up: #2E7D32; --logo-down: #e8e8e8;
-  --bg2: #262626;          /* code wells, previews */
-  --hover: #343434;        /* card + row hover fills */
-  --active: #414141;       /* selected rows, active-surface grey */
-  --quote: #2e2e2e;        /* the user's chat turn */
-  --item: #2f2f2f;         /* keybar, list items */
-  --raise: #414141; --raise-h: #4c4c4c;   /* primary (Run/OK) buttons */
-  --line-strong: #555555;  /* focus borders, login card border */
-  --accent-bar: #d0d0d0;   /* active tab underline / selected row bar */
-  --title: #c0c0c0;        /* section + table headers, Workspace col-header grey */
-  --dash: #474747;         /* dashed drop-zone border */
-  --scroll: #3a3a3a; --scroll-h: #474747; /* neutral scrollbar thumbs */
+  --bg2: #0e0f11;          /* code wells, previews */
+  --hover: #1a1b1e;        /* card + row hover fills */
+  --active: #202226;       /* selected rows, active-surface grey */
+  --quote: #17181b;        /* the user's chat turn */
+  --item: #191b1e;         /* keybar, list items */
+  --raise: #26292e; --raise-h: #30343a;   /* primary (Run/OK) buttons */
+  --line-strong: #3a3f45;  /* focus borders, login card border */
+  --accent-bar: var(--amber); /* active tab underline / selected row bar */
+  --title: #8b9096;        /* section + table headers, Workspace col-header grey */
+  --dash: #3a3f45;         /* dashed drop-zone border */
+  --scroll: #2a2d31; --scroll-h: #3a3f45; /* neutral scrollbar thumbs */
   --err: #f87171; --err-bg: #2c2325; --err-edge: #4a3236;
   --ohlcv-bg: #1b4a42; --ohlcv-tx: #7fe0d2;
   --shadow: rgba(0, 0, 0, .55);
@@ -58,10 +54,12 @@
 html:not(.dark) {
   /* LIGHT: same zinc discipline on paper-gray surfaces; up/down darkened two
      steps so quote colors keep contrast on white. */
-  --bg: #f5f6f8; --panel: #ffffff; --edge: #e3e5e9;
+  /* PAPER INSTITUTIONAL: white panes on cool paper, same discipline; the
+     amber darkens to keep ≥4.5:1 as a chrome voice on light. */
+  --bg: #eef0f2; --panel: #ffffff; --edge: #d5d9de;
   --hairline: rgba(255, 255, 255, 0);
-  /* --dim darkened (was #6d727a) for the same readability call in light. */
-  --text: #23262b; --dim: #43474e; --up: #0d8a7d; --down: #d22b57;
+  --text: #16181b; --dim: #565c63; --up: #0d8a7d; --down: #d22b57;
+  --amber: #a86400;
   /* On light, both brand colours are exactly the logo's. */
   --logo-up: #2E7D32; --logo-down: #1a1a2e;
   --bg2: #f0f1f4;
@@ -71,7 +69,7 @@ html:not(.dark) {
   --item: #eef0f3;
   --raise: #e8eaee; --raise-h: #dcdfe4;
   --line-strong: #c6cad1;
-  --accent-bar: #3f434b;
+  --accent-bar: var(--amber);
   --title: #43474e;
   --dash: #c9cdd3;
   --scroll: #c9ccd2; --scroll-h: #b3b8bf;
@@ -116,7 +114,10 @@ html[data-density="comfortable"] {
 html, body { height: 100%; }
 body {
   background: var(--bg); color: var(--text);
-  font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Mono-dominant field (Carbon Institutional): if the eye lands on
+     proportional type first, the institutional read breaks. Sans survives
+     only where the shell inherits nothing (editor uses --code-font). */
+  font-family: var(--mono);
   font-size: var(--t-md); line-height: 1.4;
   display: flex; flex-direction: column;
 }
@@ -240,6 +241,38 @@ nav#timeframes button:disabled { opacity: .35; cursor: default; }
   font-weight: 600; letter-spacing: .06em; padding: 2px 6px; cursor: pointer;
 }
 #density-toggle:hover { color: var(--text); }
+/* ── LIVE SURFACE (Carbon Institutional, 2026-09-21) ───────────────────
+   A professional terminal FEELS like the market flows through it:
+   per-tick phosphor flash on board prices, a heartbeat on the feed
+   LEDs, 140ms chrome hovers. Color discipline holds: teal/rose are
+   data, amber is chrome, the rest is carbon. */
+@keyframes tickUp { from { background: rgba(33, 179, 164, .30); } to { background: transparent; } }
+@keyframes tickDown { from { background: rgba(240, 66, 108, .30); } to { background: transparent; } }
+.wprice.tick-up { animation: tickUp .34s ease-out; }
+.wprice.tick-down { animation: tickDown .34s ease-out; }
+.rail-btn, .subrail-btn, #controls > button, nav#timeframes button,
+#theme-toggle, #density-toggle, .wrow {
+  transition: color .14s ease, background-color .14s ease, border-color .14s ease;
+}
+/* Status bar: feed health + UTC clock, 24px, mono, honest. LEDs are
+   states, not decoration: live <5s since last real tick/poll, slow
+   <15s, dead beyond — STALE is visible, per the working standard. */
+#statusbar {
+  flex: none; display: flex; align-items: center; gap: 14px;
+  padding: 3px 12px; border-top: 1px solid var(--edge);
+  background: var(--panel); font-size: var(--t-2xs); color: var(--dim);
+  letter-spacing: .04em; white-space: nowrap; overflow: hidden;
+}
+#statusbar .led {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--dim); margin-right: 5px; vertical-align: 1px;
+}
+#statusbar .led.live { background: var(--up); box-shadow: 0 0 4px var(--up);
+  animation: ledPulse 2s ease-in-out infinite; }
+#statusbar .led.slow { background: var(--amber); }
+#statusbar .led.dead { background: var(--down); }
+@keyframes ledPulse { 50% { opacity: .45; } }
+#statusbar .sb-right { margin-left: auto; font-variant-numeric: tabular-nums; }
 /* GitHub link: mark + GITHUB word in the exact .rail-btn dress (the icon
    alone reads as nothing in a text-labeled cluster and gets missed).
    Metrics copied from .rail-btn rather than taking the class, so the rail

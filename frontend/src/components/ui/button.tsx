@@ -9,13 +9,15 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-white text-black shadow-sm hover:bg-neutral-100 hover:scale-105",
-        destructive: "bg-neon-pink text-white shadow-glow-pink hover:shadow-glow-pink hover:scale-105",
+        // Carbon Institutional (2026-09-21): no hover-scale bounces, no glow
+        // shadows — chrome stays austere; hover is a brightness step.
+        default: "bg-white text-black hover:bg-neutral-200",
+        destructive: "bg-neon-pink text-white hover:opacity-90",
         outline: "border border-border bg-transparent hover:bg-glass-bg hover:border-electric-blue hover:shadow-glow-blue",
         secondary: "bg-glass-bg border border-glass-border backdrop-blur-lg hover:border-neon-purple hover:shadow-glow-purple",
         ghost: "hover:bg-black/10 dark:hover:bg-white/10",
         link: "text-electric-blue underline-offset-4 hover:underline hover:text-neon-purple",
-        premium: "bg-gradient-premium text-white shadow-glow-purple hover:shadow-glow-purple hover:scale-105",
+        premium: "bg-gradient-premium text-white hover:opacity-90",
       },
       // Density v2 (owner "shrink more", 2026-09-19): 24/20/28px — the
       // band pro scalping terminals ship (ATAS DOM buttons ~20-24px).

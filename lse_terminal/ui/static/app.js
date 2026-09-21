@@ -409,6 +409,7 @@ function paintBoardPrice(r) {
     cell.classList.remove("stale"); // live now; drop the cached-price dimming
     cell.classList.toggle("up", prev !== undefined && r.price >= prev);
     cell.classList.toggle("down", prev !== undefined && r.price < prev);
+    flashTick(cell, prev, r.price);
     const q = state.quotes[r.symbol];
     const sc = cell.parentElement.querySelector(".wspread");
     if (sc && q) sc.textContent = spreadText(r.symbol, q);
@@ -420,7 +421,7 @@ async function pollProviderPrices(provider, syms) {
   try {
     const res = await fetch(`/api/prices?provider=${encodeURIComponent(provider)}` +
       `&symbols=${encodeURIComponent(syms.slice(0, 50).join(","))}`);
-    if (res.ok) for (const row of await res.json()) paintBoardPrice(row);
+    if (res.ok) { for (const row of await res.json()) paintBoardPrice(row); noteFeed(provider); }
   } catch (e) { /* transient network error; next poll retries */ }
 }
 async function pollPrices() {
@@ -536,6 +537,7 @@ setInterval(async () => {
 function onTick(t, tRecvPerf) {
   const prev = state.prices[t.symbol];
   state.prices[t.symbol] = t.price;
+  noteFeed(t.provider || state.provider);
   if (state.staleFromCache) state.staleFromCache.delete(t.symbol);
   savePriceCache(); // throttled inside; keeps the charted symbol fresh too
   // Bid/ask ride every tick when the provider has them (real, or inferred
@@ -558,6 +560,7 @@ function onTick(t, tRecvPerf) {
     cell.classList.remove("stale");
     cell.classList.toggle("up", prev !== undefined && t.price >= prev);
     cell.classList.toggle("down", prev !== undefined && t.price < prev);
+    flashTick(cell, prev, t.price);
     const q = state.quotes[t.symbol];
     const sc = cell.parentElement.querySelector(".wspread");
     if (sc && q) sc.textContent = spreadText(t.symbol, q);
@@ -15024,6 +15027,45 @@ async function boot() {
     try { localStorage.setItem("lset-density", isComfy() ? "compact" : "comfortable"); } catch (e) {}
     location.reload();
   };
+
+  // ── LIVE SURFACE (Carbon Institutional) ──────────────────────────────
+  // Per-tick phosphor flash on board prices. Re-adding the class after a
+  // forced reflow restarts the CSS animation on every price CHANGE, so a
+  // trending symbol pulses per tick exactly like a pro board; unchanged
+  // ticks never flash (a flash without a change would be fake data).
+  function flashTick(cell, prev, price) {
+    if (prev === undefined || price === prev) return;
+    cell.classList.remove("tick-up", "tick-down");
+    void cell.offsetWidth;
+    cell.classList.add(price > prev ? "tick-up" : "tick-down");
+  }
+
+  // Feed recency: the last moment each source handed us a REAL price
+  // (websocket tick or board poll). The status bar renders these as
+  // live/slow/dead LEDs — health is a visible state, never an assumption.
+  const feedSeen = {};
+  function noteFeed(provider) { feedSeen[provider] = Date.now(); }
+
+  // 1s heartbeat: feed LEDs + ws state + UTC clock.
+  setInterval(() => {
+    const feeds = $("sb-feeds");
+    if (feeds) {
+      const names = [state.provider, altSourceName()].filter(Boolean);
+      feeds.innerHTML = [...new Set(names)].map((p) => {
+        const age = (Date.now() - (feedSeen[p] || 0)) / 1000;
+        const cls = age < 5 ? "live" : age < 15 ? "slow" : "dead";
+        const tag = p === "londonstrategicedge" ? "LSE" : p.toUpperCase().slice(0, 7);
+        return `<span><span class="led ${cls}"></span>${tag} ${age < 60 ? age.toFixed(0) + "s" : "STALE"}</span>`;
+      }).join("&ensp;");
+    }
+    const mid = $("sb-mid");
+    if (mid) {
+      const wsLive = state.ws && state.ws.readyState === 1;
+      mid.innerHTML = `<span><span class="led ${wsLive ? "live" : "dead"}"></span>WS ${wsLive ? "LIVE" : "DOWN"}</span>`;
+    }
+    const clock = $("sb-clock");
+    if (clock) clock.textContent = new Date().toUTCString().slice(17, 25) + " UTC";
+  }, 1000);
 
   // Watchlist price board poll: once a second for the rows on screen
   // (pollPrices itself skips hidden windows and stacked requests).

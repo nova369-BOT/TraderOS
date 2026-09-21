@@ -76,9 +76,10 @@ export default {
         'glass-bg': 'var(--glass-bg)',
         'glass-border': 'var(--glass-border)',
       },
+      // Carbon Institutional: rigid 3/4px corners, no SaaS roundness.
       borderRadius: {
-        md: '10px',
-        lg: '12px',
+        md: '3px',
+        lg: '4px',
       },
       backgroundImage: {
         'gradient-primary': 'var(--gradient-primary)',

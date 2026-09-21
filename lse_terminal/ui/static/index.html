@@ -1232,6 +1232,14 @@ def my_ind(df, length=20):
     on your own account.</div>
   </aside>
 </main>
+<!-- Feed-health status bar (Carbon Institutional): live LEDs per source,
+     websocket state and a UTC clock. app.js owns the 1s heartbeat; the
+     LEDs are STATES (live/slow/dead from last real tick), not decor. -->
+<footer id="statusbar" aria-label="Feed health">
+  <span id="sb-feeds"></span>
+  <span id="sb-mid"></span>
+  <span class="sb-right" id="sb-clock"></span>
+</footer>
 <!-- The old #ai-panel Assistant slide-over is gone: the hosted assistant is
      now the "LSE Assistant" provider inside the permanent right rail. -->
 <script>
