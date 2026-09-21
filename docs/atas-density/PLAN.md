@@ -219,3 +219,30 @@ Proof: pytest 218/2 then chart-pure restored to pass once npm deps
 reinstalled in the fresh session (219/1 equivalent; the skip is the
 documented missing-toolchain path); running preview curl-confirmed the
 new paddings from disk.
+
+
+## 11. density v5 — every strip above the canvas up one more notch (2026-09-21)
+
+Owner, on the merged terminal: "I WANT THE COLUMN TO SHRINK MORE UPWARD I
+WANT ROOM FOR VIEWING MY CANDLESTICK". v4 took the header stack's paddings
+to 2px; v5 takes them to 1px and tightens the two-line connection block
+that sets the topline band's height. Zero content loss, type floors
+untouched (9px micro caps, 10.5px body), hit rows stay >= ~18px — and the
+comfortable mode continues to restore pre-pass type sizes (the structural
+padding is compact by design in both modes, same as v3/v4).
+
+| strip              | what moved                                        | strip height |
+|--------------------|---------------------------------------------------|--------------|
+| topline band       | pad 2->1, conn-bar 2->1, conn 2-line leading 1.3->1.15 | ~32 -> ~28px |
+| subrail            | button pads 2/3 -> 1/2                            | ~22 -> ~20px |
+| controls row       | row pads 2/3 -> 1/2, control pads 2/6 -> 1/6      | ~25 -> ~23px |
+| indicator chip row | strip pads 4 -> 2                                 | ~24 -> ~20px |
+
+Sum of the column above the canvas: ~103px -> ~91px (**~12px of chart
+height reclaimed**, measured in the stylesheet, not estimated from a
+screenshot). Also theme/density chips 2 -> 1 so the chip cluster never
+re-raises the band.
+
+Proof: api+shell suites green; full suite 247 passed / 1 skipped;
+running engine serves the new paddings from disk (11 rule sites
+verified over HTTP).
