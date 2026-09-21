@@ -87,7 +87,12 @@ class RecPath {
 class RecCtx {
   ops: [string, ...number[]][] = [];
   strokes = 0; fills = 0; fillRects = 0; strokeRects = 0; rectCalls = 0;
-  fillStyle = ''; strokeStyle = ''; lineWidth = 1; lineCap = 'butt';
+  styleWrites = 0;
+  private _fs = ''; private _ss = ''; private _lw = 1; private _lc = 'butt';
+  get fillStyle() { return this._fs; } set fillStyle(v) { this.styleWrites++; this._fs = v; }
+  get strokeStyle() { return this._ss; } set strokeStyle(v) { this.styleWrites++; this._ss = v; }
+  get lineWidth() { return this._lw; } set lineWidth(v) { this.styleWrites++; this._lw = v; }
+  get lineCap() { return this._lc; } set lineCap(v) { this.styleWrites++; this._lc = v; }
   stroke(path?: RecPath) {
     this.strokes++;
     if (path) for (const s of (path as any).seg) this.ops.push(['S' + s[0], ...s.slice(1)] as [string, ...number[]]); 
@@ -103,7 +108,12 @@ class RecCtx {
 class LegacyCtx {
   ops: any[] = [];
   strokes = 0; fills = 0; fillRects = 0; strokeRects = 0;
-  fillStyle = ''; strokeStyle = ''; lineWidth = 1; lineCap = 'butt';
+  styleWrites = 0;
+  private _fs = ''; private _ss = ''; private _lw = 1; private _lc = 'butt';
+  get fillStyle() { return this._fs; } set fillStyle(v) { this.styleWrites++; this._fs = v; }
+  get strokeStyle() { return this._ss; } set strokeStyle(v) { this.styleWrites++; this._ss = v; }
+  get lineWidth() { return this._lw; } set lineWidth(v) { this.styleWrites++; this._lw = v; }
+  get lineCap() { return this._lc; } set lineCap(v) { this.styleWrites++; this._lc = v; }
   beginPath() {}
   moveTo(x: number, y: number) { this.ops.push(['M', x, y]); }
   lineTo(x: number, y: number) { this.ops.push(['L', x, y]); }
@@ -224,18 +234,21 @@ ok(Math.abs(lastBody[3] - 1) < 1e-9, 'doji body height clamps to 1px');
 ok(batchRectTuples.join(',').includes(lastBody.join(',')),
    'morph glide body painted by batched renderer too');
 
-// --- canvas-call law: bound to 6 draw calls regardless of candle count ---
-ok(batchCtx.strokes === 4, 'batched wick+border strokes: exactly 4');
-ok(batchCtx.fills === 2, 'batched body fills: exactly 2');
-ok(batchCtx.fillRects === 0 && batchCtx.strokeRects === 0,
-   'batched uses zero per-candle rect calls');
-ok(legacyCtx.strokes === fixture.length || legacyCtx.strokes >= 1, 'oracle sane');
-const callsPerCandleOracle =
-  (legacyCtx.strokes + legacyCtx.fills + legacyCtx.fillRects + legacyCtx.strokeRects) / fixture.length;
-ok(callsPerCandleOracle === 3, 'legacy was 3 canvas calls per candle');
-const batchedCalls =
-  batchCtx.strokes + batchCtx.fills + batchCtx.fillRects + batchCtx.strokeRects;
-ok(batchedCalls === 6, 'batched is 6 canvas draw calls for any N');
-ok(batchedCalls / fixture.length < 0.25, 'canvas calls no longer scale with candles');
+// --- canvas-call law (v2): bodies keep the browser's fast rect
+// primitives (fillRect/strokeRect, one color RUN each); the per-frame
+// STATE churn is the bound invariant — wick strokes = 2 for any N, and
+// style writes are a small constant instead of ~7 per candle. ---
+ok(batchCtx.strokes === 2, 'batched wick strokes: exactly 2 for any N');
+ok(batchCtx.fills === 0,
+   'bodies paint via fast rect primitives, not mega-path fills');
+ok(batchCtx.fillRects + batchCtx.strokeRects === 2 * fixture.length,
+   'every body got its fast-primitive fill + border');
+const batchedStyle = batchCtx.styleWrites;
+ok(batchedStyle <= 12, 'style writes are a small constant per frame');
+const oracleStylePerCandle = legacyCtx.styleWrites / fixture.length;
+ok(oracleStylePerCandle >= 6.9,
+   'legacy wrote style ~7x per candle — the churn being killed');
+ok(batchedStyle / fixture.length < 0.3,
+   'style churn no longer scales with candles');
 
 console.log(JSON.stringify({ ok: true, checks }));

@@ -11,8 +11,13 @@ import { paintCandleBodies } from '../frontend/src/components/chart/renderers/ca
 class NullPath { moveTo(){} lineTo(){} rect(){} }
 (globalThis as any).Path2D = NullPath;
 class NullCtx {
-  strokeStyle = ''; fillStyle = ''; lineWidth = 1; lineCap = 'butt';
   strokes = 0; fills = 0; fillRects = 0; strokeRects = 0; rects = 0;
+  styleWrites = 0;
+  private _fs = ''; private _ss = ''; private _lw = 1; private _lc = 'butt';
+  get fillStyle() { return this._fs; } set fillStyle(v) { this.styleWrites++; this._fs = v; }
+  get strokeStyle() { return this._ss; } set strokeStyle(v) { this.styleWrites++; this._ss = v; }
+  get lineWidth() { return this._lw; } set lineWidth(v) { this.styleWrites++; this._lw = v; }
+  get lineCap() { return this._lc; } set lineCap(v) { this.styleWrites++; this._lc = v; }
   beginPath() {}
   moveTo() {} lineTo() {} rect() { this.rects++; }
   stroke() { this.strokes++; }
@@ -77,9 +82,11 @@ function bench(fn: (ctx: any, a: any) => void, a: any, iters: number) {
   }
   t.sort((x, y) => x - y);
   const med = t[3];
+  ctx.strokes = ctx.fills = ctx.fillRects = ctx.strokeRects = 0;
+  ctx.styleWrites = 0;
   fn(ctx, a);
   const calls = ctx.strokes + ctx.fills + ctx.fillRects + ctx.strokeRects;
-  return { med, calls };
+  return { med, calls, styles: ctx.styleWrites };
 }
 
 const out: any = {};
@@ -97,6 +104,8 @@ for (const [label, n, slot] of [
     js_cost_reduction: `${(legacy.med / Math.max(batched.med, 1e-6)).toFixed(1)}x`,
     canvas_calls_legacy: legacy.calls,
     canvas_calls_batched: batched.calls,
+    style_writes_legacy: legacy.styles,
+    style_writes_batched: batched.styles,
   };
 }
 console.log(JSON.stringify(out, null, 2));

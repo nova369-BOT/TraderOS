@@ -54,18 +54,25 @@ export interface CandleBodiesArgs {
 export function paintCandleBodies(a: CandleBodiesArgs): void {
   const { ctx, candles, startIndex, indexToX, priceToY, morphAt,
           candleBodyWidth, wickWidth, colors } = a;
-  // One Path2D per color class (wick/body/border × bull/bear = 6): the
-  // single pass below routes each candle's segments into its class path
-  // — no intermediate number buffers, no second pass, the ONLY
-  // per-frame allocations are the six path descriptors.
+  // v2 (owner's regression report, 2026-09-21): a single MEGA-path of a
+  // few thousand filled/stroked rects can rasterize SLOWER than the
+  // canvas's native rect fast paths, so bodies keep fillRect/strokeRect
+  // (the fastest rect primitive on every browser) — but grouped into
+  // ONE color run each, so style state is written ~4 times per frame
+  // instead of ~5 per candle. Wicks stay mega-paths per direction:
+  // a wick stroke per candle was the genuine cost, two strokes per
+  // frame for any N. One transform pass computes each candle's rects
+  // once; a small coordinate buffer per direction keeps the second
+  // (per-primitive) pass allocation-free over candles.length.
   const bullWick = new Path2D();
   const bearWick = new Path2D();
-  const bullBody = new Path2D();
-  const bearBody = new Path2D();
-  const bullBorder = new Path2D();
-  const bearBorder = new Path2D();
   const halfW = candleBodyWidth / 2;
-  let bulls = 0, bears = 0;
+  const halfN = candles.length;
+  const bullsX = new Float64Array(halfN), bullsY = new Float64Array(halfN),
+        bullsW = new Float64Array(halfN), bullsH = new Float64Array(halfN);
+  const bearsX = new Float64Array(halfN), bearsY = new Float64Array(halfN),
+        bearsW = new Float64Array(halfN), bearsH = new Float64Array(halfN);
+  let nb = 0, ns = 0;
 
   for (let i = 0; i < candles.length; i++) {
     const dc = morphAt(i, candles[i]);                 // D15 glide
@@ -79,42 +86,50 @@ export function paintCandleBodies(a: CandleBodiesArgs): void {
     if (dc.close >= dc.open) {                        // bullish, verbatim
       bullWick.moveTo(x, highY);
       bullWick.lineTo(x, lowY);
-      bullBody.rect(x - halfW, bodyTop, candleBodyWidth, bodyHeight);
-      bullBorder.rect(x - halfW, bodyTop, candleBodyWidth, bodyHeight);
-      bulls++;
+      bullsX[nb] = x - halfW; bullsY[nb] = bodyTop;
+      bullsW[nb] = candleBodyWidth; bullsH[nb] = bodyHeight;
+      nb++;
     } else {
       bearWick.moveTo(x, highY);
       bearWick.lineTo(x, lowY);
-      bearBody.rect(x - halfW, bodyTop, candleBodyWidth, bodyHeight);
-      bearBorder.rect(x - halfW, bodyTop, candleBodyWidth, bodyHeight);
-      bears++;
+      bearsX[ns] = x - halfW; bearsY[ns] = bodyTop;
+      bearsW[ns] = candleBodyWidth; bearsH[ns] = bodyHeight;
+      ns++;
     }
   }
 
   ctx.lineWidth = wickWidth;
   ctx.lineCap = 'round';
-  if (bulls) {
+  if (nb) {
     ctx.strokeStyle = colors.bullishWick;
     ctx.stroke(bullWick);
     ctx.fillStyle = colors.bullish;
-    ctx.fill(bullBody);
+    for (let i = 0; i < nb; i++) {
+      ctx.fillRect(bullsX[i], bullsY[i], bullsW[i], bullsH[i]);
+    }
   }
-  if (bears) {
+  if (ns) {
     ctx.strokeStyle = colors.bearishWick;
     ctx.stroke(bearWick);
     ctx.fillStyle = colors.bearish;
-    ctx.fill(bearBody);
+    for (let i = 0; i < ns; i++) {
+      ctx.fillRect(bearsX[i], bearsY[i], bearsW[i], bearsH[i]);
+    }
   }
   ctx.lineCap = 'butt';   // the legacy reset, preserved
 
   // Borders last, same paint-after-fill order as the legacy loop.
   ctx.lineWidth = 1;
-  if (bulls) {
+  if (nb) {
     ctx.strokeStyle = colors.bullishBorder;
-    ctx.stroke(bullBorder);
+    for (let i = 0; i < nb; i++) {
+      ctx.strokeRect(bullsX[i], bullsY[i], bullsW[i], bullsH[i]);
+    }
   }
-  if (bears) {
+  if (ns) {
     ctx.strokeStyle = colors.bearishBorder;
-    ctx.stroke(bearBorder);
+    for (let i = 0; i < ns; i++) {
+      ctx.strokeRect(bearsX[i], bearsY[i], bearsW[i], bearsH[i]);
+    }
   }
 }

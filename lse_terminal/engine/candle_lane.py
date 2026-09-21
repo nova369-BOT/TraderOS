@@ -56,6 +56,7 @@ class CandleLane:
         self._rows: dict = {}            # ts -> [ts,o,h,l,c,v]
         self._lock = threading.RLock()
         self._asked_low = None           # deepest ts the VENUE was asked
+        self._born = wall()              # first frame = lane's birth
         self._last_ws_event = None       # wall clock of last stream frame
         self._last_tail_refetch = 0.0
 
@@ -84,10 +85,17 @@ class CandleLane:
                     del self._rows[old_ts]
 
     def _stale(self) -> bool:
-        if self._last_ws_event is None:
-            return False                 # stream not up yet, not "stale"
         horizon = max(_STALE_FLOOR_S,
                       _STALE_AFTER_MULT * self.tf_s)
+        if self._last_ws_event is None:
+            # A stream that NEVER arrived (geo-blocked WS dial, a slow
+            # death the reconnect law is still fighting): after the same
+            # grace horizon since birth, the lane is stale-capable too.
+            # Without this, a dead-from-birth lane degenerated into a
+            # full re-backfill per warm request — strictly worse than
+            # the plain passthrough it replaced (owner's 2026-09-21
+            # regression report; pin in tests: tail-sized, floor-gated).
+            return (self._wall() - self._born) > horizon
         return (self._wall() - self._last_ws_event) > horizon
 
     # -- request side ----------------------------------------------------

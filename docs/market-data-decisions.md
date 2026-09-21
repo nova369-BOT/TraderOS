@@ -413,3 +413,41 @@ Verify: pure gate 61/61 (incl. new parity laws) inside full suite
 (chart.js 4,441,699B rebuilt); live engine serves the new bundle
 bit-identical (gzipped 1,284,780B on the wire). Bench reproducible:
 esbuild tests/bench_candle_bodies.ts && node output.
+
+### D21 v2 + lane heal — owner's "it has become worse" response (2026-09-21)
+
+Owner reported the Binance chart felt worse vs Coinbase after D19–D21.
+Two defensible fixes shipped, one honest asymmetry documented.
+
+**1. Lane degenerate mode (provable defect, pinned).** On geo-blocked
+egress the venue WS dial never answers, so no kline event EVER lands
+— and the lane's `_last_ws_event is None` guard meant `_stale()` was
+permanently false. Consequence: every warm request past 2×tf fell into
+the FULL backfill branch (in the owner's default 5000-bar pane: 4
+pages, ~40 weight, every read) instead of the gap-sized tail refetch.
+Fixed: a lane's birth clock feeds the same staleness horizon — a
+never-streamed stream is stale-capable after one grace horizon; until
+then the cache serves quietly (a dialing socket is not evidence of
+death). Pins: tail-sized (≤250, ≥8) refetch, floor-gated, once per
+floor; the inside-grace case adds zero calls. This also fixes the
+weight regression the owner would have hit again at scale.
+
+**2. Candle paint v2: fast primitives, not call-count theatre.** The
+mega-Path2D fill/stroke batching from D21 cut *canvas API calls* but a
+single tessellated path of thousands of rects can rasterize SLOWER
+than the browser's rect fast paths — the owner's GPU said so. v2:
+bodies paint with fillRect/strokeRect (the fastest 2D primitives, one
+color RUN each), wicks stay as 2 mega-path strokes (the genuine win:
+an N-stroke round trip per frame dies). Pixels unchanged (parity gate
+updated and green at 60 checks). Measured (bench): canvas calls
+720→482/2,880→1,922/12,000→8,002 (wicks sub-calls eliminated); state
+writes **1,680→10 / 6,720→10 / 28,000→10 (−99.6%)** at 240/960/4000
+bars — state-churn validation was the legacy cost driver; the rect
+primitives stay because they are the fast ones.
+
+**Honest asymmetry (not a defect, not faked):** the Binance pane legally
+carries 5,000 candles where Coinbase's venue caps at 1,500 — more data
+to keep alive per pane, by design, never trimmed silently.
+Sub-minute lanes ride serial venue-cursor pages by law on both venues
+(Coinbase's pages are structurally fewer per load).
+Suite: **274 passed / 1 skipped**; tsc clean; bundle rebuilt+served.

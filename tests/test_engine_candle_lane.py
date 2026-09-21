@@ -336,3 +336,38 @@ def test_engine_route_warm_serves_add_zero_klines_rest_weight(monkeypatch):
             assert r2.json()["candles"][-1][1:5] == [100, 107.7, 99, 107.7]
     finally:
         fake.stop()
+
+
+def test_never_streamed_lane_heals_with_tails_not_full_reloads():
+    """The geo-blocked failure mode (owner 2026-09-21): the venue WS
+    dial never comes up, so NO kline event ever lands. Pre-fix the
+    none-guard made _stale() permanently false and every warm request
+    re-ran the FULL backfill — strictly worse than the plain passthrough
+    the lane replaced. Law now: after the same grace horizon since
+    birth, warm serves heal with a gap-sized tail refetch, floor-gated.
+    """
+    prov = _StubProvider(_rows(400, t0=NOW - 400 * 60))
+    lane, wall = _lane(prov)
+    lane.frame(400, clock=lambda: NOW)                    # cold: full ask
+    assert prov.calls == [(400, None, None)]
+    # Live stream never arrives; venue bars keep building (REST truth).
+    prov.rows += _rows(6, t0=NOW, price=700.0)
+    wall.tick(max(_STALE_FLOOR_S, 2 * 60) + 5)            # birth grace passes
+    lane.frame(400, clock=lambda: NOW + 300)
+    assert prov.calls[-1][0] <= 250                       # a TAIL, not 400
+    assert prov.calls[-1][0] >= 8                         # but gap-sized
+    assert len(prov.calls) == 2
+    df = lane.frame(400, clock=lambda: NOW + 300)
+    assert len(prov.calls) == 2                           # floor-gated
+    assert df["ts"].iloc[-1] == NOW + 300                 # bridged tail
+
+
+def test_never_streamed_lane_inside_grace_serves_cache_quietly():
+    """Before the grace horizon: no tail noise — a dialing socket is
+    not evidence of death (the venue may just be slow to answer)."""
+    prov = _StubProvider(_rows(100, t0=NOW - 100 * 60))
+    lane, wall = _lane(prov)
+    lane.frame(100, clock=lambda: NOW)
+    wall.tick(10)                                          # inside grace
+    lane.frame(100, clock=lambda: NOW + 60)
+    assert prov.calls == [(100, None, None)]               # zero extra
