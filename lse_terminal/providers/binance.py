@@ -56,6 +56,24 @@ import re
 import os
 import time
 import urllib.request
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+from ._http import HttpPool, base_of
+
+# One keep-alive pool per base host (venue rung, spot mirror, test fake):
+# urllib used to pay a fresh TCP+TLS handshake for every klines/aggTrades
+# page; the pool makes it one per host, shared across this process.
+_POOLS: dict = {}
+_POOLS_LOCK = threading.Lock()
+
+
+def _pool_for(base: str) -> HttpPool:
+    with _POOLS_LOCK:
+        pool = _POOLS.get(base)
+        if pool is None:
+            pool = _POOLS[base] = HttpPool()
+    return pool
 from collections import deque
 from datetime import datetime, timezone
 from typing import AsyncIterator, Dict, List, Optional
@@ -286,58 +304,116 @@ class BinanceProvider(Provider):
         # REST ladder (D14): pinned winner first; a geo/WAF/unreachable
         # answer advances the rung INSIDE this call; everything else
         # (429, empty book) is the venue's truth and surfaces verbatim.
+        # Speed law (owner, 2026-09-21): the windows the old serial loop
+        # derived by count are clock-computable up front, so multi-window
+        # loads fetch them IN PARALLEL over keep-alive connections —
+        # same requests, same bytes, same refusals, wall-time of one page
+        # instead of four. Pages are disjoint by construction, so the
+        # merge needs no dedupe; the venue ladder flips under one lock.
+        windows = []
+        we, remaining = end_s, limit
+        while remaining > 0:
+            want = min(_MAX_REST_CANDLES, remaining)
+            ws = we - want * tf_s + tf_s
+            if start_s is not None:
+                ws = max(ws, start_s)
+                if ws > we:
+                    break
+            windows.append((ws, we, want))
+            we = ws - tf_s
+            remaining -= want
+        rungs = self._rest_rungs()
+        state = {"any_rows": False}
+        rung_lock = threading.Lock()
+
+        def fetch_window(ws: int, we_: int, want: int):
+            while True:
+                with rung_lock:
+                    idx = self._rest_rung
+                venue, base, path = rungs[idx]      # path: api prefix
+                url = (f"{base}{path}/klines?symbol={symbol}"
+                       f"&interval={interval}&limit={want}"
+                       f"&startTime={ws * 1000}"
+                       f"&endTime={we_ * 1000}")
+                host, qpath = base_of(url)
+                try:
+                    code, body = _pool_for(host).get(host, qpath)
+                except Exception as e:  # noqa: BLE001
+                    # TLS drop / ISP block / DNS poison: same ladder move.
+                    with rung_lock:
+                        can_flip = (self._rest_rung < len(rungs) - 1
+                                    and not state["any_rows"])
+                        if can_flip:
+                            self._rest_rung += 1
+                    if can_flip:
+                        continue
+                    raise NotSupported(
+                        f"{venue}: klines REST failed: {e}") from e
+                if code != 200:
+                    text = body.decode(errors="replace")[:200]
+                    with rung_lock:
+                        can_flip = (code in _GEO_HTTP
+                                    and self._rest_rung < len(rungs) - 1
+                                    and not state["any_rows"])
+                        if can_flip:
+                            self._rest_rung += 1
+                    if can_flip:
+                        # Eligibility/WAF answer: this egress may not
+                        # touch the venue — move to the public data
+                        # mirror and take the same symbols in the
+                        # venue's own spot shape.
+                        continue
+                    # Venue errors keep the venue's words — a 429 says 429.
+                    raise NotSupported(
+                        f"{venue}: klines REST HTTP {code}: {text}")
+                batch = json.loads(body.decode())
+                out = []
+                for k in batch or []:
+                    try:
+                        out.append([int(k[0]) // 1000,
+                                    float(k[1]), float(k[2]),
+                                    float(k[3]), float(k[4]), float(k[5])])
+                    except (TypeError, ValueError, IndexError):
+                        continue
+                if out:
+                    state["any_rows"] = True
+                return out, venue
+
         rows: List[list] = []
-        window_end = end_s
         serving_venue = None
+        if len(windows) == 1:
+            results = [fetch_window(*windows[0])]
+        else:
+            with ThreadPoolExecutor(
+                    max_workers=min(4, len(windows)),
+                    thread_name_prefix="klines") as ex:
+                results = list(ex.map(lambda w: fetch_window(*w), windows))
+        for out, venue in results:
+            serving_venue = venue
+            rows.extend(out)
+        # Gap continuation — the old serial law, kept verbatim: when a
+        # window comes back SHORT of its ask, more history exists below
+        # the plan, so chase it downward one page at a time with exactly
+        # the old loop's adaptive queries until filled, the venue blanks,
+        # or `start` is covered. Full pages (the norm on this book) never
+        # enter this loop — they were already fetched in parallel.
+        we = (windows[-1][0] - tf_s) if windows else end_s
         while len(rows) < limit:
-            rungs = self._rest_rungs()
-            venue, base, path = rungs[self._rest_rung]  # path: api prefix
             want = min(_MAX_REST_CANDLES, limit - len(rows))
-            window_start = window_end - want * tf_s + tf_s
+            window_start = we - want * tf_s + tf_s
             if start_s is not None:
                 window_start = max(window_start, start_s)
-                if window_start > window_end:
+                if window_start > we:
                     break
-            url = (f"{base}{path}/klines?symbol={symbol}"
-                   f"&interval={interval}&limit={want}"
-                   f"&startTime={window_start * 1000}"
-                   f"&endTime={window_end * 1000}")
-            try:
-                with urllib.request.urlopen(url, timeout=15) as resp:
-                    batch = json.loads(resp.read().decode())
-                serving_venue = venue
-            except urllib.error.HTTPError as e:
-                body = e.read().decode(errors="replace")[:200]
-                if e.code in _GEO_HTTP and                         self._rest_rung < len(rungs) - 1 and not rows:
-                    # Eligibility/WAF answer: this egress may not touch
-                    # the venue — move to the public data mirror and take
-                    # the same symbols in the venue's own spot shape.
-                    self._rest_rung += 1
-                    continue
-                # Venue errors keep the venue's words — a 429 says 429.
-                raise NotSupported(
-                    f"{venue}: klines REST HTTP {e.code}: {body}") from e
-            except Exception as e:  # noqa: BLE001
-                if self._rest_rung < len(rungs) - 1 and not rows:
-                    # TLS drop / ISP block / DNS poison: same ladder move.
-                    self._rest_rung += 1
-                    continue
-                raise NotSupported(
-                    f"{venue}: klines REST failed: {e}") from e
-            got = 0
-            for k in batch or []:
-                try:
-                    rows.append([int(k[0]) // 1000,
-                                 float(k[1]), float(k[2]),
-                                 float(k[3]), float(k[4]), float(k[5])])
-                    got += 1
-                except (TypeError, ValueError, IndexError):
-                    continue
-            if got == 0:
+            out, venue = fetch_window(window_start, we, want)
+            serving_venue = venue
+            rows.extend(out)
+            if not out:
                 break
             if start_s is not None and window_start <= start_s:
                 break
-            window_end = window_start - tf_s
+            we = window_start - tf_s
+        serving_venue = serving_venue or self._rest_rungs()[self._rest_rung][0]
         rows.sort(key=lambda r: r[0])
         if start_s is not None:
             rows = [r for r in rows if r[0] >= start_s]
@@ -346,8 +422,6 @@ class BinanceProvider(Provider):
             raise NotSupported(
                 f"binance: venue served no history for {symbol} {timeframe}")
         df = pd.DataFrame(rows[-limit:], columns=CANDLE_COLUMNS)
-        if serving_venue is None:
-            serving_venue = self._rest_rungs()[self._rest_rung][0]
         df.attrs["venue"] = serving_venue
         self.venue = serving_venue     # the tick badge flips with the rung
         return df
@@ -358,27 +432,31 @@ class BinanceProvider(Provider):
         """One aggTrades page through the SAME ladder law as klines:
         venue rung first; a geo/WAF/unreachable answer advances the rung
         and reties ONCE here; venue's own errors (429) surface verbatim.
+        Pages stay serial (each next cursor is the previous page's oldest
+        print — that IS the venue's paging law), but ride keep-alive
+        connections so only the first page pays the handshake.
         Returns (rows, venue)."""
         while True:
             venue, base, prefix = rungs[self._rest_rung]
             full = f"{base}{prefix}/aggTrades?{url}"
+            host, qpath = base_of(full)
             try:
-                with urllib.request.urlopen(full, timeout=15) as resp:
-                    data = json.loads(resp.read().decode())
-                return (data if isinstance(data, list) else []), venue
-            except urllib.error.HTTPError as e:
-                body = e.read().decode(errors="replace")[:200]
-                if e.code in _GEO_HTTP and                         self._rest_rung < len(rungs) - 1:
-                    self._rest_rung += 1
-                    continue
-                raise NotSupported(
-                    f"{venue}: aggTrades REST HTTP {e.code}: {body}") from e
+                code, body = _pool_for(host).get(host, qpath)
             except Exception as e:  # noqa: BLE001
                 if self._rest_rung < len(rungs) - 1:
                     self._rest_rung += 1
                     continue
                 raise NotSupported(
                     f"{venue}: aggTrades REST failed: {e}") from e
+            if code != 200:
+                text = body.decode(errors="replace")[:200]
+                if code in _GEO_HTTP and self._rest_rung < len(rungs) - 1:
+                    self._rest_rung += 1
+                    continue
+                raise NotSupported(
+                    f"{venue}: aggTrades REST HTTP {code}: {text}")
+            data = json.loads(body.decode())
+            return (data if isinstance(data, list) else []), venue
 
     def _candles_tape(self, symbol: str, timeframe: str, step: int,
                       limit: int, start, end):

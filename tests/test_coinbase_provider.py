@@ -13,7 +13,8 @@ base. No network anywhere.
 import asyncio
 import json
 import threading
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import (BaseHTTPRequestHandler, HTTPServer,
+                           ThreadingHTTPServer)
 from urllib.parse import urlparse, parse_qs
 from datetime import datetime, timezone
 
@@ -389,7 +390,7 @@ def _run_fake_rest(handler, gran=60, pages={}):
         def log_message(self, *a):
             pass
 
-    srv = HTTPServer(("127.0.0.1", 0), H)
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv
 
@@ -422,13 +423,53 @@ def test_candles_rest_newest_first_sorted_paginated(monkeypatch):
     df = p.candles("BTCUSD", "1m", limit=350)
     srv.shutdown()
     assert len(made) == 2          # pagination actually paged
+    assert len(made) == len(set(made))       # two DISTINCT windows
+    # window math: the second page reaches strictly further back than
+    # the first (the fetch is parallel now — arrival order is not a law)
+    older, newer = sorted(made, key=lambda w: w[1])
+    assert older[1] < newer[0]
     assert len(df) == 350
     ts = df["ts"].tolist()
     assert ts == sorted(ts)        # venue's newest-first flipped ascending
     assert all(isinstance(t, int) for t in ts)
-    # window math: page 2 reaches strictly further back than page 1
-    assert made[1][1] < made[0][0]
     assert df.attrs["venue"] == "coinbase"
+
+
+def test_deep_history_pages_fetch_in_parallel_not_serial(monkeypatch):
+    """Owner speed law (2026-09-21): the four 300-candle windows of a
+    1200-bar load fire concurrently over keep-alive, wall-time ≈ one
+    stub RTT instead of four. Pages are the same requests as the old
+    serial loop — only WHEN they fly changed."""
+    made = []
+
+    def handler(req):
+        q = parse_qs(urlparse(req.path).query)
+        start = int(q["start"][0]); end = int(q["end"][0])
+        made.append((start, end))
+        time.sleep(0.25)  # stub RTT for the speed law
+        rows = [_candle(t, 1, 2, 0.5, 1.5, 9)
+                for t in range(start, end, 60)]
+        rows.reverse()
+        body = json.dumps({"candles": rows}).encode()
+        req.send_response(200)
+        req.send_header("Content-Type", "application/json")
+        req.send_header("Content-Length", str(len(body)))
+        req.end_headers()
+        req.wfile.write(body)
+
+    srv = _run_fake_rest(handler)
+    monkeypatch.setattr(coinbase, "REST_BASE",
+                        f"http://127.0.0.1:{srv.server_port}")
+    p = CoinbaseProvider()
+    t0 = time.monotonic()
+    df = p.candles("BTCUSD", "1m", limit=1196)   # four full stub pages
+    wall = time.monotonic() - t0
+    srv.shutdown()
+    assert len(made) == 4              # 4 x 300-candle windows
+    assert len(df) == 1196
+    assert wall < 0.75, f"deep load ran serially: {wall:.2f}s for 4 pages"
+    ts = df["ts"].tolist()
+    assert ts == sorted(ts) and len(set(ts)) == len(ts)
 
 
 def test_candles_empty_answer_is_honest(monkeypatch):

@@ -17,7 +17,8 @@ import asyncio
 import json
 import threading
 import time
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import (BaseHTTPRequestHandler, HTTPServer,
+                           ThreadingHTTPServer)
 from urllib.parse import urlparse, parse_qs
 
 import pytest
@@ -254,13 +255,14 @@ class _Klines:
     """In-process fapi stand-in: real HTTP (real status codes), records
     the query params, serves ascending klines from a seed."""
 
-    def __init__(self, rows=None, status=200, body=None):
+    def __init__(self, rows=None, status=200, body=None, latency=0.0):
         self.rows = rows if rows is not None else []
         self.status = status
         self.body = body
         self.queries = []
         self.port = None
         self._httpd = None
+        self.latency = latency          # per-request stub RTT (speed law)
 
     def __enter__(self):
         outer = self
@@ -273,6 +275,8 @@ class _Klines:
                 u = urlparse(self.path)
                 q = parse_qs(u.query)
                 outer.queries.append(q)
+                if outer.latency:
+                    time.sleep(outer.latency)
                 if outer.status != 200:
                     data = (outer.body or b'{"code":-1003,"msg":"Way too many requests"}')
                     self.send_response(outer.status)
@@ -290,7 +294,7 @@ class _Klines:
                 self.end_headers()
                 self.wfile.write(data_out)
 
-        self._httpd = HTTPServer(("127.0.0.1", 0), H)
+        self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), H)
         self.port = self._httpd.server_address[1]
         threading.Thread(target=self._httpd.serve_forever, daemon=True).start()
         return self
@@ -334,11 +338,13 @@ def test_candles_big_request_pages_at_1500_never_rejected(monkeypatch):
         df = p.candles("BTCUSDT", "1m", 1600, end=1686300000 + 2000 * 60 - 60)
     assert len(df) == 1600                  # paged, merged, never an error
     assert len(k.queries) == 2              # 1500 + the 100-row remainder
-    assert k.queries[0]["limit"] == ["1500"]
-    assert k.queries[1]["limit"] == ["100"]
-    # The second page asks strictly EARLIER than the first (backwards
-    # pagination back to the seed).
-    assert int(k.queries[1]["endTime"][0]) < int(k.queries[0]["startTime"][0])
+    sizes = sorted(int(q["limit"][0]) for q in k.queries)
+    assert sizes == [100, 1500]             # fetch order is parallel now
+    by_size = {int(q["limit"][0]): q for q in k.queries}
+    # The 100-row page asks strictly EARLIER than the 1500-row page
+    # (backwards pagination back to the seed), windows disjoint.
+    assert (int(by_size[100]["endTime"][0])
+            < int(by_size[1500]["startTime"][0]))
 
 
 def test_candles_iso_window_and_row_filter(monkeypatch):
@@ -665,3 +671,27 @@ def test_native_intervals_all_reach_the_venue(monkeypatch, tf, interval):
     assert len(df) == 4
     assert k.queries[0]["interval"] == [interval]   # native, verbatim
 
+
+
+def test_deep_history_pages_fetch_in_parallel_not_serial(monkeypatch):
+    """Owner speed law (2026-09-21): the four 1500-bar windows of a
+    6000-bar load fire concurrently over keep-alive — wall-time ≈ one
+    stub RTT, not four. The wire sees the same requests with the same
+    protocol; only WHEN they fly changed."""
+    rows = [_kline(i) for i in range(6000)]
+    with _Klines(rows=rows, latency=0.25) as k:
+        monkeypatch.setattr(binance, "REST_BASE",
+                            f"http://127.0.0.1:{k.port}")
+        p = BinanceProvider()
+        t0 = time.monotonic()
+        df = p.candles("BTCUSDT", "1m", 6000,
+                       end=1686300000 + 6000 * 60 - 60)
+        wall = time.monotonic() - t0
+    assert len(df) == 6000
+    assert len(k.queries) == 4                     # 4 x 1500 windows
+    assert all(int(q["limit"][0]) == 1500 for q in k.queries)
+    # Serial law would pay 4 x 0.25s = 1.0s for these pages (plus
+    # handler work); parallel pays ~one RTT. Bound generous for CI.
+    assert wall < 0.75, f"deep load ran serially: {wall:.2f}s for 4 pages"
+    ts = df["ts"].tolist()
+    assert ts == sorted(ts) and len(set(ts)) == len(ts)   # disjoint merge

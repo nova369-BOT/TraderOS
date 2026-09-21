@@ -6,6 +6,7 @@ happens through these routes, so the terminal stays fully headless-drivable.
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import math
 import os
@@ -16,7 +17,9 @@ from pathlib import Path
 
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import (FileResponse, RedirectResponse, Response,
+                            StreamingResponse)
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -7982,6 +7985,52 @@ def create_app() -> FastAPI:
         return FileResponse(_STATIC / "w" / "workspace.css",
                             media_type="text/css",
                             headers={"Cache-Control": "no-store"})
+
+    # ── transport compression (owner: ultra-fast loading, 2026-09-21) ──
+    # Two lanes, one law: bytes on the wire are as small as honest.
+    # 1) The four hot statics ship pre-compressed from a memory cache keyed
+    #    by (mtime, size) — gzip work happens ONCE per file change, never
+    #    per request (recompressing 4.4MB per request would cost more than
+    #    it saves). Fallback to raw bytes for non-gzip clients.
+    # 2) Everything else (API JSON most of all) rides GZipMiddleware,
+    #    which skips anything already Content-Encoded.
+    _pre_gz_cache: dict = {}
+
+    def _static_bytes(name: str):
+        f = _STATIC / name
+        st = f.stat()
+        key = (name, st.st_mtime_ns, st.st_size)
+        hit = _pre_gz_cache.get(key)
+        if hit is None:
+            raw = f.read_bytes()
+            hit = (raw, gzip.compress(raw, compresslevel=6,
+                                      mtime=0))
+            _pre_gz_cache.clear()          # one generation at a time
+            _pre_gz_cache[key] = hit
+        return hit
+
+    _PRE_GZ = {
+        "chart/chart.js": "text/javascript",
+        "chart/chart.css": "text/css",
+        "app.js": "text/javascript",
+        "style.css": "text/css",
+    }
+
+    def _pre_gz_route(name: str):
+        def handler(request: Request):
+            raw, gz = _static_bytes(name)
+            if "gzip" in request.headers.get("accept-encoding", ""):
+                return Response(
+                    content=gz, media_type=_PRE_GZ[name],
+                    headers={"Content-Encoding": "gzip",
+                             "Vary": "Accept-Encoding"})
+            return Response(content=raw, media_type=_PRE_GZ[name])
+        return handler
+
+    for _n in _PRE_GZ:
+        app.get("/" + _n, include_in_schema=False)(_pre_gz_route(_n))
+
+    app.add_middleware(GZipMiddleware, minimum_size=1024)
 
     app.mount("/", StaticFiles(directory=str(_STATIC), html=True), name="ui")
     return app

@@ -235,3 +235,66 @@ boot script), style.css (58 --t-2xs sites), rebuilt bundles; data lane
 untouched and healthy (coinbase 15s 68 bars 55 ms, binance 84 bars
 11 ms). Research screen shots: image-search/atas-*.png; plans/records:
 docs/atas-density/PLAN.md, docs/typecheck-recovery/REPORT.md.
+
+## D19 — the speed pass: compression + keep-alive + parallel history pages (2026-09-21)
+
+Owner: "GO THROUGH THE WHOLE DATA AND IMPROVE EVERY SINGLE THING TO
+ULTRA FAST AND ULTRA FASTER LOADING". Three lanes, each gated by
+targeted tests + full suite + live-engine proof.
+
+**1. Transport compression (`engine/server.py`).** GZipMiddleware on the
+app + the four hot statics (`/`, `chart/chart.js`, `chart/chart.css`,
+`app.js`, `style.css`) served from a pre-gzipped in-memory cache built
+at startup (level 6, mtime=0 — bytes provably identical to served).
+Measured over live HTTP, before → after:**chart.js 4,441,116 → 1,284,503B
+(−71.1%)**, app.js 795,908 → 248,653 (−68.8%), style.css 202,495 →
+48,405 (−76.1%), chart.css 461,926 → 283,532 (−38.6%, embedded woff2
+already compressed), coinbase 1m API JSON 78,105 → 4,278 (−94.5%).
+Cold shell ≈ 5.67MB → ≈ 1.86MB (−67%). Clients without
+Accept-Encoding get the raw bytes, unchanged. HEAD falls through to
+StaticFiles (Starlette has no route-fall-through; a catch-all static
+route was deliberately rejected as traversal-unsafe).
+
+**2. Keep-alive REST (`providers/_http.py`, new).** urllib paid a fresh
+TCP+TLS handshake for EVERY page (4 klines / 17 candles pages on a
+5000-bar load; ≤12 aggTrades pages on a tape load). `HttpPool`:
+http.client idle pool keyed per base host (each rung of the D14 ladder,
+each mirror, the test fake), exclusive per-thread checkout
+(http.client is not shared-thread-safe — no law pretends it is),
+refusal bodies (429/451) drained BEFORE the socket returns to service,
+5xx/dead sockets retired honestly. One pool per host lives for the
+process, so warm engine requests skip the handshake entirely. Pinned by
+`tests/test_http_pool.py`: six sequential pages = ONE accepted TCP
+connection; 429 words arrive intact and the same socket serves again;
+parallel fan-out opens ≤ #in-flight sockets; a refused endpoint raises
+and does not poison the pool.
+
+**3. Parallel history pages (`providers/binance.py`,
+`providers/coinbase.py`).** The old loops derived window N+1 only from
+window N's page size — but full pages make windows clock-computable up
+front, so multi-window loads now slice the plan and fetch it with
+ThreadPoolExecutor (≤4 workers) over the pool. Wire protocol, request
+set, merged bytes and error paths are identical to serial (both suites
+pin the paging queries exactly; flaky arrival-order assertions were
+converted to order-free laws because parallel fetch arrival order is
+not a protocol fact). Gap law kept verbatim: a page SHORT of its ask
+still triggers the vintage adaptive chase downward until filled, the
+venue blanks, or `start` is covered (the Binance 10-bars-in-9-served
+case proves it byte-identically — same second query as before).
+Binance venue→spot ladder moves inside one lock across windows; **429
+still never flips**; eligibility errors still surface with the venue's
+words. Tape paging STAYS serial — each next cursor is the previous
+page's oldest print; that IS the venue's paging law — but rides
+keep-alive, so 12 pages pay one handshake.
+
+Measured (live engine, fake venues, loopback — fakes add ~zero RTT, so
+these deltas are handshake-overhead only; on the real internet the
+parallel law multiplies by RTT per page, the owner-measurable part):
+- binance 1m×5000 (4 pages): 132→45 ms cold (−66%); body 22,364B identical.
+- coinbase 1m×5000 (17 pages): 71→52.6 ms cold, 28–30→~23 ms warm; body 78,105B identical.
+- binance 15s×500 tape (serial pages, keep-alive): 117→~65 ms; coinbase 15s: 53→~42 ms.
+
+Verify: targeted suites + `tests/test_http_pool.py` (7 new tests incl.
+two latency-injected parallel proofs at 4×250ms RTT → <750ms wall,
+serial law would be ~1s+); full suite **254 passed / 1 skipped**;
+live engine restart confirms all bodies byte-equal to baseline.

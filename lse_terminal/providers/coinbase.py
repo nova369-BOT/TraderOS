@@ -40,8 +40,25 @@ import logging
 import re
 import os
 import time
+import threading
 import urllib.request
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+
+from ._http import HttpPool, base_of
+
+# One keep-alive pool for the venue host (or the test fake): urllib used
+# to pay a fresh TCP+TLS handshake for every candles/trades page.
+_POOLS: dict = {}
+_POOLS_LOCK = threading.Lock()
+
+
+def _pool_for(base: str) -> HttpPool:
+    with _POOLS_LOCK:
+        pool = _POOLS.get(base)
+        if pool is None:
+            pool = _POOLS[base] = HttpPool()
+    return pool
 from datetime import datetime, timezone
 from typing import AsyncIterator, Dict, List, Optional
 
@@ -264,41 +281,82 @@ class CoinbaseProvider(Provider):
         start_s = int(_iso_s(start)) if isinstance(start, str) else \
             (int(start) if start else None)
 
-        rows: List[list] = []
-        window_end = end_s
-        while len(rows) < limit:
-            window_start = window_end - _MAX_REST_CANDLES * tf_s + tf_s
+        # Speed law (owner, 2026-09-21): fixed 300-candle pages can be
+        # clock-sliced up front, so multi-page loads fetch IN PARALLEL
+        # over keep-alive connections — same requests, same bytes, same
+        # refusals; pages are disjoint by construction (no dedupe
+        # needed); a page that comes back SHORT means more history
+        # exists below the plan, and the exact old adaptive queries
+        # chase it downward one page at a time.
+        windows = []
+        we, remaining = end_s, limit
+        while remaining > 0:
+            ws = we - _MAX_REST_CANDLES * tf_s + tf_s
             if start_s is not None:
-                window_start = max(window_start, start_s)
-                if window_start > window_end:
+                ws = max(ws, start_s)
+                if ws > we:
                     break
+            windows.append((ws, we))
+            we = ws - tf_s
+            remaining -= _MAX_REST_CANDLES
+
+        def fetch_window(ws: int, we_: int):
+            out = []
             url = (f"{REST_BASE}/api/v3/brokerage/market/products/"
-                   f"{product}/candles?start={window_start}&end={window_end}"
+                   f"{product}/candles?start={ws}&end={we_}"
                    f"&granularity={granularity}")
+            host, qpath = base_of(url)
             try:
-                with urllib.request.urlopen(url, timeout=15) as resp:
-                    payload = json.loads(resp.read().decode())
+                code, body = _pool_for(host).get(host, qpath)
             except Exception as e:  # noqa: BLE001
                 raise NotSupported(
                     f"{self.name}: product candles REST failed: {e}") from e
+            if code != 200:
+                raise NotSupported(
+                    f"{self.name}: product candles REST failed: "
+                    f"HTTP {code}: {body.decode(errors='replace')[:200]}")
+            payload = json.loads(body.decode())
             batch = payload.get("candles") or []
-            # Documented shape: newest first. Normalize ascending; only the
-            # fields the venue actually serves (no inference, no fill).
-            got = 0
+            # Documented shape: newest first. Normalize ascending; only
+            # the fields the venue actually serves (no inference, no fill).
             for c in batch:
                 try:
-                    rows.append([int(float(c["start"])),
-                                 float(c["open"]), float(c["high"]),
-                                 float(c["low"]), float(c["close"]),
-                                 float(c["volume"])])
-                    got += 1
+                    out.append([int(float(c["start"])),
+                                float(c["open"]), float(c["high"]),
+                                float(c["low"]), float(c["close"]),
+                                float(c["volume"])])
                 except (KeyError, TypeError, ValueError):
                     continue
-            if got == 0:
+            return out
+
+        rows: List[list] = []
+        if len(windows) == 1:
+            results = [fetch_window(*windows[0])]
+        else:
+            with ThreadPoolExecutor(
+                    max_workers=min(4, len(windows)),
+                    thread_name_prefix="cb-candles") as ex:
+                results = list(ex.map(lambda w: fetch_window(*w), windows))
+        for out in results:
+            rows.extend(out)
+        # Gap continuation — the old serial law, kept verbatim: chase
+        # short pages downward with the vintage adaptive queries until
+        # filled, the venue blanks, or `start` is covered. Full pages
+        # (the norm on this book) never enter this loop.
+        we = (windows[-1][0] - tf_s) if windows else end_s
+        while len(rows) < limit:
+            window_start = we - _MAX_REST_CANDLES * tf_s + tf_s
+            if start_s is not None:
+                window_start = max(window_start, start_s)
+                if window_start > we:
+                    break
+            out = fetch_window(window_start, we)
+            rows.extend(out)
+            if not out:
                 break
             if start_s is not None and window_start <= start_s:
                 break
-            window_end = window_start - tf_s
+            we = window_start - tf_s
         rows.sort(key=lambda r: r[0])
         if start_s is not None:
             rows = [r for r in rows if r[0] >= start_s]
@@ -339,17 +397,17 @@ class CoinbaseProvider(Provider):
             q += f"&end={page_end}"
             url = (f"{REST_BASE}/api/v3/brokerage/market/products/"
                    f"{product}/ticker?{q}")
+            host, qpath = base_of(url)
             try:
-                with urllib.request.urlopen(url, timeout=15) as resp:
-                    payload = json.loads(resp.read().decode())
-            except urllib.error.HTTPError as e:
-                body = e.read().decode(errors="replace")[:200]
-                raise NotSupported(
-                    f"{self.name}: market trades REST HTTP {e.code}: "
-                    f"{body}") from e
+                code, body = _pool_for(host).get(host, qpath)
             except Exception as e:  # noqa: BLE001
                 raise NotSupported(
                     f"{self.name}: market trades REST failed: {e}") from e
+            if code != 200:
+                raise NotSupported(
+                    f"{self.name}: market trades REST HTTP {code}: "
+                    f"{body.decode(errors='replace')[:200]}")
+            payload = json.loads(body.decode())
             parsed = []
             for tr in payload.get("trades") or []:
                 try:
