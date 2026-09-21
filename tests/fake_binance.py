@@ -52,6 +52,7 @@ class FakeBinance:
         self.exchange_symbols = [{"symbol": "BTCUSDT", "status": "TRADING"}]
         # ── observability for assertions ─────────────────────────────────
         self.depth_rest_hits = 0
+        self.klines_queries: list[dict] = []   # every klines REST query
         self.connects: list[str] = []     # "route?streams=..." per WS connect
         self._depth_clients: list[ServerConnection] = []
         self._market_clients: list[ServerConnection] = []
@@ -121,6 +122,7 @@ class FakeBinance:
                     if u.path == "/fapi/v1/klines":
                         # Docs law: rows ASCENDING by open time, first
                         # `limit` (<=1500) inside [startTime, endTime] ms.
+                        outer.klines_queries.append(q)   # zero-weight law
                         lim = int(q.get("limit", ["500"])[0])
                         st = int(q.get("startTime", ["0"])[0])
                         et = int(q.get("endTime", ["99999999999999"])[0])
@@ -156,6 +158,8 @@ class FakeBinance:
 
         self._httpd = ThreadingHTTPServer(("127.0.0.1", self._rest_port),
                                           Handler)
+        # Port 0 = OS assigns; report the truth so tests can point at it.
+        self.rest_url = f"http://127.0.0.1:{self._httpd.server_address[1]}"
         self._rest_up = True
         self._httpd.serve_forever()
 
@@ -163,6 +167,8 @@ class FakeBinance:
 
     def _run_ws(self) -> None:
         self._ws_server = serve(self._handle_ws, "127.0.0.1", self._ws_port)
+        self.ws_url = (f"ws://127.0.0.1:"
+                       f"{self._ws_server.socket.getsockname()[1]}")
         self._ws_up = True
         self._ws_server.serve_forever()
 
@@ -204,6 +210,20 @@ class FakeBinance:
         self.send_to_route("public", "btcusdt@depth@100ms", {
             "e": "depthUpdate", "E": ts or _ms(), "U": U, "u": u, "pu": pu,
             "b": bids or [], "a": asks or []})
+
+    def send_kline(self, open_ms: int, o: str, h: str, l: str, c: str,
+                   v: str, closed: bool, interval: str = "1m", n: int = 7,
+                   E: int | None = None) -> None:
+        """One venue-shaped kline frame (docs shape): x is the venue's
+        own closed flag — callers pass it explicitly, it is never
+        inferred here or downstream."""
+        t = E or _ms()
+        self.send_to_route("market", f"btcusdt@kline_{interval}", {
+            "e": "kline", "E": t, "s": "BTCUSDT", "k": {
+                "t": open_ms, "T": open_ms + 59_999, "s": "BTCUSDT",
+                "i": interval, "f": 100, "L": 100 + n, "o": o, "c": c,
+                "h": h, "l": l, "v": v, "n": n, "x": closed,
+                "q": "7000.0", "V": "3.5", "Q": "3500.0", "B": "0"}})
 
     def send_trade(self, price: str, qty: str, agg_id: int, maker: bool,
                    ts: int | None = None) -> None:

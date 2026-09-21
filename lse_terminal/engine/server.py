@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from lse_terminal import __version__
 from lse_terminal.contracts import NotSupported, all_specs, compute
 from lse_terminal.engine import config as cfg
+from lse_terminal.engine.candle_lane import CANDLE_LANES
 from lse_terminal.engine.registry import Registry, load_builtins, load_plugins
 from lse_terminal.engine.user_indicators import TEMPLATE, UserIndicators
 from lse_terminal.engine import notebooks as nbstore
@@ -821,9 +822,15 @@ def create_app() -> FastAPI:
             # start/end are ISO timestamps or epoch seconds. Every
             # provider's candles() already takes them (the manual-backtest
             # replay needs "history up to the session start" and windowed
-            # scrollback, not just "latest N").
-            df = p.candles(symbol, timeframe, limit=min(int(limit), 5000),
-                           start=_window(start), end=_window(end))
+            # scrollback, not just "latest N"). Venues with a native
+            # candle stream answer from the live lane instead: one REST
+            # backfill fills it, the venue's kline stream keeps it
+            # current, and warm requests cost ZERO request weight (D20 —
+            # the venue's own answer to its 429).
+            df = CANDLE_LANES.frame(p, symbol, timeframe,
+                                    limit=min(int(limit), 5000),
+                                    start=_window(start),
+                                    end=_window(end))
         except ValueError as e:
             raise HTTPException(404, str(e))
         except Exception as e:
@@ -1067,8 +1074,8 @@ def create_app() -> FastAPI:
                 return None if t is None else _dt.datetime.fromtimestamp(t + pad, _dt.timezone.utc).isoformat()
             start = iso(opts.get("from"))
             end = iso(opts.get("to"), pad=7 * 86400)  # room for the flatten bar
-        return provider.candles(body.symbol, body.timeframe, limit=lim,
-                                start=start, end=end)
+        return CANDLE_LANES.frame(provider, body.symbol, body.timeframe,
+                                  limit=lim, start=start, end=end)
 
     @app.post("/api/backtest")
     def backtest(body: BacktestIn):
@@ -2553,6 +2560,13 @@ def create_app() -> FastAPI:
                 kill()
             except Exception:
                 pass
+
+    @app.on_event("startup")
+    async def _attach_candle_lane_loop():
+        # The lanes' kline-stream readers run on THIS loop (requests
+        # arrive on worker threads and schedule onto it thread-safely).
+        import asyncio as _a
+        CANDLE_LANES.attach_loop(_a.get_running_loop())
 
     # Signed-out awareness (the user has no other way to know): the login
     # is machine-global CLI state, so it can vanish from

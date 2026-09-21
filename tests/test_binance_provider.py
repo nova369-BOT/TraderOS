@@ -695,3 +695,53 @@ def test_deep_history_pages_fetch_in_parallel_not_serial(monkeypatch):
     assert wall < 0.75, f"deep load ran serially: {wall:.2f}s for 4 pages"
     ts = df["ts"].tolist()
     assert ts == sorted(ts) and len(set(ts)) == len(ts)   # disjoint merge
+
+
+# ── live kline stream (D20: the venue's own answer to 429) -----------------
+
+def _kline_frame(symbol="BTCUSDT", i="1m", t=1686349080000, T=1686349139999,
+                 o="42000.0", h="42012.5", l="41990.0", c="42005.0",
+                 v="123.45", n=88, x=False, E=1686349090000):
+    return json.dumps({"stream": f"{symbol.lower()}@kline_{i}", "data": {
+        "e": "kline", "E": E, "s": symbol, "k": {
+            "t": t, "T": T, "s": symbol, "i": i, "f": 1000, "L": 1088,
+            "o": o, "c": c, "h": h, "l": l, "v": v, "n": n, "x": x,
+            "q": "5184712.0", "V": "60.0", "Q": "2520000.0", "B": "0"}}})
+
+
+def test_supports_candle_stream_native_kline_intervals_only():
+    p = BinanceProvider()
+    assert p.supports_candle_stream("BTCUSDT", "1m")
+    assert p.supports_candle_stream("ETHUSDT", "4h")
+    assert p.supports_candle_stream("BTCUSDT", "1w")
+    assert not p.supports_candle_stream("BTCUSDT", "tick")   # tape lane
+    assert not p.supports_candle_stream("BTCUSDT", "15s")    # tape lane
+    assert not p.supports_candle_stream("NOPEUSDT", "1m")
+
+
+def test_candle_stream_yields_venue_frames_fields_and_closed_flag_verbatim():
+    ws = FakeWS([_kline_frame(x=False, c="42005.0"),
+                 _kline_frame(t=1686349080000, x=True, c="42009.25")])
+    p, _ = _provider(ws)
+    out = _take(p.candle_stream(["BTCUSDT"], "1m"), 2)
+    # The subscription is the venue's documented stream name in the URL.
+    assert "btcusdt@kline_1m" in p._dialed[0]
+    a, b = out
+    assert a["symbol"] == "BTCUSDT" and a["timeframe"] == "1m"
+    assert a["ts"] == 1686349080              # open time, seconds
+    assert a["open"] == 42000.0 and a["high"] == 42012.5
+    assert a["low"] == 41990.0 and a["close"] == 42005.0
+    assert a["volume"] == 123.45
+    assert a["closed"] is False               # venue x verbatim: FORMING
+    assert b["closed"] is True                # venue x verbatim: CLOSED
+    assert b["close"] == 42009.25
+
+
+def test_candle_stream_skips_malformed_frames_never_invents_fields():
+    bad = json.dumps({"stream": "btcusdt@kline_1m", "data": {
+        "e": "kline", "E": 1686349090000, "s": "BTCUSDT",
+        "k": {"t": 1686349080000, "i": "1m", "x": False}}})  # no o/h/l/c/v
+    ws = FakeWS([bad, _kline_frame(c="42001.0")])
+    p, _ = _provider(ws)
+    out = _take(p.candle_stream(["BTCUSDT"], "1m"), 1)
+    assert len(out) == 1 and out[0]["close"] == 42001.0

@@ -511,6 +511,37 @@ class BinanceProvider(Provider):
 
         return _ticks()
 
+    # -- live klines (the venue's weight-free candle stream) --------------
+
+    def supports_candle_stream(self, symbol: str, timeframe: str) -> bool:
+        return symbol in SYMBOLS and timeframe in _TIMEFRAMES
+
+    def candle_tf_seconds(self, timeframe: str) -> int:
+        return _TIMEFRAMES[timeframe][1]
+
+    def candle_stream(self, symbols: List[str],
+                      timeframe: str) -> AsyncIterator[dict]:
+        """Live candle events straight off the venue's kline stream —
+        the exact lane Binance's own 429 message prescribes ("Please use
+        WebSocket Streams for live updates to avoid polling the API").
+        Native kline intervals only (`i` in the venue's set): the ws
+        subscription is <symbol>@kline_<interval> on the same combined
+        stream and the SAME WS ladder law as ticks. `closed` is the
+        venue's own `x` flag, carried verbatim — a forming bar is never
+        presented as closed."""
+        self._validate(symbols)
+        interval, _tf_s = _TIMEFRAMES[timeframe]
+
+        async def _klines():
+            async for ev in self._pump(symbols, want=(f"kline:{interval}",)):
+                yield {"symbol": ev.symbol, "timeframe": timeframe,
+                       "ts": ev.ts, "open": ev.open, "high": ev.high,
+                       "low": ev.low, "close": ev.close,
+                       "volume": ev.volume, "closed": ev.closed,
+                       "event_ts": ev.event_ts}
+
+        return _klines()
+
     # -- live book (partial top-20 — every frame is complete) --------------
 
     def depth_stream(self, symbols: List[str]) -> AsyncIterator:
@@ -546,7 +577,13 @@ class BinanceProvider(Provider):
                 parts.append(f"{s.lower()}@aggTrade")
             if "depth" in want:
                 parts.append(f"{s.lower()}@depth20@100ms")
+            for w in want:
+                if w.startswith("kline:"):
+                    parts.append(f"{s.lower()}@kline_{w.split(':', 1)[1]}")
         streams = '/'.join(parts)
+        want_trade = "trade" in want
+        want_depth = "depth" in want
+        want_kline = any(w.startswith("kline:") for w in want)
         seen_ids: Dict[str, deque] = {s: deque(maxlen=4096)
                                       for s in symbols}
         attempt = 0
@@ -586,6 +623,8 @@ class BinanceProvider(Provider):
                     if symbol not in seen_ids:
                         continue
                     if stream_name.endswith("@aggTrade"):
+                        if not want_trade:
+                            continue
                         trade_id = data.get("a")
                         if trade_id is not None and \
                                 trade_id in seen_ids[symbol]:
@@ -602,6 +641,8 @@ class BinanceProvider(Provider):
                                      size=float(data["q"]), side=side,
                                      trade_id=trade_id)
                     elif "@depth" in stream_name:
+                        if not want_depth:
+                            continue
                         # Partial book: a COMPLETE top-20 per frame. USD-M
                         # keys are b/a with E/T stamps; the public mirror's
                         # spot shape is bids/asks, timestamp-free.
@@ -621,6 +662,27 @@ class BinanceProvider(Provider):
                         yield DepthEvent(symbol=symbol, ts=ts,
                                          type=DEPTH_SNAPSHOT,
                                          bids=bids, asks=asks)
+                    elif "@kline_" in stream_name:
+                        if not want_kline:
+                            continue
+                        # Venue kline event (docs-pinned shape): k = {t,T,
+                        # i,o,h,l,c,v,n,x,...}; x is the venue's OWN
+                        # closed flag — carried verbatim, never inferred.
+                        k = data.get("k")
+                        if not isinstance(k, dict):
+                            continue
+                        try:
+                            yield _Kline(
+                                symbol=symbol,
+                                interval=str(k["i"]),
+                                ts=int(k["t"]) // 1000,
+                                open_=float(k["o"]), high=float(k["h"]),
+                                low=float(k["l"]), close=float(k["c"]),
+                                volume=float(k["v"]),
+                                closed=bool(k["x"]),
+                                event_ts=int(data["E"]) // 1000)
+                        except (KeyError, TypeError, ValueError):
+                            continue
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001
@@ -641,6 +703,27 @@ class BinanceProvider(Provider):
                         self._backoff_base * (2 ** min(attempt, 6)))
             log.info("binance reconnect in %.1fs (attempt %d)", delay, attempt)
             await asyncio.sleep(delay)
+
+
+class _Kline:
+    """Internal normalized kline event carried between the pump and
+    candle_stream(), so the lane shape is exactly the venue's fields."""
+
+    __slots__ = ("symbol", "interval", "ts", "open", "high", "low",
+                 "close", "volume", "closed", "event_ts")
+
+    def __init__(self, symbol, interval, ts, open_, high, low, close,
+                 volume, closed, event_ts):
+        self.symbol = symbol
+        self.interval = interval
+        self.ts = ts
+        self.open = open_
+        self.high = high
+        self.low = low
+        self.close = close
+        self.volume = volume
+        self.closed = closed
+        self.event_ts = event_ts
 
 
 class _Trade:

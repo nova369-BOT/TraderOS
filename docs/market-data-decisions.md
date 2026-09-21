@@ -298,3 +298,53 @@ Verify: targeted suites + `tests/test_http_pool.py` (7 new tests incl.
 two latency-injected parallel proofs at 4×250ms RTT → <750ms wall,
 serial law would be ~1s+); full suite **254 passed / 1 skipped**;
 live engine restart confirms all bodies byte-equal to baseline.
+
+## D20 — the 429 killer: live candles from Binance's own kline stream (2026-09-21)
+
+Owner: "Why isnt this binance solved yet it so slow and just so bad that
+i cant use it for the orderflow yet — candles failed: binance-spot:
+klines REST HTTP 429... I WANT YOU TO GET THE DATA DIRECTLY FROM
+BINANCE WEBSOCKET API MAYBE THAT WOULD MAKE IT MORE FASTER."
+
+Root cause was honest REST per request: every /api/candles call (and
+every panel/prediction reload) paged klines REST at weight ~10/page —
+against the 6000 weight/min budget that burn 429s fast, exactly what
+the venue's own message prescribes against ("Please use WebSocket
+Streams for live updates").
+
+**The lane** (`engine/candle_lane.py` + provider candle_stream +
+pump kline channel + two engine routes routed through the manager):
+- Cold load = the exact REST backfill the endpoint always made (same
+  queries, same bytes, same 429 surfacing — the D14 ladder law is
+  untouched; a backfill that hits 429 still raises the venue's words).
+- The lane then subscribes `<symbol>@kline_<interval>` on the SAME
+  combined WS and ladder law as ticks (docs-pinned payload: x is the
+  venue's own closed flag, carried verbatim; a forming bar is never
+  presented as closed; malformed frames are skipped, never patched).
+- Warm serves inside the filled depth cost ZERO REST weight; coverage
+  is measured by what the venue was ASKED (plan window), never by bar
+  count — Binance omits empty intervals, so a short page is truth, and
+  no law re-asks what the venue already said (no fabricated fill,
+  either direction).
+- Deep-window history still paged REST with the preserved domain law
+  (gap chase, 429 verbatim, 429 never flips the ladder).
+- A silently dead stream heals ONCE per floor with a small gap-sized
+  tail refetch — cache serve through the outage, honest recheck after.
+- Tick / <n>s lanes untouched (tape law stands; there are no
+  sub-minute klines to subscribe). Spot mirror rides the same WS
+  ladder — the binance-spot badge stays honest.
+- WS API (ws-api request/response klines) was rejected deliberately:
+  the docs show it still counts REQUEST_WEIGHT against the same 6000 —
+  the stream is the weight-free lane Binance says to use.
+
+**Proof chain** (owner standard): 14 new lane/stream tests incl.
+latency-injected parallel paging; the gold pin — real FastAPI route
+→ manager → real BinanceProvider → FakeBinance (WS+REST): after ONE
+backfill, warm /api/candles returns the venue's own moving kline bar
+with the fake's klines-query counter FROZEN. Live fake-venue engine:
+before battery 60 REST hits / 1 kline-stream client; five warm
+5000-bar reads later: still **60** (zero added), warm wall ~6 ms
+(vs ~12 ms REST-warm; on the real venue each warm read previously
+cost ~40 request weight). Coinbase fall-through byte-identical (no
+candle stream → plain candles() route, unchanged numbers).
+Full suite **268 passed / 1 skipped**.
