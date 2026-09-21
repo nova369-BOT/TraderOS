@@ -375,3 +375,41 @@ both-rungs-dead → the surfaced error names the LAST rung tried;
 429-everywhere → verbatim raise, rung untouched, mirror never dialed;
 dead-socket four-window twin → same follow law. Deterministic (latency-
 injected stubs, run three times). Suite: 272 passed / 1 skipped.
+
+## D21 — MT5-grade candlestick paint: batched body/wick renderer (2026-09-21)
+
+Owner: "MAKE THE CANDLESTICK FASTER LIKE THAT OF MT5 ... THINK DEEP AND
+ACT SMART AND EXPERT." Diagnosis first (measured, not assumed): the
+fetch/lane was already weight-free (D20); the tick-merge/indicator
+overlays/crosshair were already viewport-bounded and single-layer;
+the candle BODIES were the outlier: 3 canvas draw calls + 5 state
+writes PER candle per frame (one wick stroke, body fillRect, border
+strokeRect, style/width/cap round-trips) — ~720 calls at 240 bars,
+~12,000 calls at MT5-deep zoom-out (4000 bars) every single frame.
+
+**Shipped:** `renderers/candleBodies.ts` — a pure single-pass renderer:
+one Path2D per color class (wick/body/border × bull/bear = six per
+frame), one morph-aware transform loop, then SIX canvas draw calls.
+ProChart's inline loop calls it (renderers/* pattern the file already
+uses; the CRITICAL-AGENT render-pipeline rules at the file head hold:
+no O(N) state churn added to drawChart, pixels unchanged).
+**Pixels are law:** parity is pinned in tests/chart_pure_entry.ts
+against the verbatim legacy loop as oracle — identical wick segments,
+identical body rects (doji clamps 1px), identical bullish definition
+(close ≥ open), the D15 forming-bar glide still paints from the morph
+envelope (parity asserted), `batchedCalls === 6` for any N vs the
+oracle's 3N.
+
+**Measured** (node bench, null-ctx orchestration + canvas-call counts,
+tests/bench_candle_bodies.ts; 4000-bar case = the MT5 deep zoom-out):
+- 240 bars @6px: draw calls 720 → **6/frame (−99%)**, JS 6.3×
+- 960 bars @1.6px: calls 2,880 → **6 (−99.8%)**, JS 4.4×
+- 4000 bars @0.62px: calls 12,000 → **6 (−99.95%)**, JS 4.4×
+Browser raster cost scales with draw calls + state changes, so the
+win multiplies on real GPUs (state churn was the legacy cost driver).
+
+Verify: pure gate 61/61 (incl. new parity laws) inside full suite
+**272 passed / 1 skipped**; `tsc --noEmit` 0 errors; vite build green
+(chart.js 4,441,699B rebuilt); live engine serves the new bundle
+bit-identical (gzipped 1,284,780B on the wire). Bench reproducible:
+esbuild tests/bench_candle_bodies.ts && node output.

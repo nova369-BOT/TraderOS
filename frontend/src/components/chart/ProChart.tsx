@@ -48,6 +48,7 @@ import { renderGenericSubplots, renderPhase2Overlays, renderSubplotSelectionDots
 import { renderOptionsPdfHeatmap, renderOrderBookHeatmap, renderL2DepthOverlay, type HeatmapRenderContext } from "./renderers/heatmapRenderer";
 import { renderPositionLines, renderSelectedPositionSLTP, type PositionRenderContext } from "./renderers/positionRenderer";
 import { renderCrosshair, type CrosshairContext } from "./renderers/crosshairRenderer";
+import { paintCandleBodies } from "./renderers/candleBodies";
 import { renderSessions, type SessionRenderContext } from "./renderers/sessionRenderer";
 import { useChartNavigation } from "./interaction/useChartNavigation";
 import { getSpreadForSymbol } from "@/lib/spread";
@@ -1870,37 +1871,28 @@ const ProChart: React.FC<ProChartProps> = ({
        morphBar.time === c.time) ? morphBar : c;
 
     if (chartType === 'candlestick') {
-      // Draw candlesticks
-      visible.candles.forEach((candle, i) => {
-        const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const dc = morphAt(i, candle);                     // D15 glide
-        const isBullish = dc.close >= dc.open;
-
-        const openY = mainPriceToY(dc.open);
-        const closeY = mainPriceToY(dc.close);
-        const highY = mainPriceToY(dc.high);
-        const lowY = mainPriceToY(dc.low);
-
-        // Draw wick, rounded caps for a modern premium feel
-        ctx.strokeStyle = isBullish ? colors.bullishWick : colors.bearishWick;
-        ctx.lineWidth = wickWidth;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(x, highY);
-        ctx.lineTo(x, lowY);
-        ctx.stroke();
-        ctx.lineCap = 'butt'; // Reset
-
-        // Draw body
-        const bodyTop = Math.min(openY, closeY);
-        const bodyHeight = Math.max(1, Math.abs(closeY - openY));
-
-        ctx.fillStyle = isBullish ? colors.bullish : colors.bearish;
-        ctx.fillRect(x - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
-
-        ctx.strokeStyle = isBullish ? colors.bullishBorder : colors.bearishBorder;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x - candleBodyWidth / 2, bodyTop, candleBodyWidth, bodyHeight);
+      // Candlesticks paint through the batched pure renderer (MT5-feel
+      // directive, 2026-09-21): per-candle stroke()/fillRect()/strokeRect()
+      // state churn collapsed into 6 canvas draw calls per frame, pixels
+      // unchanged (geometry/color/width parity pinned in
+      // tests/chart_pure_entry.ts against the verbatim legacy loop).
+      paintCandleBodies({
+        ctx,
+        candles: visible.candles,
+        startIndex: visible.startIndex,
+        indexToX,
+        priceToY: mainPriceToY,
+        morphAt,
+        candleBodyWidth,
+        wickWidth,
+        colors: {
+          bullish: colors.bullish,
+          bearish: colors.bearish,
+          bullishWick: colors.bullishWick,
+          bearishWick: colors.bearishWick,
+          bullishBorder: colors.bullishBorder,
+          bearishBorder: colors.bearishBorder,
+        },
       });
     } else if (chartType === 'line') {
       // Draw line chart
