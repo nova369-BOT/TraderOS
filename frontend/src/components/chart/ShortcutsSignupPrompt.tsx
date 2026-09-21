@@ -128,7 +128,7 @@ export default function ShortcutsSignupPrompt({ open, onOpenChange }: ShortcutsS
           >
             Sign Up Free to Unlock
           </Button>
-          <p className="text-[11px] text-muted-foreground text-center mt-2">
+          <p className="text-xs text-muted-foreground text-center mt-2">
             Free account • No credit card required
           </p>
         </div>

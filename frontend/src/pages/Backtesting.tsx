@@ -1090,7 +1090,7 @@ const Backtesting = () => {
                 <ArrowLeft className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
               </Button>
 
-              <h1 className="text-[13px] sm:text-[15px] font-semibold text-text-primary tracking-tight">{formattedPair}</h1>
+              <h1 className="text-base sm:text-xl font-semibold text-text-primary tracking-tight">{formattedPair}</h1>
               <div className="w-px h-5 bg-border mx-0.5 hidden sm:block" />
               <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
                 <FlaskConical className="h-3 w-3" />
@@ -1136,7 +1136,7 @@ const Backtesting = () => {
                 }}
                 variant="ghost"
                 size="sm"
-                className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs gap-1 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors"
+                className="h-6 sm:h-7 px-1.5 sm:px-2 text-2xs sm:text-xs gap-1 text-orange-400 hover:text-orange-300 hover:bg-orange-500/10 transition-colors"
               >
                 <Flag className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                 End
@@ -1216,7 +1216,7 @@ const Backtesting = () => {
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowIndicatorSettings(true)}
-                className="gap-1 h-6 px-1.5 md:h-7 md:px-2.5 text-[11px] md:text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-muted border border-transparent"
+                className="gap-1 h-6 px-1.5 md:h-7 md:px-2.5 text-xs md:text-xs font-medium text-text-secondary hover:text-text-primary hover:bg-muted border border-transparent"
               >
                 <Layers className="h-3 w-3 md:h-3.5 md:w-3.5" />
                 <span className="hidden md:inline">Indicators</span>

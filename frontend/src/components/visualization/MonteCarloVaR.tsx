@@ -248,16 +248,16 @@ export default function MonteCarloVaR() {
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2 px-3 py-1 rounded-md" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                         <Shield className="w-3.5 h-3.5 text-[#f0426c]" />
-                        <span className="text-[13px] font-semibold tracking-wide text-white/90" style={{ fontFamily: "'JetBrains Mono', 'SF Mono', monospace" }}>
+                        <span className="text-base font-semibold tracking-wide text-white/90" style={{ fontFamily: "'JetBrains Mono', 'SF Mono', monospace" }}>
                             MONTE CARLO VaR
                         </span>
                     </div>
-                    <span className="text-[11px] text-white/30 font-mono">{N_SIM.toLocaleString()} scenarios</span>
+                    <span className="text-xs text-white/30 font-mono">{N_SIM.toLocaleString()} scenarios</span>
                 </div>
                 <div className="flex items-center gap-2">
                     {hasRun && (
                         <button onClick={reset}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono text-white/50 hover:text-white/80 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono text-white/50 hover:text-white/80 transition-colors"
                             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                             <RotateCcw className="w-3 h-3" /> Reset
                         </button>
@@ -277,11 +277,11 @@ export default function MonteCarloVaR() {
 
                     {/* Asset */}
                     <div>
-                        <p className="text-[10px] text-white/35 mb-1">ASSET</p>
+                        <p className="text-2xs text-white/35 mb-1">ASSET</p>
                         <div className="grid grid-cols-2 gap-1">
                             {ASSETS.map((a, i) => (
                                 <button key={a.key} onClick={() => setAssetIdx(i)}
-                                    className={`py-1.5 px-1 rounded text-[10px] font-medium transition-all ${assetIdx === i
+                                    className={`py-1.5 px-1 rounded text-2xs font-medium transition-all ${assetIdx === i
                                             ? 'bg-white/10 text-white border border-white/20'
                                             : 'text-white/35 hover:text-white/60 border border-transparent'
                                         }`}>
@@ -294,22 +294,22 @@ export default function MonteCarloVaR() {
 
                     {/* Portfolio */}
                     <div>
-                        <p className="text-[10px] text-white/35 mb-1">PORTFOLIO ($)</p>
+                        <p className="text-2xs text-white/35 mb-1">PORTFOLIO ($)</p>
                         <input
                             type="number"
                             value={portfolio}
                             onChange={e => setPortfolio(Math.max(1000, +e.target.value || 0))}
-                            className="w-full h-7 px-2 rounded text-[11px] text-white/80 bg-white/[0.04] border border-white/[0.08] outline-none focus:border-white/20 transition-colors"
+                            className="w-full h-7 px-2 rounded text-xs text-white/80 bg-white/[0.04] border border-white/[0.08] outline-none focus:border-white/20 transition-colors"
                         />
                     </div>
 
                     {/* Confidence */}
                     <div>
-                        <p className="text-[10px] text-white/35 mb-1">CONFIDENCE</p>
+                        <p className="text-2xs text-white/35 mb-1">CONFIDENCE</p>
                         <div className="flex gap-1">
                             {CONF.map((c, i) => (
                                 <button key={c.pct} onClick={() => setConfIdx(i)}
-                                    className={`flex-1 py-1.5 rounded text-[10px] font-semibold transition-all ${confIdx === i
+                                    className={`flex-1 py-1.5 rounded text-2xs font-semibold transition-all ${confIdx === i
                                             ? 'bg-[#343434] text-white'
                                             : 'text-white/30 hover:text-white/50 bg-white/[0.03]'
                                         }`}>
@@ -321,11 +321,11 @@ export default function MonteCarloVaR() {
 
                     {/* Period */}
                     <div>
-                        <p className="text-[10px] text-white/35 mb-1">HOLDING PERIOD</p>
+                        <p className="text-2xs text-white/35 mb-1">HOLDING PERIOD</p>
                         <div className="grid grid-cols-2 gap-1">
                             {PERIODS.map((p, i) => (
                                 <button key={p.days} onClick={() => setPeriodIdx(i)}
-                                    className={`py-1.5 rounded text-[10px] font-medium transition-all ${periodIdx === i
+                                    className={`py-1.5 rounded text-2xs font-medium transition-all ${periodIdx === i
                                             ? 'bg-white/10 text-white border border-white/20'
                                             : 'text-white/30 hover:text-white/50 border border-transparent'
                                         }`}>
@@ -337,7 +337,7 @@ export default function MonteCarloVaR() {
 
                     {/* Run */}
                     <button onClick={run} disabled={isAnimating}
-                        className="w-full py-2.5 rounded-lg font-semibold text-[11px] tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                        className="w-full py-2.5 rounded-lg font-semibold text-xs tracking-wider flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                         style={{
                             background: isAnimating
                                 ? 'rgba(240,66,108,0.3)'
@@ -480,7 +480,7 @@ export default function MonteCarloVaR() {
                         <div className="p-2.5 rounded-md" style={{ background: 'var(--bg2, #262626)', border: '1px solid var(--edge, #3a3a3a)' }}>
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <AlertTriangle className="w-3 h-3 text-[#f0426c]" />
-                                <span className="text-[10px] text-[#f0426c]/80">Value at Risk ({conf.label})</span>
+                                <span className="text-2xs text-[#f0426c]/80">Value at Risk ({conf.label})</span>
                             </div>
                             <p className="text-xl font-bold text-[#f0426c] leading-tight">
                                 -${sim.varVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -493,7 +493,7 @@ export default function MonteCarloVaR() {
                         <div className="p-2.5 rounded-md" style={{ background: 'var(--bg2, #262626)', border: '1px solid var(--edge, #3a3a3a)' }}>
                             <div className="flex items-center gap-1.5 mb-0.5">
                                 <TrendingDown className="w-3 h-3 text-[#b0b0b0]" />
-                                <span className="text-[10px] text-[#b0b0b0]">Expected Shortfall</span>
+                                <span className="text-2xs text-[#b0b0b0]">Expected Shortfall</span>
                             </div>
                             <p className="text-lg font-bold text-[#e8e8e8] leading-tight">
                                 -${sim.es.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -511,7 +511,7 @@ export default function MonteCarloVaR() {
                             ].map(s => (
                                 <div key={s.label} className="p-1.5 rounded text-center" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                                     <p className="text-[8px] text-white/20 mb-0.5">{s.label}</p>
-                                    <p className={`text-[11px] font-bold ${s.color}`}>{s.value}</p>
+                                    <p className={`text-xs font-bold ${s.color}`}>{s.value}</p>
                                 </div>
                             ))}
                         </div>

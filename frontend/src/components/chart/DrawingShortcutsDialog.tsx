@@ -202,7 +202,7 @@ export default function DrawingShortcutsDialog({
               )}
             </div>
             {assignedCount > 0 && (
-              <p className="text-[11px] text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 {assignedCount} shortcut{assignedCount !== 1 ? 's' : ''} assigned
               </p>
             )}

@@ -774,7 +774,7 @@ export default function GARCHVisualization() {
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[var(--dim)]">ALPHA (α)</Label><span className="text-xs">{params.alpha.toFixed(3)}</span></div>
                 <Slider value={[params.alpha * 1000]} onValueChange={([v]) => setParams(p => ({ ...p, alpha: v / 1000 }))} min={0} max={400} step={5} />
-                <div className="text-[10px] text-[#808080] font-mono">shock reactivity</div>
+                <div className="text-2xs text-[#808080] font-mono">shock reactivity</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[var(--dim)]">OMEGA (ω) ×10⁵</Label><span className="text-xs">{(params.omega * 1e5).toFixed(1)}</span></div>
@@ -783,12 +783,12 @@ export default function GARCHVisualization() {
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[var(--dim)]">SEED SHOCK</Label><span className="text-xs">{params.shockSize.toFixed(1)}σ̄</span></div>
                 <Slider value={[params.shockSize * 10]} onValueChange={([v]) => setParams(p => ({ ...p, shockSize: v / 10 }))} min={0} max={60} step={1} />
-                <div className="text-[10px] text-[#808080] font-mono">opening kick at t=0</div>
+                <div className="text-2xs text-[#808080] font-mono">opening kick at t=0</div>
               </div>
               <div className="space-y-2">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[var(--dim)]">HIGHLIGHT β</Label><span className="text-xs">{stats.actualBeta.toFixed(2)}</span></div>
                 <Slider value={[highlightBeta * 100]} onValueChange={([v]) => setHighlightBeta(v / 100)} min={0} max={Math.max(1, Math.round((0.99 - params.alpha) * 100))} step={1} />
-                <div className="text-[10px] text-[#808080] font-mono">bright ridge + stats anchor</div>
+                <div className="text-2xs text-[#808080] font-mono">bright ridge + stats anchor</div>
               </div>
               <div className="space-y-2 pt-2 border-t border-border">
                 <div className="flex justify-between font-mono"><Label className="text-xs text-[var(--dim)]">PLAYBACK SPEED</Label><span className="text-xs">{playSpeed} st/s</span></div>
@@ -873,7 +873,7 @@ export default function GARCHVisualization() {
                 </div>
                 <div className="flex justify-between text-xs text-[var(--dim)] mt-1 font-mono"><span>LOW</span><span>HIGH</span></div>
               </div>
-              <div className="pt-2 border-t border-border text-[10px] text-[var(--dim)] font-mono leading-relaxed">
+              <div className="pt-2 border-t border-border text-2xs text-[var(--dim)] font-mono leading-relaxed">
                 Play: watch clusters form as shocks arrive.<br />
                 New: re-seed for a different history.<br />
                 Back ridge (β near 1): long persistent tails.

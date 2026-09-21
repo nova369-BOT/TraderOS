@@ -38,9 +38,9 @@ const MetricRow = ({ label, value, positive, negative }: {
   negative?: boolean;
 }) => (
   <div className="flex items-center justify-between py-[5px] border-b border-border/40 last:border-b-0">
-    <span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span>
+    <span className="text-xs text-text-secondary uppercase tracking-wide">{label}</span>
     <span className={cn(
-      "text-[13px] font-mono font-semibold tabular-nums",
+      "text-base font-mono font-semibold tabular-nums",
       positive && "text-emerald-700 dark:text-emerald-500",
       negative && "text-rose-700 dark:text-rose-500",
       !positive && !negative && "text-text-primary"
@@ -284,7 +284,7 @@ const BacktestReport = ({
   const SectionHeader = ({ title, section }: { title: string; section: string }) => (
     <button
       onClick={() => toggleSection(section)}
-      className="flex items-center justify-between w-full py-2.5 text-[11px] font-semibold text-text-secondary uppercase tracking-[0.08em] hover:text-text-primary transition-colors border-b border-border"
+      className="flex items-center justify-between w-full py-2.5 text-xs font-semibold text-text-secondary uppercase tracking-[0.08em] hover:text-text-primary transition-colors border-b border-border"
     >
       {title}
       {expandedSections.has(section) ? (
@@ -408,7 +408,7 @@ Grade: ${grade.grade} (${grade.label})`;
           <div className="flex items-start justify-between pr-8">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold text-text-primary tracking-tight">Backtest Report</h2>
-              <p className="text-[11px] text-text-secondary mt-0.5 font-mono">
+              <p className="text-xs text-text-secondary mt-0.5 font-mono">
                 {pair} · {timeframe} · {format(startDate, 'MMM d, yyyy')} — {format(endDate, 'MMM d, yyyy')}
               </p>
             </div>
@@ -424,7 +424,7 @@ Grade: ${grade.grade} (${grade.label})`;
           </div>
 
           {/* Quick stats strip */}
-          <div className="flex items-center gap-5 mt-3 text-[12px] font-mono">
+          <div className="flex items-center gap-5 mt-3 text-sm font-mono">
             <div className="flex items-center gap-1.5">
               <span className="text-text-secondary">Return</span>
               <span className={cn("font-semibold", returnOnCapital >= 0 ? "text-emerald-700 dark:text-emerald-500" : "text-rose-700 dark:text-rose-500")}>
@@ -603,7 +603,7 @@ Grade: ${grade.grade} (${grade.label})`;
               <SectionHeader title="Long vs Short" section="direction" />
               {expandedSections.has('direction') && (
                 <div className="mt-2 overflow-hidden rounded border border-border">
-                  <table className="w-full text-[12px]">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-accent/30">
                         <th className="text-left text-text-secondary uppercase tracking-wider font-medium py-2 px-3">Direction</th>
@@ -640,7 +640,7 @@ Grade: ${grade.grade} (${grade.label})`;
               <SectionHeader title="Trading Sessions" section="sessions" />
               {expandedSections.has('sessions') && (
                 <div className="mt-2 overflow-hidden rounded border border-border">
-                  <table className="w-full text-[12px]">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-accent/30">
                         <th className="text-left text-text-secondary uppercase tracking-wider font-medium py-2 px-3">Session</th>
@@ -656,7 +656,7 @@ Grade: ${grade.grade} (${grade.label})`;
                         { name: 'New York (17–00 UTC)', data: sessionAnalysis.newYork },
                       ].map((s, i, arr) => (
                         <tr key={s.name} className={i < arr.length - 1 ? 'border-b border-border/50' : ''}>
-                          <td className="py-2 px-3 text-text-primary font-medium font-sans text-[11px]">{s.name}</td>
+                          <td className="py-2 px-3 text-text-primary font-medium font-sans text-xs">{s.name}</td>
                           <td className="py-2 px-3 text-right text-text-primary">{s.data.trades}</td>
                           <td className={cn("py-2 px-3 text-right font-semibold", s.data.pnl >= 0 ? "text-emerald-700 dark:text-emerald-500" : "text-rose-700 dark:text-rose-500")}>
                             {s.data.pnl >= 0 ? '+' : ''}${s.data.pnl.toFixed(2)}
@@ -673,7 +673,7 @@ Grade: ${grade.grade} (${grade.label})`;
 
         {/* ── Footer ── */}
         <div className="px-5 py-3 border-t border-border flex items-center justify-between">
-          <div className="text-[10px] text-text-secondary font-mono hidden sm:block">
+          <div className="text-2xs text-text-secondary font-mono hidden sm:block">
             {format(new Date(), 'MMM d, yyyy HH:mm')}
           </div>
           <div className="flex items-center gap-2 flex-1 sm:flex-none justify-end">

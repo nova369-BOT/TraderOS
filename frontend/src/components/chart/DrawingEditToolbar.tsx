@@ -382,7 +382,7 @@ export const DrawingEditToolbar = ({
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0 border-0 bg-transparent shadow-xl" side="bottom" align="center">
             <div className="p-2 rounded-lg bg-card border border-border">
-              <div className="text-[11px] text-muted-foreground mb-2">Fill Color</div>
+              <div className="text-xs text-muted-foreground mb-2">Fill Color</div>
               <button
                 className={`h-6 w-full rounded border flex items-center justify-center transition-transform hover:scale-[1.02] mb-2 ${!currentFillColor ? 'border-primary bg-primary/10' : 'border-border hover:border-muted-foreground'
                   }`}
@@ -390,7 +390,7 @@ export const DrawingEditToolbar = ({
                 onClick={() => handleFillChange(null)}
                 title="No fill"
               >
-                <span className="text-[11px] text-muted-foreground">No Fill</span>
+                <span className="text-xs text-muted-foreground">No Fill</span>
               </button>
               <AdvancedColorPicker
                 value={currentFillColor || currentColor}
@@ -421,12 +421,12 @@ export const DrawingEditToolbar = ({
                   className="h-4 w-4 rounded border border-border"
                   style={{ backgroundColor: currentColor }}
                 />
-                <span className="text-[10px] text-muted-foreground">TP</span>
+                <span className="text-2xs text-muted-foreground">TP</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 border-0 bg-transparent shadow-xl" side="bottom" align="center">
               <div className="p-2 rounded-lg bg-card border border-border">
-                <div className="text-[11px] text-muted-foreground mb-2">Take Profit Color</div>
+                <div className="text-xs text-muted-foreground mb-2">Take Profit Color</div>
                 <AdvancedColorPicker
                   value={currentColor}
                   onChange={handleColorChange}
@@ -452,12 +452,12 @@ export const DrawingEditToolbar = ({
                   className="h-4 w-4 rounded border border-border"
                   style={{ backgroundColor: currentFillColor || '#ef4444' }}
                 />
-                <span className="text-[10px] text-muted-foreground">SL</span>
+                <span className="text-2xs text-muted-foreground">SL</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 border-0 bg-transparent shadow-xl" side="bottom" align="center">
               <div className="p-2 rounded-lg bg-card border border-border">
-                <div className="text-[11px] text-muted-foreground mb-2">Stop Loss Color</div>
+                <div className="text-xs text-muted-foreground mb-2">Stop Loss Color</div>
                 <AdvancedColorPicker
                   value={currentFillColor || '#ef4444'}
                   onChange={handleFillChange}
@@ -483,7 +483,7 @@ export const DrawingEditToolbar = ({
               title="Edit Fibonacci Levels"
             >
               <Activity className="h-3.5 w-3.5" />
-              <span className="text-[10px] text-muted-foreground">Levels</span>
+              <span className="text-2xs text-muted-foreground">Levels</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-3" side="top" align="center">
@@ -585,7 +585,7 @@ export const DrawingEditToolbar = ({
               title="Text label"
             >
               <Type className="h-3.5 w-3.5" />
-              <span className="text-[10px] text-muted-foreground">{labelFontSize}px</span>
+              <span className="text-2xs text-muted-foreground">{labelFontSize}px</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-3 space-y-3" side="top" align="center">
@@ -657,7 +657,7 @@ export const DrawingEditToolbar = ({
                       className="inline-block h-4 w-4 rounded-full border border-border"
                       style={{ backgroundColor: drawing.textColor || currentColor }}
                     />
-                    <span className="text-[10px] text-muted-foreground">Color</span>
+                    <span className="text-2xs text-muted-foreground">Color</span>
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0 border-0 bg-transparent shadow-xl" side="top" align="start">
@@ -671,7 +671,7 @@ export const DrawingEditToolbar = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-1.5 text-[10px] text-muted-foreground hover:bg-muted"
+                  className="h-7 px-1.5 text-2xs text-muted-foreground hover:bg-muted"
                   onClick={() => onUpdateDrawing(drawing.id, { textColor: undefined })}
                   title="Match line color"
                 >
@@ -696,7 +696,7 @@ export const DrawingEditToolbar = ({
                 title="Edit Text"
               >
                 <Edit3 className="h-3.5 w-3.5" />
-                <span className="text-[10px] text-muted-foreground max-w-16 truncate">
+                <span className="text-2xs text-muted-foreground max-w-16 truncate">
                   {textValue || 'Edit'}
                 </span>
               </Button>
@@ -730,7 +730,7 @@ export const DrawingEditToolbar = ({
                 title="Font Size"
               >
                 <Type className="h-3.5 w-3.5" />
-                <span className="text-[10px] text-muted-foreground">{fontSize}px</span>
+                <span className="text-2xs text-muted-foreground">{fontSize}px</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-48 p-3" side="top" align="center">

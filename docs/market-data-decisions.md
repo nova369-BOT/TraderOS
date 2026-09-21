@@ -201,3 +201,37 @@ bundle +1.25 kB, typecheck delta 0. Live engine: initial loads coinbase
 fetches — coinbase 15s 34 bars 26 ms, tick 998 prints 40 ms, binance 15m
 300 bars 9 ms; exhaust edges refuse with the venue's words (~2 ms);
 tick tail-reload with epoch start 200/121 bars 20 ms.
+
+## D18 — the density + typecheck chain ported in from arena/01a0baf4 (2026-09-19)
+
+Owner: "go to this repo and implement the changes he made into this
+our new terminal" (the sibling session branch `arena/01a0baf4-traderos`,
+five commits on top of D15 `fd0ecac`). Applied the chain's net diff
+(`fd0ecac..b0b3ba4`) onto D17 `9c8200d` with three-way merge; the two
+chart bundles were excluded from the patch and regenerated from source
+so `chart.js` carries BOTH lines of work (D15 morph + D17 scrollback ∪
+his typecheck fixes and density TS edits). ATAS reference screenshots
+came over as blobs from his commit.
+
+The chain, with his own commit summaries:
+- `17294ea` typecheck recovery: 50 errors to zero, two runtime bugs
+  fixed (`NodeJS.Timeout` family + latent bugs — the exact
+  pre-existing debt D15 recorded as "51 baseline"), CI gate added
+  (tsc + bundle build + pytest on every push).
+- `9b19bb6` ATAS density: terminal type scale `--t-2xs..--t-4xl` in one
+  place (10-11px body, 12px inputs, 28/24px controls, 9.5px floor),
+  Tailwind remapped onto the same vars, COMPACT/COMFY chip with a
+  deliberate-reload toggle (`html[data-density]`, localStorage
+  `lset-density`, replayed before first paint), --dim lifted one step
+  for contrast at compact sizes.
+- `9a0fd9b` density v2: 10.5px body, 24px controls, 9px micro floor.
+- `ff4d97b` density v3: tabs, head strips, columns shrink with the type.
+- `b0b3ba4` density v4: the four top strips the owner circled, shaved.
+
+Verify on the merged tree: tsc **0 errors**; vite build green
+(chart.css 461.9 kB, chart.js 4,436 kB); node --check clean; full suite
+**247 passed / 1 skipped**; runtime engine serves index (density chip +
+boot script), style.css (58 --t-2xs sites), rebuilt bundles; data lane
+untouched and healthy (coinbase 15s 68 bars 55 ms, binance 84 bars
+11 ms). Research screen shots: image-search/atas-*.png; plans/records:
+docs/atas-density/PLAN.md, docs/typecheck-recovery/REPORT.md.

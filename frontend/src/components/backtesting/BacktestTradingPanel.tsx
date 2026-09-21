@@ -89,7 +89,7 @@ export interface Trade {
 // neutral look for market, limit and stop buttons, the split-button dropdown
 // arrow, and the menu items; "active" (a pending limit/stop placement in
 // progress) is the shell's active-surface grey, not a coloured fill.
-const ORDER_BTN = "h-6 sm:h-7 px-2 sm:px-3 text-[10px] sm:text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors";
+const ORDER_BTN = "h-6 sm:h-7 px-2 sm:px-3 text-2xs sm:text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors";
 const SPLIT_BTN_IDLE = "text-text-secondary hover:text-foreground hover:bg-muted";
 const SPLIT_BTN_ACTIVE = "bg-accent text-foreground border border-border";
 const MENU_ITEM = "text-xs text-foreground hover:bg-muted cursor-pointer";
@@ -207,13 +207,13 @@ const BacktestTradingPanel = ({
         {/* Lot Size Selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs font-mono hover:bg-muted/50 transition-colors">
+            <Button variant="ghost" size="sm" className="h-6 sm:h-7 px-1.5 sm:px-2 text-2xs sm:text-xs font-mono hover:bg-muted/50 transition-colors">
               {lotSize} lots
               <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 ml-0.5" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="glass-strong border-border bg-background min-w-[200px]">
-            <div className="px-2 py-1.5 text-[10px] text-muted-foreground border-b border-border mb-1">
+            <div className="px-2 py-1.5 text-2xs text-muted-foreground border-b border-border mb-1">
               {getLotSizeDescription(pair)}
             </div>
             {LOT_SIZES.map((size) => (
@@ -227,7 +227,7 @@ const BacktestTradingPanel = ({
               </DropdownMenuItem>
             ))}
             <div className="border-t border-border mt-1 pt-1 px-2 pb-2">
-              <div className="text-[10px] text-gray-700 dark:text-gray-200 mb-1">Custom</div>
+              <div className="text-2xs text-gray-700 dark:text-gray-200 mb-1">Custom</div>
               <div className="flex gap-1">
                 <Input
                   type="number"
@@ -247,7 +247,7 @@ const BacktestTradingPanel = ({
                       setCustomLotSize("");
                     }
                   }}
-                  className="h-6 px-2 text-[10px]"
+                  className="h-6 px-2 text-2xs"
                 >
                   Set
                 </Button>
@@ -287,7 +287,7 @@ const BacktestTradingPanel = ({
               variant="ghost"
               onClick={() => onStartLimitOrder?.('buy')}
               className={cn(
-                "h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs rounded-r-none",
+                "h-6 sm:h-7 px-1.5 sm:px-2 text-2xs sm:text-xs rounded-r-none",
                 (pendingLimitType === 'buy' || pendingLimitType === 'buy_stop')
                   ? SPLIT_BTN_ACTIVE
                   : SPLIT_BTN_IDLE
@@ -301,7 +301,7 @@ const BacktestTradingPanel = ({
                   size="sm"
                   variant="ghost"
                   className={cn(
-                    "h-6 sm:h-7 px-0.5 sm:px-1 text-[10px] sm:text-xs rounded-l-none border-l-0",
+                    "h-6 sm:h-7 px-0.5 sm:px-1 text-2xs sm:text-xs rounded-l-none border-l-0",
                     (pendingLimitType === 'buy' || pendingLimitType === 'buy_stop')
                       ? SPLIT_BTN_ACTIVE
                       : SPLIT_BTN_IDLE
@@ -334,7 +334,7 @@ const BacktestTradingPanel = ({
               variant="ghost"
               onClick={() => onStartLimitOrder?.('sell')}
               className={cn(
-                "h-6 sm:h-7 px-1.5 sm:px-2 text-[10px] sm:text-xs rounded-r-none",
+                "h-6 sm:h-7 px-1.5 sm:px-2 text-2xs sm:text-xs rounded-r-none",
                 (pendingLimitType === 'sell' || pendingLimitType === 'sell_stop')
                   ? SPLIT_BTN_ACTIVE
                   : SPLIT_BTN_IDLE
@@ -348,7 +348,7 @@ const BacktestTradingPanel = ({
                   size="sm"
                   variant="ghost"
                   className={cn(
-                    "h-6 sm:h-7 px-0.5 sm:px-1 text-[10px] sm:text-xs rounded-l-none border-l-0",
+                    "h-6 sm:h-7 px-0.5 sm:px-1 text-2xs sm:text-xs rounded-l-none border-l-0",
                     (pendingLimitType === 'sell' || pendingLimitType === 'sell_stop')
                       ? SPLIT_BTN_ACTIVE
                       : SPLIT_BTN_IDLE
@@ -405,7 +405,7 @@ const BacktestTradingPanel = ({
             <div className="sm:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] font-mono hover:bg-muted/50 transition-colors">
+                  <Button variant="ghost" size="sm" className="h-6 px-1.5 text-2xs font-mono hover:bg-muted/50 transition-colors">
                     {playbackSpeed}x
                     <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
                   </Button>
@@ -475,7 +475,7 @@ const BacktestTradingPanel = ({
                   }}
                 >
                   <div className="space-y-2">
-                    <div className="text-[10px] text-muted-foreground">Custom (0.1-1000)</div>
+                    <div className="text-2xs text-muted-foreground">Custom (0.1-1000)</div>
                     <div className="flex gap-1">
                       <Input
                         ref={customSpeedInputRef}
@@ -506,7 +506,7 @@ const BacktestTradingPanel = ({
                             setShowCustomSpeed(false);
                           }
                         }}
-                        className="h-6 px-2 text-[10px]"
+                        className="h-6 px-2 text-2xs"
                       >
                         Set
                       </Button>
@@ -525,7 +525,7 @@ const BacktestTradingPanel = ({
                 <div className="sm:hidden">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] font-mono text-electric-blue border border-electric-blue/50 bg-electric-blue/10 hover:bg-electric-blue/20 transition-colors">
+                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-2xs font-mono text-electric-blue border border-electric-blue/50 bg-electric-blue/10 hover:bg-electric-blue/20 transition-colors">
                         {selectedTimeframe || timeframes[0]}
                         <ChevronDown className="h-2.5 w-2.5 ml-0.5" />
                       </Button>
@@ -562,7 +562,7 @@ const BacktestTradingPanel = ({
 
                 {/* Date Range Label */}
                 {dateRangeLabel && (
-                  <div className="hidden lg:flex items-center text-[11px] text-text-secondary shrink-0 ml-1">
+                  <div className="hidden lg:flex items-center text-xs text-text-secondary shrink-0 ml-1">
                     <span>{dateRangeLabel}</span>
                   </div>
                 )}
@@ -592,7 +592,7 @@ const BacktestTradingPanel = ({
         </div>
 
         {/* Mobile: Indicators + P&L */}
-        <div className="flex md:hidden items-center gap-1.5 ml-auto text-[10px]">
+        <div className="flex md:hidden items-center gap-1.5 ml-auto text-2xs">
           {indicatorsButton}
           <span className="text-text-secondary">P&L:</span>
           <span className={cn("font-mono", totalPnL >= 0 ? "text-up" : "text-down")}>
@@ -640,7 +640,7 @@ const BacktestTradingPanel = ({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-[10px] py-0",
+                    "text-2xs py-0",
                     "border-border text-foreground"
                   )}
                 >
@@ -652,7 +652,7 @@ const BacktestTradingPanel = ({
                 {isActive && slDragPrice != null && tpDragPrice != null ? (
                   <>
                     <div className="flex items-center gap-1">
-                      <span className="text-red-400 text-[10px]">SL:</span>
+                      <span className="text-red-400 text-2xs">SL:</span>
                       <input
                         type="number"
                         step={step}
@@ -680,14 +680,14 @@ const BacktestTradingPanel = ({
                             }
                           }
                         }}
-                        className="w-24 px-1.5 py-0.5 text-[10px] bg-card border border-red-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-red-500"
+                        className="w-24 px-1.5 py-0.5 text-2xs bg-card border border-red-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-red-500"
                       />
-                      <span className="text-red-400/70 text-[10px]">
+                      <span className="text-red-400/70 text-2xs">
                         ({calculatePipsFromDiff(slDragPrice, entryPrice, pair, category)}p)
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-green-500 text-[10px]">TP:</span>
+                      <span className="text-green-500 text-2xs">TP:</span>
                       <input
                         type="number"
                         step={step}
@@ -715,9 +715,9 @@ const BacktestTradingPanel = ({
                             }
                           }
                         }}
-                        className="w-24 px-1.5 py-0.5 text-[10px] bg-card border border-green-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-24 px-1.5 py-0.5 text-2xs bg-card border border-green-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-green-500"
                       />
-                      <span className="text-green-500/70 text-[10px]">
+                      <span className="text-green-500/70 text-2xs">
                         ({calculatePipsFromDiff(tpDragPrice, entryPrice, pair, category)}p)
                       </span>
                     </div>
@@ -771,7 +771,7 @@ const BacktestTradingPanel = ({
                 <Badge
                   variant="outline"
                   className={cn(
-                    "text-[10px] py-0",
+                    "text-2xs py-0",
                     "border-border text-foreground"
                   )}
                 >
@@ -783,7 +783,7 @@ const BacktestTradingPanel = ({
                 {isActive && slDragPrice != null && tpDragPrice != null ? (
                   <>
                     <div className="flex items-center gap-1">
-                      <span className="text-red-400 text-[10px]">SL:</span>
+                      <span className="text-red-400 text-2xs">SL:</span>
                       <input
                         type="number"
                         step={step}
@@ -811,14 +811,14 @@ const BacktestTradingPanel = ({
                             }
                           }
                         }}
-                        className="w-24 px-1.5 py-0.5 text-[10px] bg-card border border-red-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-red-500"
+                        className="w-24 px-1.5 py-0.5 text-2xs bg-card border border-red-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-red-500"
                       />
-                      <span className="text-red-400/70 text-[10px]">
+                      <span className="text-red-400/70 text-2xs">
                         ({calculatePipsFromDiff(slDragPrice, trade.entryPrice, pair, category)}p)
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-green-500 text-[10px]">TP:</span>
+                      <span className="text-green-500 text-2xs">TP:</span>
                       <input
                         type="number"
                         step={step}
@@ -846,9 +846,9 @@ const BacktestTradingPanel = ({
                             }
                           }
                         }}
-                        className="w-24 px-1.5 py-0.5 text-[10px] bg-card border border-green-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-24 px-1.5 py-0.5 text-2xs bg-card border border-green-500/50 rounded text-gray-900 dark:text-gray-100 font-mono focus:outline-none focus:ring-1 focus:ring-green-500"
                       />
-                      <span className="text-green-500/70 text-[10px]">
+                      <span className="text-green-500/70 text-2xs">
                         ({calculatePipsFromDiff(tpDragPrice, trade.entryPrice, pair, category)}p)
                       </span>
                     </div>
@@ -880,7 +880,7 @@ const BacktestTradingPanel = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => onCloseTrade(trade.id, currentPrice)}
-                  className="h-5 px-1 text-[10px] hover:bg-neon-purple/20 hover:text-neon-purple"
+                  className="h-5 px-1 text-2xs hover:bg-neon-purple/20 hover:text-neon-purple"
                 >
                   Close
                 </Button>

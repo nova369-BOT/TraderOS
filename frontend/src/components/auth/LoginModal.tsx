@@ -57,13 +57,13 @@ export default function LoginModal({ open, onOpenChange, title, message }: Login
 
         <div className="space-y-4 py-3">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            {message || 'Sign in to save your layouts and sync across devices, completely free.'}
+            {message || 'Your layouts, drawings and settings are saved locally on this machine and survive reinstalls — no account needed.'}
           </p>
 
           <button
             onClick={handleGoogleSignIn}
             disabled={isLoading}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full h-12 flex items-center justify-center gap-3 rounded-lg text-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               background: '#ffffff',
               color: '#3c4043',

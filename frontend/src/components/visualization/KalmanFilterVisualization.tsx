@@ -450,7 +450,7 @@ export default function KalmanFilterVisualization() {
           </div>
           {/* Live regime chip: flips as the auto-tune walks R across its range, so
               the eye always has a changing token to track. */}
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border text-[11px] font-mono text-foreground">
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border text-xs font-mono text-foreground">
             <span className="w-1.5 h-1.5 rounded-full bg-foreground animate-pulse" />
             {measureNoise > 2.2 ? 'SMOOTHING' : measureNoise < 0.9 ? 'TRACKING' : 'BALANCED'}
           </span>
@@ -540,7 +540,7 @@ export default function KalmanFilterVisualization() {
       </div>
 
       {/* Legend */}
-      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-[11px] text-muted-foreground">
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
         <LegendDot color={c.obs} shape="dot" label="Observed price" />
         <LegendDot color={c.estimate} shape="line" label="Filtered estimate" />
         <LegendDot color={isDark ? 'rgba(232,232,232,0.55)' : 'rgba(28,28,28,0.50)'} shape="band" label="±2σ uncertainty" />
@@ -642,8 +642,8 @@ export default function KalmanFilterVisualization() {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-muted/40 border border-border px-3 py-2">
-      <div className="text-muted-foreground text-[11px]">{label}</div>
-      <div className="text-foreground font-mono text-[13px]">{value}</div>
+      <div className="text-muted-foreground text-xs">{label}</div>
+      <div className="text-foreground font-mono text-base">{value}</div>
     </div>
   );
 }
@@ -652,8 +652,8 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Panel({ title, hint, children }: { title: string; hint: string; children: ReactNode }) {
   return (
     <div className="rounded-md bg-muted/30 border border-border p-3">
-      <div className="text-[11px] uppercase tracking-wider text-foreground font-mono">{title}</div>
-      <div className="text-[10px] text-muted-foreground mb-2 leading-snug">{hint}</div>
+      <div className="text-xs uppercase tracking-wider text-foreground font-mono">{title}</div>
+      <div className="text-2xs text-muted-foreground mb-2 leading-snug">{hint}</div>
       {children}
     </div>
   );

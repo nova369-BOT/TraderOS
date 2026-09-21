@@ -15052,6 +15052,21 @@ async function boot() {
     location.reload();
   };
 
+  // Density toggle, same deliberate-reload pattern as the theme: the React
+  // islands read the --t-* scale through Tailwind vars at mount, so a reload
+  // is the honest way to rescale every surface at once. The label names the
+  // mode currently active (COMPACT is the ATAS-band default); the title
+  // carries the affordance. Boot script in index.html replays the choice
+  // before first paint.
+  const densityBtn = $("density-toggle");
+  const isComfy = () =>
+    document.documentElement.getAttribute("data-density") === "comfortable";
+  densityBtn.textContent = isComfy() ? "COMFY" : "COMPACT";
+  densityBtn.onclick = () => {
+    try { localStorage.setItem("lset-density", isComfy() ? "compact" : "comfortable"); } catch (e) {}
+    location.reload();
+  };
+
   // Watchlist price board poll: once a second for the rows on screen
   // (pollPrices itself skips hidden windows and stacked requests).
   setInterval(pollPrices, 1000);

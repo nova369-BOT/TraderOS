@@ -499,7 +499,7 @@ export default function QuantModels() {
         {GROUPS.map((g) => (
           <div key={g.name} className="mb-3">
             <div
-              className="px-3 pb-1 text-[10px] tracking-widest"
+              className="px-3 pb-1 text-2xs tracking-widest"
               style={{ color: 'var(--dim)' }}
             >
               {g.name}
@@ -524,7 +524,7 @@ export default function QuantModels() {
             groups. Clicking a row selects that dataset in the fit bar. */}
         {(info?.datasets || []).length > 0 && (
           <div className="mb-3">
-            <div className="px-3 pb-1 text-[10px] tracking-widest" style={{ color: 'var(--dim)' }}>
+            <div className="px-3 pb-1 text-2xs tracking-widest" style={{ color: 'var(--dim)' }}>
               MY DATA
             </div>
             {[...new Set((info?.datasets || []).map((d) => d.folder || ''))].sort().map((folder) => (
@@ -590,7 +590,7 @@ export default function QuantModels() {
             style={{ borderColor: 'var(--edge)' }}
           >
             <span className="text-sm font-medium whitespace-nowrap">{active.label}</span>
-            <code className="text-[11px] font-mono truncate" style={{ color: 'var(--dim)' }}>
+            <code className="text-xs font-mono truncate" style={{ color: 'var(--dim)' }}>
               {active.formula}
             </code>
           </div>
@@ -602,7 +602,7 @@ export default function QuantModels() {
                        onClear={clearFit} busy={busy} fitted={fitted} mode={mode}
                        setMode={setMode} prefer={prefer} refreshInfo={loadInfo} />
           {fitted && !fitted.ok && (
-            <div className="px-4 py-2 text-[11px]"
+            <div className="px-4 py-2 text-xs"
                  style={{ color: 'var(--err, #f0426c)', borderBottom: '1px solid var(--edge)', background: 'var(--bg)' }}>
               {fitted.error}
             </div>
