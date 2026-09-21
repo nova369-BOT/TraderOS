@@ -17646,3 +17646,256 @@ function scrShowCard(r) {
   });
   sync();
 })();
+
+/* ── WORKSTATION LAYER (Phase E, 2026-09-21) ─────────────────────────
+   Institutional density wired to the real engine: instrument header,
+   multi-timeframe trend ribbon, time & sales tape, session stats and
+   live watchlist sparklines. Read-only against the app: it hooks the
+   global onTick/paintBoardPrice, reads `state`, and writes only under
+   the new ids. Every figure is engine data; anything the engine cannot
+   serve stays a dash. Wrapped so a fault here can never break ticks. */
+(function () {
+  var $id = function (i) { return document.getElementById(i); };
+  var head = $id("instr-head"), ribbon = $id("mtf-ribbon"),
+      rail = $id("flow-rail"), tape = $id("wtx-tape"), stats = $id("wtx-stats");
+  if (!head || !ribbon || typeof onTick !== "function") return;
+
+  var rings = new Map(), tapeRows = [], tickTimes = [], statsCache = new Map();
+  var curSym = null, curProv = null, curStats = null, sparkPending = false;
+
+  function ring(s) { var r = rings.get(s); if (!r) { r = []; rings.set(s, r); } return r; }
+  function pushTick(sym, price) {
+    if (price == null || !isFinite(price)) return;
+    var r = ring(sym); r.push(price); if (r.length > 90) r.shift();
+  }
+  function setTxt(i, v) { var e = $id(i); if (e) e.textContent = v; }
+
+  /* hook the live stream */
+  var _onTick = onTick;
+  onTick = function (t, perf) {
+    try {
+      if (t && t.symbol && t.price != null) {
+        pushTick(t.symbol, t.price);
+        tickTimes.push(Date.now());
+        if (t.symbol === state.symbol) {
+          var prev = state.prices[t.symbol];
+          tapeRows.push({
+            ts: t.ts || Date.now(), p: t.price,
+            sz: (t.size != null ? t.size : (t.qty != null ? t.qty : null)),
+            up: prev === undefined ? null : t.price >= prev
+          });
+          if (tapeRows.length > 90) tapeRows.shift();
+          scheduleTape();
+          ihLast(t.price);
+        }
+      }
+    } catch (e) { /* never break the tick path */ }
+    return _onTick(t, perf);
+  };
+  /* hook the board poll (watchlist symbols that poll instead of stream) */
+  if (typeof paintBoardPrice === "function") {
+    var _pbp = paintBoardPrice;
+    paintBoardPrice = function (r) {
+      try { if (r && r.symbol) pushTick(r.symbol, r.price); } catch (e) {}
+      return _pbp(r);
+    };
+  }
+
+  function ihLast(p) {
+    var el = $id("ih-last"); if (!el) return;
+    el.textContent = fmt(p);
+    var q = state.quotes && state.quotes[state.symbol];
+    if (q && q.bid != null && q.ask != null) {
+      setTxt("ih-bid", fmt(q.bid)); setTxt("ih-ask", fmt(q.ask));
+      setTxt("ih-spr", (typeof fmtSpread === "function" ? fmtSpread(q.ask - q.bid) : "") || "–");
+    }
+  }
+
+  function candles(sym, prov, tf, limit) {
+    return fetch("/api/candles?provider=" + encodeURIComponent(prov) +
+      "&symbol=" + encodeURIComponent(sym) + "&timeframe=" + tf + "&limit=" + limit)
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { return Array.isArray(j) ? j : (j && j.candles) || null; })
+      .catch(function () { return null; });
+  }
+
+  function fetchStats(sym, prov) {
+    return candles(sym, prov, "1h", 26).then(function (cs) {
+      if (!cs || !cs.length) return null;
+      var win = cs.slice(-25), hi = -Infinity, lo = Infinity, vol = 0;
+      win.forEach(function (c) {
+        hi = Math.max(hi, c.high); lo = Math.min(lo, c.low); vol += (c.volume || 0);
+      });
+      var last = win[win.length - 1].close, ref = win[0].close;
+      return { hi: hi, lo: lo, vol: vol, chg: ref ? (last - ref) / ref * 100 : 0 };
+    });
+  }
+
+  function loadSymbol() {
+    var sym = state.symbol, prov = state.provider;
+    if (!sym) return;
+    curSym = sym; curProv = prov;
+    setTxt("ih-sym", sym);
+    setTxt("ih-prov", String(prov || "").toUpperCase());
+    var key = prov + "/" + sym, c = statsCache.get(key);
+    var p = (c && Date.now() - c.t < 45000) ? Promise.resolve(c.s) : fetchStats(sym, prov);
+    p.then(function (s) {
+      if (!s) return;
+      if (curSym !== sym) return;
+      statsCache.set(key, { t: Date.now(), s: s });
+      curStats = s;
+      setTxt("ih-hi", fmt(s.hi)); setTxt("ih-lo", fmt(s.lo));
+      setTxt("ih-vol", fmtCount(s.vol));
+      var chg = $id("ih-chg");
+      if (chg) {
+        chg.textContent = (s.chg >= 0 ? "+" : "") + s.chg.toFixed(2) + "%";
+        chg.classList.toggle("up", s.chg >= 0);
+        chg.classList.toggle("down", s.chg < 0);
+      }
+      renderStats();
+    });
+    renderRibbon(sym, prov);
+  }
+
+  function renderRibbon(sym, prov) {
+    var tfs = ["5m", "15m", "1h", "4h", "1d", "1w"];
+    Promise.all(tfs.map(function (tf) { return candles(sym, prov, tf, 24); }))
+      .then(function (res) {
+        if (curSym !== sym || !ribbon) return;
+        ribbon.textContent = "";
+        tfs.forEach(function (tf, i) {
+          var cs = res[i];
+          var cell = document.createElement("span");
+          cell.className = "mtf-cell"; cell.title = tf + " trend vs 20-bar mean";
+          var lab = document.createElement("i"); lab.textContent = tf; cell.appendChild(lab);
+          if (cs && cs.length > 3) {
+            var closes = cs.slice(-21).map(function (c) { return c.close; });
+            var mean = closes.reduce(function (a, b) { return a + b; }, 0) / closes.length;
+            var up = closes[closes.length - 1] >= mean;
+            cell.classList.add(up ? "up" : "down");
+            var ar = document.createElement("b"); ar.textContent = up ? "↑" : "↓";
+            cell.appendChild(ar);
+          } else cell.classList.add("none");
+          if (tf === state.timeframe) cell.classList.add("cur");
+          ribbon.appendChild(cell);
+        });
+      });
+  }
+
+  var tapeQueued = false;
+  function scheduleTape() {
+    if (tapeQueued || !tape) return;
+    tapeQueued = true;
+    requestAnimationFrame(function () {
+      tapeQueued = false;
+      var rows = tapeRows.slice(-46).reverse();
+      tape.textContent = "";
+      var frag = document.createDocumentFragment();
+      rows.forEach(function (r) {
+        var d = document.createElement("div"); d.className = "tp-row";
+        var t = document.createElement("span"); t.className = "tp-t";
+        t.textContent = new Date(r.ts).toISOString().substr(11, 8);
+        var p = document.createElement("span");
+        p.className = "tp-p" + (r.up === null ? "" : r.up ? " up" : " down");
+        p.textContent = fmt(r.p);
+        d.appendChild(t); d.appendChild(p);
+        if (r.sz != null) {
+          var s = document.createElement("span"); s.className = "tp-s";
+          s.textContent = fmtCount(r.sz); d.appendChild(s);
+        }
+        frag.appendChild(d);
+      });
+      tape.appendChild(frag);
+    });
+  }
+
+  function ratePerMin() {
+    var now = Date.now();
+    while (tickTimes.length && now - tickTimes[0] > 60000) tickTimes.shift();
+    return tickTimes.length;
+  }
+  function renderStats() {
+    if (!stats || !curStats) return;
+    var rows = [
+      ["PROVIDER", String(state.provider || "").toUpperCase()],
+      ["STREAM", state.ws ? "WS LIVE" : "POLL"],
+      ["24H RANGE", fmt(curStats.hi - curStats.lo)],
+      ["24H VOL", fmtCount(curStats.vol)],
+      ["PRINTS/MIN", String(ratePerMin())]
+    ];
+    stats.textContent = "";
+    rows.forEach(function (kv) {
+      var d = document.createElement("div"); d.className = "st-row";
+      var i = document.createElement("i"); i.textContent = kv[0];
+      var b = document.createElement("b"); b.textContent = kv[1];
+      d.appendChild(i); d.appendChild(b); stats.appendChild(d);
+    });
+  }
+  setInterval(function () { try { if (curStats) renderStats(); } catch (e) {} }, 5000);
+
+  /* watchlist sparklines */
+  function attachSparks() {
+    var list = $id("watchlist"); if (!list) return;
+    list.querySelectorAll(".wrow[data-symbol]").forEach(function (row) {
+      if (row.querySelector(".wspark")) return;
+      var c = document.createElement("canvas");
+      c.className = "wspark"; c.width = 64; c.height = 18;
+      var price = row.querySelector(".wprice");
+      row.insertBefore(c, price || null);
+    });
+    drawSparks();
+  }
+  function drawSparks() {
+    var list = $id("watchlist"); if (!list) return;
+    list.querySelectorAll(".wspark").forEach(function (c) {
+      var row = c.closest(".wrow"); if (!row) return;
+      var r = rings.get(row.getAttribute("data-symbol"));
+      var g = c.getContext("2d");
+      g.clearRect(0, 0, 64, 18);
+      if (!r || r.length < 2) return;
+      var min = Math.min.apply(null, r), max = Math.max.apply(null, r);
+      var span = (max - min) || 1;
+      g.beginPath();
+      r.forEach(function (p, i) {
+        var x = 1 + i / (r.length - 1) * 62;
+        var y = 16 - (p - min) / span * 14;
+        if (i) g.lineTo(x, y); else g.moveTo(x, y);
+      });
+      g.strokeStyle = r[r.length - 1] >= r[0] ? "#2fd08a" : "#ff5c7a";
+      g.lineWidth = 1; g.stroke();
+    });
+  }
+  setInterval(function () { try { drawSparks(); } catch (e) {} }, 900);
+  var wl = $id("watchlist");
+  if (wl && typeof MutationObserver !== "undefined") {
+    new MutationObserver(function () {
+      if (sparkPending) return;
+      sparkPending = true;
+      requestAnimationFrame(function () { sparkPending = false; attachSparks(); });
+    }).observe(wl, { childList: true, subtree: true });
+  }
+
+  /* rail visibility + symbol/provider change detection */
+  function syncVis() {
+    if (!rail) return;
+    var mk = $id("rail-markets"), charts = $id("charts");
+    var show = mk && mk.classList.contains("active") &&
+               charts && !charts.classList.contains("hidden");
+    rail.classList.toggle("hidden", !show);
+  }
+  if (typeof MutationObserver !== "undefined") {
+    var rr = $id("rail"), ch = $id("charts");
+    if (rr) new MutationObserver(syncVis).observe(rr, { subtree: true, attributes: true, attributeFilter: ["class"] });
+    if (ch) new MutationObserver(syncVis).observe(ch, { attributes: true, attributeFilter: ["class"] });
+  }
+  setInterval(function () {
+    try {
+      if (state.symbol !== curSym || state.provider !== curProv) {
+        tapeRows.length = 0; loadSymbol();
+      }
+      syncVis();
+    } catch (e) {}
+  }, 600);
+
+  attachSparks(); loadSymbol(); syncVis();
+})();

@@ -315,6 +315,22 @@ def my_ind(df, length=20):
     <div id="watchlist"></div>
   </aside>
   <section id="charts">
+    <!-- WORKSTATION LAYER (Phase E): instrument header + multi-timeframe
+         ribbon, fed by the real engine (quotes, candles). Additive: the
+         chart, panes and dock below are untouched. -->
+    <div id="instr-head">
+      <span id="ih-sym">–</span>
+      <span id="ih-prov" class="ih-chip"></span>
+      <span id="ih-last">–</span>
+      <span id="ih-chg" class="ih-chip">–</span>
+      <span class="ih-kv"><i>BID</i><b id="ih-bid">–</b></span>
+      <span class="ih-kv"><i>ASK</i><b id="ih-ask">–</b></span>
+      <span class="ih-kv"><i>SPREAD</i><b id="ih-spr">–</b></span>
+      <span class="ih-kv"><i>24H HIGH</i><b id="ih-hi">–</b></span>
+      <span class="ih-kv"><i>24H LOW</i><b id="ih-lo">–</b></span>
+      <span class="ih-kv"><i>24H VOL</i><b id="ih-vol">–</b></span>
+    </div>
+    <div id="mtf-ribbon" title="Trend per timeframe: close vs 20-bar mean of real candles"></div>
     <div id="ind-active"></div>
     <div id="chart-wrap">
       <div id="legend"></div>
@@ -1021,6 +1037,19 @@ def my_ind(df, length=20):
   <!-- Level 3 rail: order-by-order flow, between the charts and the trade
        ticket. Opened by the toolbar Level 3 button;
        lives outside #ai-rail so the assistant keeps its own width. -->
+  <!-- WORKSTATION LAYER: live tape + session stats column (MARKETS only).
+       Real prints from the stream; honest dashes where the engine has no
+       data. Sits between the chart stack and the L3 rail. -->
+  <aside id="flow-rail" class="hidden">
+    <div class="fr-panel">
+      <div class="fr-head">TIME &amp; SALES</div>
+      <div id="wtx-tape"></div>
+    </div>
+    <div class="fr-panel">
+      <div class="fr-head">SESSION</div>
+      <div id="wtx-stats"></div>
+    </div>
+  </aside>
   <aside id="l3-rail" class="hidden">
     <div id="l3-head">
       <span id="l3-title">Level 3</span>

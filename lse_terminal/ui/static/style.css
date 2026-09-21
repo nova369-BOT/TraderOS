@@ -4098,3 +4098,83 @@ body {
 /* Live-surface recolor to the navy palette's data hues. */
 @keyframes tickUp { from { background: rgba(47, 208, 138, .26); } to { background: transparent; } }
 @keyframes tickDown { from { background: rgba(255, 92, 122, .26); } to { background: transparent; } }
+
+/* ── WORKSTATION LAYER (Phase E) ────────────────────────────────────
+   Instrument header, MTF ribbon, tape rail, sparklines: institutional
+   density wired to real engine data by the WSX module in app.js. */
+#instr-head {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 7px 12px; background: var(--panel);
+  border-bottom: 1px solid var(--edge);
+}
+#ih-sym { font-size: var(--t-2xl); font-weight: 800; letter-spacing: .04em; color: var(--text); }
+#ih-last {
+  font-family: var(--mono); font-size: var(--t-2xl); font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--text);
+}
+.ih-chip {
+  font-family: var(--mono); font-size: var(--t-xs); padding: 2px 7px;
+  border-radius: 4px; background: var(--raise); color: var(--dim);
+  border: 1px solid var(--edge);
+}
+#ih-prov { color: var(--accent-2); border-color: var(--accent-edge); background: var(--accent-soft); }
+#ih-chg.up { color: var(--up); border-color: transparent; background: rgba(47, 208, 138, .12); }
+#ih-chg.down { color: var(--down); border-color: transparent; background: rgba(255, 92, 122, .12); }
+.ih-kv { display: flex; align-items: baseline; gap: 6px; }
+.ih-kv i {
+  font-style: normal; font-size: var(--t-2xs); color: var(--dim);
+  letter-spacing: .08em;
+}
+.ih-kv b { font-family: var(--mono); font-size: var(--t-md); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
+#ih-bid { color: var(--up); } #ih-ask { color: var(--down); }
+
+/* Multi-timeframe ribbon: one trend cell per timeframe, real candles. */
+#mtf-ribbon {
+  display: flex; gap: 6px; padding: 6px 12px;
+  background: var(--bg2); border-bottom: 1px solid var(--edge);
+}
+.mtf-cell {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 9px; border-radius: 4px; border: 1px solid var(--edge);
+  background: var(--panel); font-family: var(--mono); font-size: var(--t-xs);
+  color: var(--dim);
+}
+.mtf-cell i { font-style: normal; letter-spacing: .04em; }
+.mtf-cell b { font-weight: 700; }
+.mtf-cell.up { color: var(--up); background: rgba(47, 208, 138, .10); border-color: rgba(47, 208, 138, .35); }
+.mtf-cell.down { color: var(--down); background: rgba(255, 92, 122, .10); border-color: rgba(255, 92, 122, .35); }
+.mtf-cell.none { opacity: .45; }
+.mtf-cell.cur { border-color: var(--accent-edge); box-shadow: 0 0 0 1px var(--accent-edge); }
+
+/* Tape + session rail */
+aside#flow-rail {
+  width: 218px; flex: none; display: flex; flex-direction: column; gap: 10px;
+  min-height: 0;
+}
+aside#flow-rail.hidden { display: none; }
+.fr-panel {
+  background: var(--panel); border: 1px solid var(--edge); border-radius: 8px;
+  display: flex; flex-direction: column; min-height: 0; flex: 1;
+  overflow: hidden;
+}
+.fr-head {
+  padding: 6px 10px; font-size: var(--t-2xs); font-weight: 700;
+  letter-spacing: .1em; color: var(--title); border-bottom: 1px solid var(--edge);
+  background: var(--bg2);
+}
+#wtx-tape { flex: 1; overflow-y: auto; padding: 3px 0; font-family: var(--mono); }
+.tp-row { display: flex; gap: 8px; align-items: baseline; padding: 1px 10px; font-size: var(--t-xs); }
+.tp-t { color: var(--dim); }
+.tp-p { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text); }
+.tp-p.up { color: var(--up); } .tp-p.down { color: var(--down); }
+.tp-s { color: var(--dim); min-width: 34px; text-align: right; }
+#wtx-stats { padding: 6px 10px; }
+.st-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.st-row i { font-style: normal; font-size: var(--t-2xs); color: var(--dim); letter-spacing: .08em; }
+.st-row b { font-family: var(--mono); font-size: var(--t-xs); font-weight: 600; color: var(--text); }
+
+/* Watchlist sparkline slot */
+.wspark { flex: none; width: 64px; height: 18px; opacity: .9; }
+
+/* Environment tabs read as the charter names: caps, tracked. */
+#rail .rail-btn span { text-transform: uppercase; letter-spacing: .09em; font-size: var(--t-xs); }
