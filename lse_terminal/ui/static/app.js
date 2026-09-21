@@ -17773,9 +17773,12 @@ function scrShowCard(r) {
             var mean = closes.reduce(function (a, b) { return a + b; }, 0) / closes.length;
             var up = closes[closes.length - 1] >= mean;
             cell.classList.add(up ? "up" : "down");
-            var ar = document.createElement("b"); ar.textContent = up ? "↑" : "↓";
+            var ar = document.createElement("b"); ar.textContent = up ? "UP ↑" : "DN ↓";
             cell.appendChild(ar);
-          } else cell.classList.add("none");
+          } else {
+            cell.classList.add("none");
+            var nb = document.createElement("b"); nb.textContent = "–"; cell.appendChild(nb);
+          }
           if (tf === state.timeframe) cell.classList.add("cur");
           ribbon.appendChild(cell);
         });
@@ -17898,4 +17901,141 @@ function scrShowCard(r) {
   }, 600);
 
   attachSparks(); loadSymbol(); syncVis();
+})();
+
+/* ── WORKSTATION LAYER E-2 (owner's chosen reference language) ────────
+   Tool rail sync, regime ribbon (real 1h candles, SMA20/50 classify),
+   flow-heat strip (time x price density of real prints: buys warm,
+   sells cool). Chains the onTick hook again; fully wrapped. */
+(function () {
+  var $id = function (i) { return document.getElementById(i); };
+
+  /* tool rail */
+  document.querySelectorAll("#tool-rail .tr-btn[data-go]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var t = $id(b.getAttribute("data-go")); if (t) t.click();
+    });
+  });
+  var trTheme = $id("tr-theme");
+  if (trTheme) trTheme.addEventListener("click", function () {
+    var t = $id("theme-toggle"); if (t) t.click();
+  });
+  function syncTool() {
+    try {
+      var act = document.querySelector("#rail .rail-btn.active");
+      document.querySelectorAll("#tool-rail .tr-btn[data-go]").forEach(function (b) {
+        b.classList.toggle("active", !!act && b.getAttribute("data-go") === act.id);
+      });
+      var st = $id("status");
+      if (st) st.classList.toggle("ok", !!state.ws);
+    } catch (e) {}
+  }
+  setInterval(syncTool, 700); syncTool();
+
+  /* prints ring for the heat strip (own onTick chain) */
+  var prints = [], lastSym = null;
+  if (typeof onTick === "function") {
+    var _t2 = onTick;
+    onTick = function (t, p) {
+      try {
+        if (t && t.symbol === state.symbol && t.price != null) {
+          var prev = prints.length ? prints[prints.length - 1].p : null;
+          prints.push({ ts: t.ts || Date.now(), p: t.price,
+                        up: prev == null ? null : t.price >= prev });
+          if (prints.length > 600) prints.shift();
+        }
+      } catch (e) {}
+      return _t2(t, p);
+    };
+  }
+
+  var cv = $id("flow-heat");
+  function drawHeat() {
+    if (!cv || !cv.clientWidth) return;
+    var W = cv.clientWidth, H = 84;
+    if (cv.width !== W) cv.width = W;
+    var g = cv.getContext("2d");
+    g.clearRect(0, 0, W, H);
+    var now = Date.now(), spanMs = 10 * 60 * 1000;
+    var win = prints.filter(function (r) { return now - r.ts <= spanMs; });
+    var winEl = $id("fh-win");
+    if (winEl) winEl.textContent = "last 10 min · " + win.length + " prints";
+    if (win.length < 4) {
+      g.fillStyle = "rgba(139,148,167,.5)";
+      g.font = "10px monospace";
+      g.fillText("waiting for prints…", 12, H / 2);
+      return;
+    }
+    var min = Infinity, max = -Infinity;
+    win.forEach(function (r) { min = Math.min(min, r.p); max = Math.max(max, r.p); });
+    var span = (max - min) || 1;
+    var COLS = 60, ROWS = 21;
+    var buy = [], sell = [], i;
+    for (i = 0; i < COLS * ROWS; i++) { buy.push(0); sell.push(0); }
+    var mxB = 0, mxS = 0;
+    win.forEach(function (r) {
+      var c = Math.min(COLS - 1, Math.floor((r.ts - (now - spanMs)) / spanMs * COLS));
+      var rw = Math.min(ROWS - 1, Math.max(0, Math.floor((r.p - min) / span * ROWS)));
+      var idx = (ROWS - 1 - rw) * COLS + c;
+      if (r.up === false) { sell[idx]++; mxS = Math.max(mxS, sell[idx]); }
+      else { buy[idx]++; mxB = Math.max(mxB, buy[idx]); }
+    });
+    var cw = W / COLS, ch = H / ROWS;
+    for (var rwi = 0; rwi < ROWS; rwi++) {
+      for (var c2 = 0; c2 < COLS; c2++) {
+        var bi = buy[rwi * COLS + c2], si = sell[rwi * COLS + c2];
+        if (bi > 0) {
+          g.fillStyle = "rgba(245,158,11," + (0.12 + 0.75 * bi / mxB).toFixed(2) + ")";
+          g.fillRect(c2 * cw, rwi * ch, cw - 0.5, ch - 0.5);
+        }
+        if (si > 0) {
+          g.fillStyle = "rgba(59,130,246," + (0.12 + 0.75 * si / mxS).toFixed(2) + ")";
+          g.fillRect(c2 * cw, rwi * ch, cw - 0.5, ch - 0.5);
+        }
+      }
+    }
+  }
+  setInterval(function () { try { drawHeat(); } catch (e) {} }, 1000);
+
+  /* regime ribbon from real 1h candles */
+  var rr = $id("rr-cells");
+  function renderRegime(sym, prov) {
+    fetch("/api/candles?provider=" + encodeURIComponent(prov) +
+          "&symbol=" + encodeURIComponent(sym) + "&timeframe=1h&limit=140")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var cs = Array.isArray(j) ? j : (j && j.candles) || null;
+        if (!cs || cs.length < 60 || !rr) return;
+        var closes = cs.map(function (c) { return c.close; });
+        function sma(n, i2) {
+          var s = 0, k = 0;
+          for (var q = Math.max(0, i2 - n + 1); q <= i2; q++) { s += closes[q]; k++; }
+          return s / k;
+        }
+        var segs = [];
+        for (var i2 = 50; i2 < closes.length; i2++) {
+          var a = sma(20, i2), b = sma(50, i2), c = closes[i2];
+          var cls = (c >= a && a >= b) ? "bull" : (c <= a && a <= b) ? "bear" : "side";
+          if (segs.length && segs[segs.length - 1].c === cls) segs[segs.length - 1].n++;
+          else segs.push({ c: cls, n: 1 });
+        }
+        rr.textContent = "";
+        segs.forEach(function (s) {
+          var el = document.createElement("span");
+          el.className = s.c; el.style.flexGrow = String(s.n);
+          el.title = s.c + " ×" + s.n + "h";
+          rr.appendChild(el);
+        });
+      }).catch(function () {});
+  }
+  setInterval(function () {
+    try {
+      if (state.symbol !== lastSym) {
+        lastSym = state.symbol;
+        prints.length = 0;
+        if (state.symbol) renderRegime(state.symbol, state.provider);
+      }
+    } catch (e) {}
+  }, 800);
+  if (state.symbol) { lastSym = state.symbol; renderRegime(state.symbol, state.provider); }
 })();

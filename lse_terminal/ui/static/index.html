@@ -297,6 +297,18 @@ def my_ind(df, length=20):
   </div>
 </div>
 <main>
+  <!-- WORKSTATION LAYER E-2 (owner's chosen reference): slim tool rail,
+       the far-left icon column of the reference. Each icon triggers the
+       matching existing section button; nothing new is invented. -->
+  <aside id="tool-rail" aria-label="Tools">
+    <button data-go="rail-markets" class="tr-btn active" title="Markets"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M4.5 1.8v2M4.5 12v2.2M2.8 3.8h3.4v8.2H2.8zM11.5 1.8v2.6M11.5 11v3.2M9.8 4.4h3.4V11H9.8z"/></svg></button>
+    <button data-go="rail-backtest" class="tr-btn" title="Backtest"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5.8 1.8h4.4M6.3 1.8v4L2.9 12a1.9 1.9 0 0 0 1.7 2.8h6.8A1.9 1.9 0 0 0 13.1 12L9.7 5.8v-4M4.4 9.6h7.2"/></svg></button>
+    <button data-go="rail-econ" class="tr-btn" title="Economic"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="6.1"/><path d="M1.9 8h12.2M8 1.9c2.4 2.6 2.4 9.6 0 12.2M8 1.9c-2.4 2.6-2.4 9.6 0 12.2"/></svg></button>
+    <button data-go="rail-workspace" class="tr-btn" title="Workspace"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.2 1.9 8 5 11.8M11 4.2 14.1 8 11 11.8"/></svg></button>
+    <button data-go="rail-research" class="tr-btn" title="Research"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1.8h5.4L13 5.4v8.8H4zM9.4 1.8v3.6H13M6.2 8h3.6M6.2 10.6h3.6"/></svg></button>
+    <span class="tr-spacer"></span>
+    <button id="tr-theme" class="tr-btn" title="Theme"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M12.6 3.4l-1.4 1.4M4.8 11.2l-1.4 1.4"/></svg></button>
+  </aside>
   <aside id="side">
     <!-- No LAYOUTS zone here: saved chart setups live only in the chart's
          right-click "Chart template" menu (a second
@@ -331,6 +343,11 @@ def my_ind(df, length=20):
       <span class="ih-kv"><i>24H VOL</i><b id="ih-vol">–</b></span>
     </div>
     <div id="mtf-ribbon" title="Trend per timeframe: close vs 20-bar mean of real candles"></div>
+    <!-- Regime ribbon: bull/bear/sideways segments classified from real 1h
+         candles (SMA20 vs SMA50 vs close), 10-bar windows. -->
+    <div id="regime-ribbon" title="Regime over the last 140 hourly bars">
+      <i>REGIME</i><span id="rr-cells"></span>
+    </div>
     <div id="ind-active"></div>
     <div id="chart-wrap">
       <div id="legend"></div>
@@ -341,6 +358,13 @@ def my_ind(df, length=20):
       <div id="chart" class="hidden"></div>
     </div>
     <div id="panes"></div>
+    <!-- FLOW HEAT: time x price density of REAL stream prints (buy pressure
+         orange? no: buys green-warm, sells blue-cold per the reference's
+         heat strip). Additive pane under the chart stack. -->
+    <div id="flow-heat-wrap">
+      <div class="fh-head"><span>DEPTH HEAT · live prints</span><span id="fh-win"></span></div>
+      <canvas id="flow-heat" height="84"></canvas>
+    </div>
     <!-- Account dock: MT-style strip under the chart.
          Summary row (balance, equity, P&L, margin) + Positions/History tabs,
          fed by the same /api/sim/* polling as the right-rail ticket. Shown
