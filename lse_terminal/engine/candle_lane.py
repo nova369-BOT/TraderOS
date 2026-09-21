@@ -22,6 +22,16 @@ One lane per (provider, symbol, native-kline timeframe):
 - Staleness honesty: if no kline event has landed for a whole interval,
   one small tail refetch heals it — a silently dead stream never serves
   frozen bars forever.
+- Dead-stream truth (owner 2026-09-21: "coinbase is showing up and down
+  fast movement of candle but binance is just stiff"): when the network
+  kills the venue's OWN kline socket (his egress refuses the Binance WS
+  dial; Coinbase's connects), heal-on-request alone freezes the forming
+  bar between the 30s tail floors while a streamed venue animates. So a
+  lane whose stream is NOT healthy keeps the forming bar alive with one
+  tiny repair fetch (limit=2 bars, weight ~1) every few seconds — and
+  stops the moment a real kline event lands. The stream remains the
+  law; the repair poll is only ever its temporary substitute, and the
+  route stamps the mode on a header so nothing is silent.
 
 Tick and <n>s lanes are untouched (those bars come from the venue trade
 tape, which is the law: there are no sub-minute klines to subscribe).
@@ -42,6 +52,10 @@ _DEPTH_CAP = 5600           # 5000-bar client loads plus forming margin
 _STALE_AFTER_MULT = 2       # intervals of stream silence that heal
 _STALE_FLOOR_S = 30.0       # never refresh tails faster than this
 _TAIL_REFETCH_MAX = 250     # venue-cheap tail window
+_REPAIR_POLL_S = 3.0        # dead-stream repair cadence (weight ~1/poll)
+_REPAIR_GRACE_S = 15.0      # never-born stream gets this dial window first
+_REPAIR_ERR_BACKOFF_S = 30.0  # a refused repair poll waits this long
+_DIAL_BACKOFF_S = 30.0      # a failed WS dial is not re-tried inside this
 
 
 class CandleLane:
@@ -58,6 +72,9 @@ class CandleLane:
         self._asked_low = None           # deepest ts the VENUE was asked
         self._born = wall()              # first frame = lane's birth
         self._last_ws_event = None       # wall clock of last stream frame
+        self._last_repair = 0.0          # wall clock of last repair merge
+        self._next_dial_wall = 0.0       # WS redial gate (failed dials)
+        self._repair_note = ""           # last repair refusal, surfaced
         self._last_tail_refetch = 0.0
 
     # -- stream side ---------------------------------------------------
@@ -84,9 +101,58 @@ class CandleLane:
                 for old_ts in sorted(self._rows)[:excess]:
                     del self._rows[old_ts]
 
+    def _horizon(self) -> float:
+        return max(_STALE_FLOOR_S, _STALE_AFTER_MULT * self.tf_s)
+
+    def stream_healthy(self) -> bool:
+        """The venue's own kline socket is delivering (event within one
+        staleness horizon). Never-born streams are NOT healthy — health
+        is earned by the first event, not assumed from a dial."""
+        if self._last_ws_event is None:
+            return False
+        return (self._wall() - self._last_ws_event) <= self._horizon()
+
+    def needs_repair(self) -> bool:
+        """Repair-poll activation law: a stream that never delivered
+        gets one short dial grace (a slow connect is not a corpse), then
+        the forming bar is kept alive by tiny REST tails; a stream that
+        died mid-flight re-earns repair after the full horizon. The
+        instant any event lands, health returns and repair rests."""
+        wall = self._wall()
+        if self._last_ws_event is None:
+            return (wall - self._born) > _REPAIR_GRACE_S
+        return (wall - self._last_ws_event) > self._horizon()
+
+    def repair_tick(self) -> bool:
+        """ONE venue-cheap tail fetch (limit=2: last closed + forming)
+        merged onto the cache. Returns False with a logged note on
+        refusal — the cache keeps serving (the same survival law as the
+        request-side tail refetch); the mode flip rides the response
+        header, so the substitute is never silent."""
+        try:
+            df = self.provider.candles(self.symbol, self.timeframe,
+                                       limit=2)
+        except Exception as e:  # noqa: BLE001 - survival law, noted
+            self._repair_note = f"{type(e).__name__}: {e}"[:200]
+            return False
+        self._merge_df(df)
+        self._last_repair = self._wall()
+        self._repair_note = ""
+        return True
+
+    def current_mode(self) -> str:
+        """What the pane badge/header reports: 'stream' when the venue
+        socket is feeding, 'rest-repair' while the repair poll is the
+        only thing keeping the bar alive, 'degraded' when neither is."""
+        if self.stream_healthy():
+            return "stream"
+        if self._last_repair and \
+                (self._wall() - self._last_repair) <= 4 * _REPAIR_POLL_S:
+            return "rest-repair"
+        return "degraded"
+
     def _stale(self) -> bool:
-        horizon = max(_STALE_FLOOR_S,
-                      _STALE_AFTER_MULT * self.tf_s)
+        horizon = self._horizon()
         if self._last_ws_event is None:
             # A stream that NEVER arrived (geo-blocked WS dial, a slow
             # death the reconnect law is still fighting): after the same
@@ -252,12 +318,21 @@ class CandleLaneManager:
             return provider.candles(symbol, timeframe, limit=limit,
                                     start=start, end=end)
         self._ensure_stream(lane)
+        self._ensure_repair(lane)
         return lane.frame(limit, start=start, end=end)
+
+    def mode_of(self, provider, symbol: str, timeframe: str):
+        """Response-header truth: the lane's live mode, or None when the
+        provider has no candle stream at all (plain passthrough)."""
+        lane = self.lane_for(provider, symbol, timeframe)
+        return lane.current_mode() if lane is not None else None
 
     def _ensure_stream(self, lane: CandleLane) -> None:
         with self._lock:
             if getattr(lane, "_streaming", False) or self._loop is None:
                 return
+            if lane._wall() < lane._next_dial_wall:
+                return               # a dead dial cools down, no spin
             lane._streaming = True
         loop = self._loop
         loop.call_soon_threadsafe(self._start_stream, lane)
@@ -281,6 +356,48 @@ class CandleLaneManager:
         finally:
             with self._lock:
                 lane._streaming = False
+            # A dial that died re-earns its attempt after a cool-down,
+            # not on the next UI paint — no refused-socket spin.
+            lane._next_dial_wall = lane._wall() + _DIAL_BACKOFF_S
+
+    # -- dead-stream repair (owner's "binance is stiff but coinbase
+    #    moves" report, 2026-09-21) --------------------------------------
+
+    def _ensure_repair(self, lane: CandleLane) -> None:
+        with self._lock:
+            if getattr(lane, "_repair_running", False) or \
+                    self._loop is None:
+                return
+            lane._repair_running = True
+        self._loop.call_soon_threadsafe(self._start_repair, lane)
+
+    def _start_repair(self, lane: CandleLane) -> None:
+        asyncio.ensure_future(self._repair_loop(lane))
+
+    async def _repair_loop(self, lane: CandleLane) -> None:
+        """Keeps the forming bar moving while the venue's OWN kline
+        socket is unusable: one 2-bar tail fetch every _REPAIR_POLL_S,
+        off the event loop (a blocking REST poll must never stall WS
+        clients). Self-terminates the moment a real kline event makes
+        the lane healthy again — the stream is the law, this is only
+        its honest substitute (stamped `rest-repair` on the header)."""
+        try:
+            while True:
+                if not lane.needs_repair():
+                    return        # stream alive — venue law resumes
+                ok = await self._loop.run_in_executor(
+                    None, lane.repair_tick)
+                if ok:
+                    await asyncio.sleep(_REPAIR_POLL_S)
+                else:
+                    await asyncio.sleep(_REPAIR_ERR_BACKOFF_S)
+        except asyncio.CancelledError:
+            raise
+        except Exception:  # noqa: BLE001 - repair dies quietly, re-armed
+            pass                 # by the next request (not silent: the
+        finally:                 # mode header reports what is live)
+            with self._lock:
+                lane._repair_running = False
 
 
 CANDLE_LANES = CandleLaneManager()

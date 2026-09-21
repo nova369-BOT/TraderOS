@@ -371,3 +371,136 @@ def test_never_streamed_lane_inside_grace_serves_cache_quietly():
     wall.tick(10)                                          # inside grace
     lane.frame(100, clock=lambda: NOW + 60)
     assert prov.calls == [(100, None, None)]               # zero extra
+
+
+# ── D22: dead stream ≠ frozen pane (owner 2026-09-21: "coinbase is showing
+# up and down fast movement of candle but binance is just stiff") ─────────
+
+import lse_terminal.engine.candle_lane as _cl
+
+
+class _DeadStreamProvider(_StubProvider):
+    """A provider whose venue WS is unreachable from this egress (the
+    owner's machine vs Binance): the dial refuses immediately, forever."""
+
+    def candle_stream(self, symbols, timeframe):
+        self.streams_started += 1
+        raise ConnectionRefusedError("venue ws dial refused")
+
+
+def test_dead_stream_repair_keeps_forming_bar_moving_until_stream_heals():
+    # Venue grid: closed bars up to NOW-60 + a forming bar at NOW.
+    t0 = NOW - 300 * 60
+    stub = _StubProvider(_rows(300, t0=t0, price=50000.0) +
+                         [[NOW, 50301.0, 50302.0, 50300.5, 50301.0, 9.0]],
+                         tf_s=60)
+    stub.__class__ = _DeadStreamProvider      # make the dial dead
+    clock = _Wall(); clock.now = 0.0
+    lane = CandleLane(stub, "BTCUSDT", "1m", 60, wall=clock)
+
+    # Cold serve = the exact REST backfill; one call, never re-run.
+    cold = lane.frame(5000, clock=lambda: NOW + 1)
+    assert len(cold) == 301 and stub.calls == [(5000, None, None)]
+
+    # Inside the dial grace the lane is a dialing socket, not a corpse.
+    assert not lane.needs_repair()
+    assert lane.current_mode() == "degraded"
+    clock.tick(_cl._REPAIR_GRACE_S + 1)
+    assert lane.needs_repair()               # dead from birth → repair
+
+    # The venue moves; the repair poll must make the cache move with it
+    # using 2-bar tail fetches only — never a reload.
+    stub.rows[-1][4] = 50355.0               # venue forming close moved
+    assert lane.repair_tick()
+    assert stub.calls[-1] == (2, None, None)
+    assert len(stub.calls) == 2
+    warm = lane.frame(10, clock=lambda: NOW + 1)
+    assert len(stub.calls) == 2              # warm serve: zero REST
+    assert warm.iloc[-1]["close"] == 50355.0
+    assert lane.current_mode() == "rest-repair"
+
+    # Second tick also moves (up-and-down motion, not a one-off heal).
+    stub.rows[-1][4] = 50290.0
+    assert lane.repair_tick()
+    assert lane.frame(10, clock=lambda: NOW + 1).iloc[-1]["close"] == 50290.0
+
+    # The venue socket comes back to life → stream is the law again:
+    # repair rests, mode reports stream, warm serves stay zero-weight.
+    lane.apply_ws({"symbol": "BTCUSDT", "timeframe": "1m", "ts": NOW,
+                   "open": 50301.0, "high": 50400.0, "low": 50280.0,
+                   "close": 50399.0, "volume": 10.0})
+    assert lane.stream_healthy()
+    assert not lane.needs_repair()
+    assert lane.current_mode() == "stream"
+    n_calls = len(stub.calls)
+    assert lane.frame(10, clock=lambda: NOW + 1).iloc[-1]["close"] == 50399.0
+    assert len(stub.calls) == n_calls
+
+
+def test_repair_refusal_is_noted_not_swallowed_and_recovers():
+    stub = _StubProvider(_rows(300, t0=NOW - 300 * 60, price=1.0) +
+                         [[NOW, 301.0, 302.0, 300.0, 301.0, 1.0]])
+    clock = _Wall(); clock.now = _cl._REPAIR_GRACE_S + 1
+    lane = CandleLane(stub, "BTCUSDT", "1m", 60, wall=clock)
+    stub.raise_on = RuntimeError("429 slow down")
+    assert not lane.repair_tick()
+    assert "429" in lane._repair_note
+    assert lane.current_mode() == "degraded"  # refused poll ≠ repair
+    stub.raise_on = None
+    stub.rows[-1][4] = 350.0
+    assert lane.repair_tick()
+    assert lane._repair_note == ""
+    assert lane.current_mode() == "rest-repair"
+
+
+def test_repair_loop_polls_while_dead_and_self_terminates_on_health(
+        monkeypatch):
+    monkeypatch.setattr(_cl, "_REPAIR_POLL_S", 0.02)
+    monkeypatch.setattr(_cl, "_REPAIR_ERR_BACKOFF_S", 0.02)
+    stub = _StubProvider(_rows(300, t0=NOW - 300 * 60, price=5.0) +
+                         [[NOW, 306.0, 306.5, 305.5, 306.0, 1.0]])
+    stub.__class__ = _DeadStreamProvider
+
+    async def _run():
+        mgr = CandleLaneManager()
+        mgr.attach_loop(asyncio.get_running_loop())
+        lane = CandleLane(stub, "BTCUSDT", "1m", 60)
+        lane._born = lane._wall() - 999      # past the dial grace
+        mgr._ensure_repair(lane)
+        await asyncio.sleep(0.15)            # several polls should land
+        polls = len([c for c in stub.calls if c[0] == 2])
+        assert polls >= 2                    # motion is periodic, 2-bar
+        assert lane.current_mode() == "rest-repair"
+        # A real kline event arrives: the loop must stop on its own.
+        lane.apply_ws({"symbol": "BTCUSDT", "timeframe": "1m", "ts": NOW,
+                       "open": 306.0, "high": 307.0, "low": 305.0,
+                       "close": 306.9, "volume": 2.0})
+        await asyncio.sleep(0.1)
+        assert getattr(lane, "_repair_running", False) is False
+        calls_at_stop = len(stub.calls)
+        await asyncio.sleep(0.1)
+        assert len(stub.calls) == calls_at_stop   # truly stopped
+    asyncio.run(_run())
+
+
+def test_failed_ws_dial_backs_off_instead_of_spinning():
+    stub = _StubProvider(_rows(300, t0=NOW - 300 * 60))
+    stub.__class__ = _DeadStreamProvider
+
+    async def _run():
+        mgr = CandleLaneManager()
+        mgr.attach_loop(asyncio.get_running_loop())
+        p = stub
+        mgr.frame(p, "BTCUSDT", "1m", limit=10)      # cold + arm stream
+        await asyncio.sleep(0.05)                    # dial ran + died
+        await asyncio.sleep(0.05)
+        assert stub.streams_started == 1
+        mgr._ensure_stream(mgr.lane_for(p, "BTCUSDT", "1m"))
+        await asyncio.sleep(0.05)
+        assert stub.streams_started == 1             # gate: no redial spin
+        lane = mgr.lane_for(p, "BTCUSDT", "1m")
+        lane._next_dial_wall = 0.0                    # cool-down elapsed
+        mgr._ensure_stream(lane)
+        await asyncio.sleep(0.05)
+        assert stub.streams_started == 2             # retries DO resume
+    asyncio.run(_run())

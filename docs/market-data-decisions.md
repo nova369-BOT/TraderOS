@@ -451,3 +451,46 @@ to keep alive per pane, by design, never trimmed silently.
 Sub-minute lanes ride serial venue-cursor pages by law on both venues
 (Coinbase's pages are structurally fewer per load).
 Suite: **274 passed / 1 skipped**; tsc clean; bundle rebuilt+served.
+
+### D22 — dead stream ≠ frozen pane: repair poll for never-born kline streams (2026-09-21)
+
+Owner: "coinbase is showing up and down fast movement of candle but binance
+is just stiff on 834…". Diagnosis: his egress refuses the Binance venue WS
+dial while Coinbase's connects — so the Coinbase lane's own stream keeps
+mutating its cached forming bar (what Tailwind sees between its 10s pane
+pulls), while the Binance lane's never-born stream left its cache frozen
+between the 30s tail-refetch floors. Not a render problem at all.
+
+**The law added (engine/candle_lane.py, all clauses pinned):**
+- **Repair poll**: a lane whose stream is NOT healthy keeps the forming bar
+  alive with ONE venue-cheap tail fetch (limit=2: last closed + forming,
+  weight ~1) every `_REPAIR_POLL_S=3s`, run off the event loop. Never-born
+  streams get a `_REPAIR_GRACE_S=15s` dial window first (a slow connect is
+  not a corpse); a mid-flight death re-earns repair after the full
+  2-interval horizon. The instant ANY kline event lands, repair
+  self-terminates — the venue's own stream remains the law; the poll is
+  only ever its temporary substitute (the venue's 429 guidance is about
+  bulk polling, not a 2-bar pulse).
+- **No spin**: a failed WS dial cools down 30s before its next attempt
+  (it still retries forever — the stream is preferred), and a refused
+  repair poll backs off 30s with the refusal noted.
+- **Nothing silent**: `/api/candles` stamps `X-Candle-Lane:
+  stream|rest-repair|degraded` (plus `X-Candle-Lane-Repair-Note` on a
+  refusal), so the client can see exactly whose data is live.
+- **Unchanged**: request-side staleness heal (gap-sized, floor 30s),
+  cold backfill bytes, refusals surfacing verbatim, tick/<n>s lanes
+  (venue tape law), and the Binance-vs-Coinbase depth asymmetry (5000
+  bars legal vs Coinbase's 1500 venue cap — never trimmed).
+
+Runtime proof (fake venues): with BINANCE_WS on a dead port, header flips
+`degraded → rest-repair` after the dial grace and the forming bar accrues
+between 4s-spaced pulls (vol 1.911→2.037→2.289→2.415) at ~1 REST hit/3s,
+zero kline-stream clients; with the WS up, header flips to `stream` after
+the first venue frame and REST hits go idle (zero-weight law intact).
+Suite: **278 passed / 1 skipped**.
+
+**What changes for the owner on his machine:** Binance panes now animate
+like Coinbase's — the forming bar moves at repair cadence (the visible
+rate stays bounded by the pane's own refresh timer, same as Coinbase).
+The moment his network ever lets the Binance kline socket through, the
+pane switches to venue-stream truth and the header says so.

@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, Response, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import (FileResponse, RedirectResponse, Response,
                             StreamingResponse)
 from fastapi.middleware.gzip import GZipMiddleware
@@ -800,9 +800,10 @@ def create_app() -> FastAPI:
             return {}
 
     @app.get("/api/candles")
-    def candles(provider: str, symbol: str, timeframe: str = "1h",
-                limit: int = 5000, indicators: str = "",
-                start: str | None = None, end: str | None = None):
+    def candles(response: Response, provider: str, symbol: str,
+                timeframe: str = "1h", limit: int = 5000,
+                indicators: str = "", start: str | None = None,
+                end: str | None = None):
         def _window(v):
             # The shell sends start/end as epoch seconds (ints on klines
             # books, fractions on tick — same-second prints are distinct
@@ -831,6 +832,18 @@ def create_app() -> FastAPI:
                                     limit=min(int(limit), 5000),
                                     start=_window(start),
                                     end=_window(end))
+            # Live-mode honesty on the wire: a dead venue kline socket
+            # makes the lane keep the forming bar alive with tiny REST
+            # tail polls — the client must be able to SEE that this is
+            # the substitute, not the venue's own stream (owner's
+            # "coinbase moves, binance is stiff" report, D22).
+            mode = CANDLE_LANES.mode_of(p, symbol, timeframe)
+            if mode is not None:
+                response.headers["X-Candle-Lane"] = mode
+                note = getattr(CANDLE_LANES.lane_for(p, symbol, timeframe),
+                               "_repair_note", "")
+                if note:
+                    response.headers["X-Candle-Lane-Repair-Note"] = note
         except ValueError as e:
             raise HTTPException(404, str(e))
         except Exception as e:
