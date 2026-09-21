@@ -11,32 +11,36 @@
    tokens key off the same class; the calendar reads these same vars). Never
    hardcode a hex below the two palette blocks. */
 :root {
-  /* CARBON INSTITUTIONAL (2026-09-21, owner: "interactive and professional,
-     this is serious — users' investments"). Bloomberg-lineage discipline on
-     modern tokens: near-black layered carbon, exact 1px borders, amber as
-     the ONLY chrome voice (selection/command/active), teal/rose reserved
-     for market direction. Density scale (--t-*) unchanged above. */
-  --bg: #0b0c0e; --panel: #121316; --edge: #2a2d31;
+  /* QUANTUM-GRADE INSTITUTIONAL (2026-09-21, owner reference: modern
+     banking-terminal screenshot — "some like this but more advanced").
+     Layered near-black neutrals with ONE violet chrome voice; green/red
+     reserved for market direction; panels are bordered cards on the app
+     ground; sans chrome + mono data field. Density scale (--t-*) kept. */
+  --bg: #0a0a0c; --panel: #131317; --edge: #26262d;
   /* Machined top edge for major surfaces; invisible in light theme. */
-  --hairline: rgba(255, 255, 255, .045);
-  --text: #d6d9dc; --dim: #969ca3; --up: #21b3a4; --down: #f0426c;
-  /* Amber: selection, active tab, command cursor, focus. The phosphor
-     proven softer on the eye for all-day sessions. */
-  --amber: #ffb000;
+  --hairline: rgba(255, 255, 255, .05);
+  --text: #e6e6ea; --dim: #8f909a; --up: #22c55e; --down: #f6465d;
+  /* Violet: the single chrome voice (active nav, selection, focus).
+     --amber survives as the WARN hue only (slow-feed LED). */
+  --amber: #f5a524;
+  --accent: #8b5cf6; --accent-2: #a78bfa;
+  --accent-soft: rgba(139, 92, 246, .16);
+  --accent-edge: rgba(139, 92, 246, .45);
+  --sans: Inter, "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   /* The brand mark's own two candles (public/lse-favicon.svg): a navy down
      candle and a green up candle. The navy is #1a1a2e, which is invisible on
      this near-black panel, so the dark theme keeps the brand green and draws
      the other candle in the panel's ink. The logo's SHAPE is what identifies
      it; a candle nobody can see identifies nothing. */
   --logo-up: #2E7D32; --logo-down: #e8e8e8;
-  --bg2: #0e0f11;          /* code wells, previews */
-  --hover: #1a1b1e;        /* card + row hover fills */
-  --active: #202226;       /* selected rows, active-surface grey */
-  --quote: #17181b;        /* the user's chat turn */
-  --item: #191b1e;         /* keybar, list items */
-  --raise: #26292e; --raise-h: #30343a;   /* primary (Run/OK) buttons */
-  --line-strong: #3a3f45;  /* focus borders, login card border */
-  --accent-bar: var(--amber); /* active tab underline / selected row bar */
+  --bg2: #0e0e11;          /* topbar band, code wells, previews */
+  --hover: #1a1922;        /* card + row hover fills (violet-tinted) */
+  --active: #221f2e;       /* selected rows, active-surface */
+  --quote: #17161c;        /* the user's chat turn */
+  --item: #191821;         /* keybar, list items */
+  --raise: #26242e; --raise-h: #302d3a;   /* primary (Run/OK) buttons */
+  --line-strong: #6d5bd0;  /* focus borders, login card border */
+  --accent-bar: var(--accent); /* active tab underline / selected row bar */
   --title: #8b9096;        /* section + table headers, Workspace col-header grey */
   --dash: #3a3f45;         /* dashed drop-zone border */
   --scroll: #2a2d31; --scroll-h: #3a3f45; /* neutral scrollbar thumbs */
@@ -55,21 +59,24 @@ html:not(.dark) {
   /* LIGHT: same zinc discipline on paper-gray surfaces; up/down darkened two
      steps so quote colors keep contrast on white. */
   /* PAPER INSTITUTIONAL: white panes on cool paper, same discipline; the
-     amber darkens to keep ≥4.5:1 as a chrome voice on light. */
+     violet darkens to keep ≥4.5:1 as a chrome voice on light. */
   --bg: #eef0f2; --panel: #ffffff; --edge: #d5d9de;
   --hairline: rgba(255, 255, 255, 0);
-  --text: #16181b; --dim: #565c63; --up: #0d8a7d; --down: #d22b57;
-  --amber: #a86400;
+  --text: #16181b; --dim: #565c63; --up: #16a34a; --down: #dc2626;
+  --amber: #b45309;
+  --accent: #6d28d9; --accent-2: #7c3aed;
+  --accent-soft: rgba(109, 40, 217, .10);
+  --accent-edge: rgba(109, 40, 217, .40);
   /* On light, both brand colours are exactly the logo's. */
   --logo-up: #2E7D32; --logo-down: #1a1a2e;
   --bg2: #f0f1f4;
-  --hover: #eef0f3;
-  --active: #e8eaee;
+  --hover: #edeef6;
+  --active: #e9e6f6;
   --quote: #f0f1f4;
   --item: #eef0f3;
   --raise: #e8eaee; --raise-h: #dcdfe4;
-  --line-strong: #c6cad1;
-  --accent-bar: var(--amber);
+  --line-strong: #7c6ce0;
+  --accent-bar: var(--accent);
   --title: #43474e;
   --dash: #c9cdd3;
   --scroll: #c9ccd2; --scroll-h: #b3b8bf;
@@ -3888,3 +3895,112 @@ html:not(.dark) #gd-side {
   cursor: pointer; margin-left: auto;
 }
 #scr-card-chart:hover { background: var(--edge); }
+
+/* ── QUANTUM-GRADE INSTITUTIONAL SHELL (2026-09-21) ──────────────────
+   Owner reference: a modern institutional banking terminal — layered
+   near-black ground, bordered card panels, left icon nav with nested
+   sub-views, breadcrumb command bar, one violet chrome voice, sans
+   chrome with a mono data field. This block re-skins the shell ONLY;
+   every id, handler, endpoint and the density system are untouched.
+   Later in the file, so it wins the cascade over the old horizontal
+   rail / flat chrome without deleting any of it (reversible). */
+body {
+  display: grid;
+  grid-template-columns: 224px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas: "rail head" "rail main" "rail foot";
+  font-family: var(--sans);
+}
+body.railfold { grid-template-columns: 0 1fr; }
+body.railfold #navrail { display: none; }
+select, input, button { border-radius: 6px; }
+::selection { background: var(--accent-soft); }
+
+/* Left rail */
+#navrail {
+  grid-area: rail; display: flex; flex-direction: column; min-height: 0;
+  background: var(--bg2); border-right: 1px solid var(--edge);
+}
+#brand { display: flex; align-items: center; gap: 9px; padding: 12px 12px 10px; }
+#brand-mark { width: 22px; height: 22px; flex: none; }
+#brand-txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+#brand-name { font-size: var(--t-lg); font-weight: 700; letter-spacing: .08em; color: var(--text); }
+#brand-sub { font-size: var(--t-2xs); color: var(--dim); letter-spacing: .05em; white-space: nowrap; }
+#navsearch { padding: 0 10px 10px; }
+#navsearch #symbol {
+  width: 100%; margin: 0; background: var(--bg); border: 1px solid var(--edge);
+  border-radius: 6px; padding: 5px 9px; color: var(--text); font-size: var(--t-sm);
+}
+#navsearch #symbol:focus { outline: none; border-color: var(--accent-edge); }
+#rail { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; overflow-y: auto; }
+#rail .rail-btn {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  background: none; border: none; border-left: 2px solid transparent;
+  border-radius: 6px; color: var(--dim); font-size: var(--t-sm); font-weight: 600;
+  letter-spacing: .05em; padding: 6px 9px; text-align: left;
+}
+#rail .rail-btn svg { width: 15px; height: 15px; flex: none; opacity: .9; }
+#rail .rail-btn span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#rail .rail-btn:hover { color: var(--text); background: var(--hover); }
+#rail .rail-btn.active {
+  color: var(--text); background: var(--accent-soft); border-left-color: var(--accent);
+}
+#rail .rail-btn.active svg { color: var(--accent-2); opacity: 1; }
+#rail .rail-btn.active::after {
+  content: ""; width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px var(--accent-edge);
+}
+/* Sub-views nest under the active section (shell observer in app.js). */
+#subrail {
+  display: flex; flex-direction: column; gap: 1px; justify-content: flex-start;
+  padding: 2px 8px 8px; border-bottom: none;
+}
+#subrail.hidden { display: none; }
+.subrail-btn {
+  background: none; border: none; border-left: 2px solid transparent; border-radius: 6px;
+  color: var(--dim); font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; padding: 4px 8px 4px 31px; text-align: left;
+}
+.subrail-btn:hover { color: var(--text); background: var(--hover); }
+.subrail-btn.active { color: var(--text); background: var(--active); border-left-color: var(--accent-bar); }
+
+/* Topbar: hamburger + breadcrumb left, connection + cluster right */
+header { grid-area: head; }
+#topline { display: flex; align-items: center; gap: 10px; padding: 6px 12px; }
+#navfold {
+  display: inline-flex; align-items: center; background: none; border: none;
+  color: var(--dim); padding: 4px 6px; border-radius: 6px;
+}
+#navfold:hover { color: var(--text); background: var(--hover); }
+#crumbs {
+  display: flex; align-items: center; gap: 7px; min-width: 0;
+  font-size: var(--t-sm); color: var(--dim); white-space: nowrap; overflow: hidden;
+}
+#crumbs .cr-home { color: var(--accent-2); font-weight: 600; }
+#crumbs .cr-sep { opacity: .55; }
+#crumbs .cr-cur { color: var(--text); font-weight: 600; }
+#connline { margin-left: auto; }
+#controls { padding: 5px 12px 7px; gap: 6px; }
+#controls > button { border-radius: 6px; padding: 3px 9px; }
+nav#timeframes button { border-radius: 4px; padding: 2px 8px; }
+/* Active timeframe reads as the reference's inverted light pill. */
+nav#timeframes button.active { background: #e8e8ee; color: #101014; font-weight: 600; }
+html:not(.dark) nav#timeframes button.active { background: #16181b; color: #f4f4f6; }
+
+/* Workspace: card panels on the app ground */
+main { grid-area: main; padding: 10px; gap: 10px; background: var(--bg); }
+main > aside, main > section {
+  background: var(--panel); border: 1px solid var(--edge);
+  border-radius: 10px; overflow: hidden;
+}
+aside#side { border-right: none; }
+aside#ai-rail, aside#l3-rail { border-left: none; }
+
+/* Feed-health strip keeps its honesty, gets the band ground + mono. */
+#statusbar { grid-area: foot; background: var(--bg2); font-family: var(--mono); }
+
+/* Live-surface recolor: green/red now match the data palette. */
+@keyframes tickUp { from { background: rgba(34, 197, 94, .28); } to { background: transparent; } }
+@keyframes tickDown { from { background: rgba(246, 70, 93, .28); } to { background: transparent; } }
+.wrow:hover { background: var(--hover); }
+.wrow.active { border-left-color: var(--accent-bar); background: var(--accent-soft); }

@@ -17604,3 +17604,45 @@ function scrShowCard(r) {
   }
   back.classList.remove("hidden");
 }
+
+/* ── QUANTUM-GRADE SHELL (2026-09-21) ─────────────────────────────────
+   Left navigation rail support: nests #subrail under the active section
+   button, mirrors the active path into the header breadcrumb, and folds
+   the rail from the hamburger. Purely additive: it only watches the
+   existing .active classes the rail handlers already maintain, and moves
+   #subrail (an id-addressed node) without touching any handler. */
+(function () {
+  var rail = document.getElementById("rail");
+  var sub = document.getElementById("subrail");
+  var crumbs = document.getElementById("crumbs");
+  var fold = document.getElementById("navfold");
+  if (!rail || !crumbs) return;
+  function sync() {
+    var a = rail.querySelector(".rail-btn.active");
+    if (a && sub && sub.previousElementSibling !== a) a.insertAdjacentElement("afterend", sub);
+    crumbs.textContent = "";
+    function part(cls, txt) {
+      var s = document.createElement("span"); s.className = cls; s.textContent = txt;
+      crumbs.appendChild(s);
+    }
+    part("cr-home", "Home");
+    if (a) {
+      part("cr-sep", "/");
+      part("cr-cur", a.textContent.trim());
+      if (sub && !sub.classList.contains("hidden")) {
+        var sb = sub.querySelector(".subrail-btn.active");
+        if (sb) { part("cr-sep", "/"); part("cr-sub", sb.textContent.trim()); }
+      }
+    }
+  }
+  new MutationObserver(sync).observe(rail, {
+    subtree: true, childList: true, attributes: true, attributeFilter: ["class"],
+  });
+  if (sub) new MutationObserver(sync).observe(sub, {
+    subtree: true, attributes: true, attributeFilter: ["class"],
+  });
+  if (fold) fold.addEventListener("click", function () {
+    document.body.classList.toggle("railfold");
+  });
+  sync();
+})();

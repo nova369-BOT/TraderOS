@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-21 (same day):** owner provided a reference screenshot of a modern institutional banking terminal ("some like this but more advanced"). The live identity is now QUANTUM-GRADE INSTITUTIONAL — see QUANTUM-PASS.md. EDGE's copper-on-navy accent/ground/motifs are retired; its discipline (AA, data-only green/red, calm motion, no CDN fonts) carries over.
+
 # EDGE identity — the unique direction
 
 **Date:** 2026-09-21 · **Status:** PROPOSAL (owner: "more unique, this looks vibe-coded;
