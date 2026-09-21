@@ -38,7 +38,7 @@ Download the app, open it, and it works with the ten sample datasets that ship i
 
 ## The layout
 
-The left navigation rail holds the brand, the symbol search and the five section tabs; the active section's sub views nest beneath it and the header breadcrumb mirrors the path (Home / section / sub view); the hamburger folds the rail. The header holds the breadcrumb, the connection control, then TERMINAL WALKTHROUGH and MY DATA on the right, the update button and the theme toggle; the left column is the watchlist or the file library; the right rail is the assistant.
+The header carries the brand at the left, the five section tabs across the top (active tab underlined), then the connection control and status on the right with TERMINAL WALKTHROUGH, MY DATA, the update button and the theme toggle; a second row lists the active tab's sub views; the symbol search sits in the chart toolbar; the left column is the watchlist or the file library; the right rail is the assistant.
 
 - **Connection control (top left).** Shows the active data connection ("Live data" or "No data key") and the connected broker. Click it to open the Connections screen (see Connections and keys).
 - **Rail tabs.** MARKETS, BACKTEST, ECONOMIC, WORKSPACE, RESEARCH. Each tab is a page; the secondary bar under the rail carries its sub views (for example MARKETS has PRICE & CHARTS, OPTIONS, NEWS, SCREENER).

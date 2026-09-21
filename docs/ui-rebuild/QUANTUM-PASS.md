@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-21 (same day):** owner chose their own mock — see NAVY-PASS.md. Navy ground + violet chrome + top section tabs replace slate/electric-blue + left icon rail.
+
 # QUANTUM-GRADE INSTITUTIONAL PASS — live shell re-skin (2026-09-21)
 
 Owner directive (with reference screenshot of a modern institutional

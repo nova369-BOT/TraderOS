@@ -4004,3 +4004,97 @@ aside#ai-rail, aside#l3-rail { border-left: none; }
 @keyframes tickDown { from { background: rgba(246, 70, 93, .28); } to { background: transparent; } }
 .wrow:hover { background: var(--hover); }
 .wrow.active { border-left-color: var(--accent-bar); background: var(--accent-soft); }
+
+/* ── LSE NAVY QUANT PASS (2026-09-21, owner's chosen reference: "THIS") ──
+   Deep navy ground, violet the single chrome voice, blue secondary,
+   green/red data-only; horizontal section tabs under the brand like the
+   owner's mock; sans chrome + mono numerals. Supersedes the quantum
+   violet-on-slate and the left navrail (DOM restored to top tabs).
+   Tokens + appended cascade only: ids, handlers, endpoints untouched. */
+:root {
+  --bg: #04060c; --panel: #0a0e1a; --edge: #1b2436;
+  --hairline: rgba(148, 163, 255, .06);
+  --text: #e6ebf5; --dim: #8b94a7; --up: #2fd08a; --down: #ff5c7a;
+  --amber: #f5a524;
+  --accent: #7c5cff; --accent-2: #5ea2ff;
+  --accent-soft: rgba(124, 92, 255, .16);
+  --accent-edge: rgba(124, 92, 255, .5);
+  --logo-up: #2fd08a; --logo-down: #7c5cff;
+  --bg2: #070b14;
+  --hover: #101828;
+  --active: #141c30;
+  --quote: #0d1322;
+  --item: #0e1524;
+  --raise: #1a2136; --raise-h: #232c47;
+  --line-strong: #7c5cff;
+  --title: #8b94a7;
+  --dash: #2a3550;
+  --scroll: #1b2436; --scroll-h: #2a3550;
+}
+html:not(.dark) {
+  --bg: #eef0f6; --panel: #ffffff; --edge: #d5d9e6;
+  --text: #14161b; --dim: #565c6b; --up: #16a34a; --down: #dc2626;
+  --accent: #6d28d9; --accent-2: #2563eb;
+  --accent-soft: rgba(109, 40, 217, .10);
+  --accent-edge: rgba(109, 40, 217, .40);
+  --logo-up: #16a34a; --logo-down: #6d28d9;
+  --bg2: #f0f1f8; --hover: #edeef8; --active: #e9e6f8;
+  --quote: #f0f1f6; --item: #eef0f6;
+  --raise: #e8eaf2; --raise-h: #dcdfe8;
+  --line-strong: #7c6ce0; --title: #43474e; --dash: #c9cdd8;
+  --scroll: #c9ccd6; --scroll-h: #b3b8c4;
+}
+/* Shell back to column flow (top tabs, not left rail). */
+body {
+  display: flex; flex-direction: column;
+  grid-template-columns: none; grid-template-rows: none; grid-template-areas: none;
+}
+#navrail { display: none; }
+/* Brand: compact wordmark block, left of the tabs. */
+#brand { display: flex; align-items: center; gap: 8px; padding: 0 14px 0 10px; }
+#brand-mark { width: 20px; height: 20px; }
+#brand-txt { display: flex; flex-direction: column; line-height: 1.15; }
+#brand-name { font-size: var(--t-xl); font-weight: 800; letter-spacing: .06em; color: var(--text); }
+#brand-sub { font-size: var(--t-2xs); color: var(--dim); letter-spacing: .04em; white-space: nowrap; }
+/* Horizontal section tabs, violet underline on the active one. */
+#rail { display: flex; align-items: stretch; gap: 2px; padding: 0 6px; }
+#rail .rail-btn {
+  width: auto; background: none; border: none; border-bottom: 2px solid transparent;
+  border-radius: 0; color: var(--dim); font-size: var(--t-sm); font-weight: 600;
+  letter-spacing: .04em; padding: 8px 12px 9px; gap: 0;
+}
+#rail .rail-btn svg { display: none; }
+#rail .rail-btn span { flex: none; white-space: normal; }
+#rail .rail-btn:hover { color: var(--text); background: var(--hover); }
+#rail .rail-btn.active {
+  color: var(--text); background: none; border-bottom-color: var(--accent);
+}
+#rail .rail-btn.active::after { display: none; }
+/* Sub-views: second header row, quiet tabs with violet active underline. */
+#subrail { display: flex; flex-direction: row; justify-content: flex-start; gap: 16px; padding: 0 14px; border-bottom: 1px solid var(--edge); }
+#subrail.hidden { display: none; }
+.subrail-btn {
+  background: none; border: none; border-bottom: 2px solid transparent; border-radius: 0;
+  color: var(--dim); font-size: var(--t-xs); font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; padding: 5px 2px 6px;
+}
+.subrail-btn:hover { color: var(--text); }
+.subrail-btn.active { color: var(--text); border-left: none; border-bottom-color: var(--accent); background: none; }
+/* Command-bar search, wider like the reference. */
+#controls #symbol { width: 250px; margin-right: 8px; background: var(--bg); border: 1px solid var(--edge); border-radius: 8px; padding: 4px 10px; }
+#controls #symbol:focus { border-color: var(--accent-edge); }
+/* Right-cluster chips (connection, status). */
+#status {
+  padding: 3px 9px; border: 1px solid var(--edge); border-radius: 6px;
+  background: var(--panel); font-size: var(--t-xs);
+}
+/* Primary actions wear the violet. */
+#bt-run, #py-run, #wsx-run, #ml-run, #lse-connect-btn {
+  background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700;
+}
+#bt-run:hover, #py-run:hover, #wsx-run:hover, #ml-run:hover, #lse-connect-btn:hover {
+  background: #8d70ff; border-color: #8d70ff; color: #fff;
+}
+/* Live-surface recolor to the navy palette's data hues. */
+@keyframes tickUp { from { background: rgba(47, 208, 138, .26); } to { background: transparent; } }
+@keyframes tickDown { from { background: rgba(255, 92, 122, .26); } to { background: transparent; } }
