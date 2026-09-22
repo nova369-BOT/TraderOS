@@ -187,3 +187,5 @@ export function EdgeDepthIndicators({
     </div>
   );
 }
+
+export default EdgeDepthIndicators;

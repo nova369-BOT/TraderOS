@@ -55,3 +55,5 @@ export function EdgeDepthTPOPanel({ symbol, provider = 'binance' }: { symbol: st
     </div>
   );
 }
+
+export default EdgeDepthTPOPanel;

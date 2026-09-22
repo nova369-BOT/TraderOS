@@ -236,3 +236,5 @@ export function EdgeDepthWatchlist({
     </div>
   );
 }
+
+export default EdgeDepthWatchlist;

@@ -142,3 +142,5 @@ export function EdgeDepthLiquidationPanel({ symbol, provider = 'binance' }: { sy
     </div>
   );
 }
+
+export default EdgeDepthLiquidationPanel;

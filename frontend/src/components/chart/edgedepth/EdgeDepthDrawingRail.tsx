@@ -387,3 +387,5 @@ export function EdgeDepthDrawingRail({
     </div>
   );
 }
+
+export default EdgeDepthDrawingRail;

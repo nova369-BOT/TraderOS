@@ -81,3 +81,5 @@ export function EdgeDepthVolumeProfilePanel({ symbol, provider = 'binance' }: { 
     </div>
   );
 }
+
+export default EdgeDepthVolumeProfilePanel;

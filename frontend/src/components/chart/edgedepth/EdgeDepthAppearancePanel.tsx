@@ -171,3 +171,5 @@ export function EdgeDepthAppearancePanel({
 }
 
 export const defaultAppearance: AppearanceSettings = DEFAULT;
+
+export default EdgeDepthAppearancePanel;

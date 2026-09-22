@@ -57,3 +57,5 @@ export function EdgeDepthLayers({ onChange }: { onChange?: (layers: Layer[]) => 
     </div>
   );
 }
+
+export default EdgeDepthLayers;

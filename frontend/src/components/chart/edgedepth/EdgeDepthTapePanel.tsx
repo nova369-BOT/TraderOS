@@ -107,3 +107,5 @@ export function EdgeDepthTapePanel({ symbol, provider = 'binance' }: { symbol: s
     </div>
   );
 }
+
+export default EdgeDepthTapePanel;

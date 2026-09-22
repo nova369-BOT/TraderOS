@@ -188,3 +188,5 @@ export function EdgeDepthDOMPanel({ symbol, provider = 'binance' }: { symbol: st
     </div>
   );
 }
+
+export default EdgeDepthDOMPanel;

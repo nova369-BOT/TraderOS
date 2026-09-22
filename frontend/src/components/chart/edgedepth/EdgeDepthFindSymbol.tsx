@@ -61,3 +61,5 @@ export function EdgeDepthFindSymbol({ open, onClose, onSelect }: { open: boolean
     </div>
   );
 }
+
+export default EdgeDepthFindSymbol;

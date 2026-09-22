@@ -42,3 +42,5 @@ export function EdgeDepthProModal({ open, onClose, feature = 'SECONDS PRO' }: { 
     </div>
   );
 }
+
+export default EdgeDepthProModal;

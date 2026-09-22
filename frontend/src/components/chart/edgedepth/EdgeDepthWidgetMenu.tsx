@@ -43,3 +43,5 @@ export function EdgeDepthWidgetMenu({ onSelect }: { onSelect: (id: string) => vo
     </div>
   );
 }
+
+export default EdgeDepthWidgetMenu;

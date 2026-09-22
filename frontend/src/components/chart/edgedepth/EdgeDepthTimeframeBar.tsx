@@ -131,3 +131,5 @@ export function EdgeDepthTimeframeBar({
     </div>
   );
 }
+
+export default EdgeDepthTimeframeBar;

@@ -81,3 +81,5 @@ export function EdgeDepthFootprintPanel({ symbol, provider = 'binance' }: { symb
     </div>
   );
 }
+
+export default EdgeDepthFootprintPanel;

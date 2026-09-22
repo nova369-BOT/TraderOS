@@ -476,7 +476,7 @@ export default function EdgeDepthTerminal({
               <div>• If broker provides MBO/orderflow (e.g., L2 depth), it will be used automatically via depth_stream capability</div>
               <div>• Paper trading via lse-api when no broker</div>
               <div>• No blank chart: fallback chain binance→coinbase→hyperliquid→demo→lse, Loading + Reload/Reset buttons</div>
-              <div>• Ultra-fast tiers: hyperliquid 15ms ⚡ > binance 20ms > coinbase 50ms > lse 33ms, no lags</div>
+              <div>• Ultra-fast tiers: hyperliquid 15ms ⚡ &gt; binance 20ms &gt; coinbase 50ms &gt; lse 33ms, no lags</div>
             </div>
           </div>
         </div>

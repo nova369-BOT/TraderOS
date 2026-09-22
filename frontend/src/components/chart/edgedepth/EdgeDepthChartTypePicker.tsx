@@ -69,3 +69,5 @@ export function EdgeDepthChartTypePicker({
     </div>
   );
 }
+
+export default EdgeDepthChartTypePicker;

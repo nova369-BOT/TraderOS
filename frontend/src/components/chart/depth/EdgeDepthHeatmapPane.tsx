@@ -684,3 +684,4 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind }: { symbo
     </div>
   );
 }
+export default EdgeDepthHeatmapPane;
