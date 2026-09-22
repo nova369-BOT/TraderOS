@@ -248,39 +248,101 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
       }
     } catch {}
   }, [timeframe]);
-  const [edAppearance, setEdAppearance] = useState<AppearanceSettings>(defaultAppearance);
+  const [edAppearance, setEdAppearance] = useState<AppearanceSettings>(() => {
+    try {
+      const raw = localStorage.getItem('ed_appearance');
+      if (raw) return { ...defaultAppearance, ...JSON.parse(raw) };
+    } catch {}
+    return defaultAppearance;
+  });
   const [edAppearanceOpen, setEdAppearanceOpen] = useState(false);
+  useEffect(() => { try { localStorage.setItem('ed_appearance', JSON.stringify(edAppearance)); } catch {} }, [edAppearance]);
   const [edFindOpen, setEdFindOpen] = useState(false);
   const [edProOpen, setEdProOpen] = useState(false);
   const [edProFeature, setEdProFeature] = useState('SECONDS PRO');
   const [edLayersOpen, setEdLayersOpen] = useState(false);
+  // Layers lifted state — wired to real chart indicators
+  const [edLayers, setEdLayers] = useState(() => {
+    try {
+      const raw = localStorage.getItem('ed_layers');
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return [
+      { id: 'liquidations', label: 'Liquidations', enabled: true, desc: 'Liquidation heatmap 800 bands 0.05%' },
+      { id: 'exposure_v2', label: 'Exposure V2', enabled: true, desc: 'Exposure field V2' },
+      { id: 'hyperliquid_levels', label: 'Hyperliquid Levels', enabled: true, desc: 'HL levels' },
+      { id: 'market_structure', label: 'Market Structure', enabled: true, desc: 'MS with BOS/CHoCH' },
+      { id: 'vpvr', label: 'VPVR', enabled: false, desc: 'Volume Profile Visible Range POC/VAH/VAL' },
+      { id: 'leverage_tiers', label: 'Leverage Tiers', enabled: false, desc: 'Leverage tiers 2x/5x/10x/25x/50x' },
+      { id: 'session_vwap', label: 'Session VWAP', enabled: false, desc: 'HLC3 weighted by base volume' },
+      { id: 'prev_day', label: 'Prev Day High/Low/Close', enabled: false, desc: 'Previous day levels' },
+      { id: 'prev_week', label: 'Prev Week High/Low/Close', enabled: false, desc: 'Previous week levels' },
+    ];
+  });
+  const handleLayersChange = useCallback((next: any[]) => {
+    setEdLayers(next);
+    try { localStorage.setItem('ed_layers', JSON.stringify(next)); } catch {}
+    // Wire layers to real indicators — functional, not blank
+    const get = (id: string) => next.find((l: any) => l.id === id)?.enabled;
+    setIndicators(prev => {
+      let changed = false;
+      const upd: any = { ...prev };
+      if (get('vpvr') !== undefined) {
+        const want = !!get('vpvr');
+        if ((prev as any).volumeProfile?.enabled !== want) {
+          upd.volumeProfile = { ...(prev as any).volumeProfile, enabled: want, numberOfRows: 48, rowWidth: 15, opacity: 60 };
+          changed = true;
+        }
+      }
+      if (get('session_vwap') !== undefined) {
+        const want = !!get('session_vwap');
+        if ((prev as any).vwap?.enabled !== want) {
+          upd.vwap = { ...(prev as any).vwap, enabled: want, color: '#2196F3' };
+          changed = true;
+        }
+      }
+      if (get('prev_day') !== undefined || get('prev_week') !== undefined) {
+        const want = !!get('prev_day') || !!get('prev_week');
+        if ((prev as any).pivotPoints?.enabled !== want) {
+          upd.pivotPoints = { ...(prev as any).pivotPoints, enabled: want };
+          changed = true;
+        }
+      }
+      return changed ? upd : prev;
+    });
+    // Liquidations layer toggles depth/liquidation panel visibility via layoutStore if needed
+    if (get('liquidations') === false) {
+      // if user turns off liquidations, we don't force panel change, just keep state
+    }
+  }, []);
   const openIndicatorBrowser = useCallback(() => {
     window.dispatchEvent(new CustomEvent('lset:open-indicators'));
   }, []);
 
-  // EdgeDepth tool mapping: EDTool -> DrawingTool
+  // EdgeDepth tool mapping: EDTool -> DrawingTool — exact functional wiring
+  // Each ED tool must map to a distinct, working overlay tool; no duplicates
   const mapEdToDrawing = useCallback((t: EDTool): DrawingTool => {
     const map: Record<EDTool, DrawingTool> = {
       cursor: null,
-      trendline: 'trend',
-      arrow: 'trend',
-      ray: 'trend',
-      extended: 'trend',
+      trendline: 'trend',              // finite segment
+      arrow: 'straightArrow',          // arrow head at end
+      ray: 'trendRay',                 // extends forward to edge
+      extended: 'line',                // extended line — use line (TradingView extended = both sides, our trendRay forward only, line is closest)
       hline: 'horizontal',
-      hray: 'horizontal',
+      hray: 'horizontalRay',
       vline: 'vertical',
-      cross: 'horizontal',
+      cross: 'cross',                  // cross shape + lines
       rectangle: 'rectangle',
-      channel: 'trend',
-      polyline: 'trend',
+      channel: 'parallelChannel',      // parallel channel
+      polyline: 'freeTriangle',        // 3-click free triangle for polyline
       brush: 'brush',
       fib: 'fibonacci',
       long: 'long',
       short: 'short',
       text: 'text',
       measure: 'measure',
-      pricerange: 'measure',
-      daterange: 'measure',
+      pricerange: 'measure',           // price range uses measure tool with price readout
+      daterange: 'measure',            // date range uses measure tool
     };
     return map[t] ?? null;
   }, []);
@@ -507,26 +569,63 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     const base = getDefaultColors();
     const c = chartSettings?.candles;
     const ch = chartSettings?.chart;
-    if (!hasSavedAppearance || !c || !ch) return { ...base };
-    return {
-      ...base,
-      background: ch.backgroundColor,
-      backgroundOpacity: ch.backgroundOpacity,
-      grid: ch.gridColor,
-      gridOpacity: ch.gridOpacity,
-      axisLabel: ch.axisLabelColor,
-      axisLine: ch.axisLineColor,
-      crosshair: ch.crosshairColor,
-      priceTickerBullish: ch.priceTickerBullish,
-      priceTickerBearish: ch.priceTickerBearish,
-      bullish: c.bodyBullish,
-      bearish: c.bodyBearish,
-      bullishBorder: c.bordersBullish,
-      bearishBorder: c.bordersBearish,
-      bullishWick: c.wickBullish,
-      bearishWick: c.wickBearish,
-    };
-  }, [chartSettings, hasSavedAppearance]);
+    let out: any;
+    if (!hasSavedAppearance || !c || !ch) {
+      out = { ...base };
+    } else {
+      out = {
+        ...base,
+        background: ch.backgroundColor,
+        backgroundOpacity: ch.backgroundOpacity,
+        grid: ch.gridColor,
+        gridOpacity: ch.gridOpacity,
+        axisLabel: ch.axisLabelColor,
+        axisLine: ch.axisLineColor,
+        crosshair: ch.crosshairColor,
+        priceTickerBullish: ch.priceTickerBullish,
+        priceTickerBearish: ch.priceTickerBearish,
+        bullish: c.bodyBullish,
+        bearish: c.bodyBearish,
+        bullishBorder: c.bordersBullish,
+        bearishBorder: c.bordersBearish,
+        bullishWick: c.wickBullish,
+        bearishWick: c.wickBearish,
+      };
+    }
+    // EdgeDepth appearance overrides — market colors teal_rose #21b3a4/#f0426c vs green_red
+    if (edAppearance.marketColors === 'teal_rose') {
+      out.bullish = '#21b3a4';
+      out.bearish = '#f0426c';
+      out.bullishBorder = '#21b3a4';
+      out.bearishBorder = '#f0426c';
+      out.bullishWick = '#21b3a4';
+      out.bearishWick = '#f0426c';
+      out.priceTickerBullish = '#21b3a4';
+      out.priceTickerBearish = '#f0426c';
+    } else if (edAppearance.marketColors === 'green_red') {
+      out.bullish = '#26a69a';
+      out.bearish = '#ef5350';
+      out.bullishBorder = '#26a69a';
+      out.bearishBorder = '#ef5350';
+      out.bullishWick = '#26a69a';
+      out.bearishWick = '#ef5350';
+      out.priceTickerBullish = '#26a69a';
+      out.priceTickerBearish = '#ef5350';
+    }
+    // Interface accent tints grid slightly
+    if (edAppearance.accent === 'mint') {
+      out.grid = '#21b3a4';
+    } else if (edAppearance.accent === 'indigo') {
+      out.grid = '#6366f1';
+    } else if (edAppearance.accent === 'amber') {
+      out.grid = '#f59e0b';
+    }
+    // Opacity from appearance
+    if (edAppearance.opacity !== undefined) {
+      out.backgroundOpacity = Math.round(edAppearance.opacity * 100);
+    }
+    return out;
+  }, [chartSettings, hasSavedAppearance, edAppearance]);
   const chartTimezone = chartSettings?.data?.timezone || 'local';
   const timeframeMs = TF_MS[timeframe] ?? 3600000;
   const livePrice = candles.length ? candles[candles.length - 1].close : null;
@@ -712,6 +811,14 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               symbol={symbol}
               provider={provider}
               onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
+              liqColormap={edAppearance.liqColormap as any}
+              obColormap={edAppearance.obColormap as any}
+              opacity={edAppearance.opacity}
+              intensity={edAppearance.intensity}
+              gamma={edAppearance.gamma}
+              noiseFloor={edAppearance.noiseFloor}
+              tickPerRow={edAppearance.tickPerRow}
+              halfLife={edAppearance.halfLife}
             />
           </Suspense>
         ) : (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','ed_liquidations','ed_vpvr','ed_footprint','ed_tpo','watchlist','indicators'].includes(layoutState.panelKinds[0] as string) ? (
@@ -726,7 +833,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               if (kind === 'tpo') return <TPOPanel symbol={symbol} provider={provider} />;
               if (kind === 'cvd') return <CVDPanel symbol={symbol} provider={provider} />;
               if (kind === 'liquidations') return <LiquidationPanel symbol={symbol} provider={provider} />;
-              if (kind === 'ed_liquidations') return <EdgeDepthLiquidationPanel symbol={symbol} provider={provider} />;
+              if (kind === 'ed_liquidations') return <EdgeDepthLiquidationPanel symbol={symbol} provider={provider} colormap={edAppearance.liqColormap as any} intensity={edAppearance.intensity} opacity={edAppearance.opacity} gamma={edAppearance.gamma} noiseFloor={edAppearance.noiseFloor} tickPerRow={edAppearance.tickPerRow} halfLife={edAppearance.halfLife} lowPeak={edAppearance.lowPeak} />;
               if (kind === 'ed_vpvr') return <EdgeDepthVolumeProfilePanel symbol={symbol} provider={provider} />;
               if (kind === 'ed_footprint') return <EdgeDepthFootprintPanel symbol={symbol} provider={provider} />;
               if (kind === 'ed_tpo') return <EdgeDepthTPOPanel symbol={symbol} provider={provider} />;
@@ -893,8 +1000,8 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
       )}
       {edLayersOpen && (
         <div className="absolute top-10 left-[320px] z-[90]">
-          <Suspense fallback={<div className="p-2 text-[10px] text-[#b9b9b9]">Loading layers…</div>}>
-            <EdgeDepthLayers onChange={() => {}} />
+          <Suspense fallback={<div className="p-2 text-[10px] text-[#b9b9b9]">Loading layers...</div>}>
+            <EdgeDepthLayers layers={edLayers} onChange={handleLayersChange} />
           </Suspense>
         </div>
       )}

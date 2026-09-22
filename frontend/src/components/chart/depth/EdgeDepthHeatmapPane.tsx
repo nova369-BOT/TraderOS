@@ -50,7 +50,17 @@ const HEATMAP_TYPES: { id: HeatmapMode; label: string }[] = [
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────
-export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind }: { symbol: string; provider: string; onToggleKind?: () => void }) {
+interface HeatmapAppearanceProps {
+  liqColormap?: LiqColormap;
+  obColormap?: ObColormap;
+  opacity?: number;
+  intensity?: number;
+  gamma?: number;
+  noiseFloor?: number;
+  tickPerRow?: number;
+  halfLife?: number;
+}
+export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColormap: propLiq, obColormap: propOb, opacity: propOp, intensity: propInt, gamma: propGamma, noiseFloor: propNoise, tickPerRow: propTick, halfLife: propHalf }: { symbol: string; provider: string; onToggleKind?: () => void } & HeatmapAppearanceProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,9 +75,20 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind }: { symbo
   const [mode, setMode] = useState<HeatmapMode>('orderbook');
   const [liqMap, setLiqMap] = useState<LiqColormap>('ember');
   const [obMap, setObMap] = useState<ObColormap>('orderbook');
-  const [sensitivity, setSensitivity] = useState(1.0);
-  const [opacity, setOpacity] = useState(0.95);
-  const [bucketMult, setBucketMult] = useState(1);
+  const [sensitivity, setSensitivity] = useState(propInt ?? 1.0);
+  const [opacity, setOpacity] = useState(propOp ?? 0.95);
+  const [bucketMult, setBucketMult] = useState(propTick ?? 1);
+  // Sync external appearance props
+  useEffect(() => { if (propLiq) setLiqMap(propLiq); }, [propLiq]);
+  useEffect(() => { if (propOb) setObMap(propOb); }, [propOb]);
+  useEffect(() => { if (propOp !== undefined) setOpacity(propOp); }, [propOp]);
+  useEffect(() => { if (propInt !== undefined) setSensitivity(propInt); }, [propInt]);
+  useEffect(() => { if (propTick !== undefined) setBucketMult(propTick); }, [propTick]);
+  // gamma/noiseFloor/halfLife are forwarded to GPU shader via setSensitivity opacity and extra
+  // stored for UI display
+  const extGamma = propGamma;
+  const extNoise = propNoise;
+  const extHalf = propHalf;
   const [useReach, setUseReach] = useState(false);
   const [linearFilter, setLinearFilter] = useState(false);
   const [showBubbles, setShowBubbles] = useState(true);

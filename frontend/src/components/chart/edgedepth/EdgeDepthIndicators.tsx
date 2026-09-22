@@ -2,18 +2,19 @@
 // Render-in-order, deduplicate if LSE already has RSI/MACD/Volume/CVD take ONE (keep LSE logic but EdgeDepth UI)
 // Missing: Funding Rate, Open Interest, VPIN, Flow & Positioning, TPO, Footprint, Renko, Liquidation heatmap, Trade bubbles, Volume profile
 // Chrome zinc #1c1c1c/#2a2a2a/#3a3a3a #e8e8e8/#b9b9b9 #21b3a4/#f0426c
+// FIX: onToggle → handleIndicatorsChange dedup via shell
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 
 export type IndicatorId = 'volume' | 'cvd' | 'rsi' | 'macd' | 'funding' | 'oi' | 'vpin' | 'toxicity';
 
-interface IndicatorDef { id: IndicatorId; label: string; desc: string; enabled: boolean; height: number; pro?: boolean }
+interface IndicatorDef { id: IndicatorId; label: string; desc: string; enabled: boolean; height: number; pro?: boolean; lseKey?: string }
 
 const ALL_INDICATORS: IndicatorDef[] = [
-  { id: 'volume', label: 'Volume', desc: 'Trading volume bars', enabled: true, height: 80 },
-  { id: 'cvd', label: 'CVD', desc: 'Cumulative Volume Delta', enabled: true, height: 100 },
-  { id: 'rsi', label: 'RSI', desc: 'Relative Strength Index (14)', enabled: false, height: 90 },
-  { id: 'macd', label: 'MACD', desc: 'Moving Average Convergence Divergence', enabled: false, height: 100 },
+  { id: 'volume', label: 'Volume', desc: 'Trading volume bars', enabled: true, height: 80, lseKey: 'volume' },
+  { id: 'cvd', label: 'CVD', desc: 'Cumulative Volume Delta', enabled: true, height: 100, lseKey: 'cvd' },
+  { id: 'rsi', label: 'RSI', desc: 'Relative Strength Index (14)', enabled: false, height: 90, lseKey: 'rsi' },
+  { id: 'macd', label: 'MACD', desc: 'Moving Average Convergence Divergence', enabled: false, height: 100, lseKey: 'macd' },
   { id: 'funding', label: 'Funding Rate', desc: 'Blue above 0 longs pay shorts, red below', enabled: false, height: 80, pro: false },
   { id: 'oi', label: 'Open Interest', desc: 'Green increased, red decreased OHLC', enabled: false, height: 100, pro: false },
   { id: 'vpin', label: 'VPIN', desc: 'Toxicity pane 0-1.0 fixed axis, step-hold line', enabled: false, height: 110, pro: true },
@@ -38,20 +39,16 @@ export function EdgeDepthIndicators({
     setIndicators(prev => prev.map(i => ({ ...i, enabled: enabledIds ? enabledIds.has(i.id) : i.enabled })));
   }, [enabledIds]);
 
-  // Fetch data for funding, OI, CVD, etc.
   useEffect(() => {
     let alive = true;
     const load = async () => {
       try {
-        // CVD
         const cvdR = await fetch(`/api/orderflow/cvd?symbol=${encodeURIComponent(symbol)}&provider=${encodeURIComponent(provider)}&window=session`);
         if (cvdR.ok && alive) { const j = await cvdR.json(); setData(d => ({ ...d, cvd: j })); }
-        // Funding — try binance funding endpoint via our API? Fallback synthetic
         try {
           const fr = await fetch(`/api/orderflow/funding?symbol=${encodeURIComponent(symbol)}&provider=${encodeURIComponent(provider)}`);
           if (fr.ok && alive) { const j = await fr.json(); setData(d => ({ ...d, funding: j })); }
           else {
-            // synthetic funding
             const synth = Array.from({ length: 50 }, (_, i) => ({ time: Date.now() - (50 - i) * 8 * 3600000, rate: (Math.random() - 0.5) * 0.001 }));
             if (alive) setData(d => ({ ...d, funding: { bars: synth } }));
           }
@@ -59,17 +56,13 @@ export function EdgeDepthIndicators({
           const synth = Array.from({ length: 50 }, (_, i) => ({ time: Date.now() - (50 - i) * 8 * 3600000, rate: (Math.random() - 0.5) * 0.001 }));
           if (alive) setData(d => ({ ...d, funding: { bars: synth } }));
         }
-        // OI synthetic
         const oiSynth = Array.from({ length: 50 }, (_, i) => {
           const base = 1000000 + Math.random() * 500000;
           return { time: Date.now() - (50 - i) * 3600000, open: base, high: base * 1.02, low: base * 0.98, close: base + (Math.random() - 0.5) * 100000 };
         });
         if (alive) setData(d => ({ ...d, oi: { bars: oiSynth } }));
-
-        // VPIN synthetic 0-1
         const vpinSynth = Array.from({ length: 100 }, (_, i) => ({ ts_ms: Date.now() - (100 - i) * 60000, vpin: Math.random(), conf: Math.random(), regime: ['NORMAL', 'ELEVATED', 'HIGH', 'EXTREME'][Math.floor(Math.random() * 4)] }));
         if (alive) setData(d => ({ ...d, vpin: { points: vpinSynth } }));
-
       } catch {}
     };
     load();
@@ -78,14 +71,32 @@ export function EdgeDepthIndicators({
   }, [symbol, provider]);
 
   const toggle = (id: IndicatorId) => {
-    setIndicators(prev => prev.map(i => i.id === id ? { ...i, enabled: !i.enabled } : i));
-    const cur = indicators.find(i => i.id === id);
-    if (cur) onToggle?.(id, !cur.enabled);
+    setIndicators(prev => {
+      const next = prev.map(i => i.id === id ? { ...i, enabled: !i.enabled } : i);
+      // dedup wiring to LSE main chart
+      const changed = next.find(i => i.id === id);
+      if (changed) {
+        // if LSE already has this indicator (volume/cvd/rsi/macd) → use ONE implementation via shell
+        const lseKey = changed.lseKey;
+        if (lseKey) {
+          try {
+            const shell: any = (window as any).__lseShell;
+            if (shell?.setIndicators) {
+              shell.setIndicators({ [lseKey]: { enabled: changed.enabled } });
+            } else {
+              // fallback custom event
+              window.dispatchEvent(new CustomEvent('lset:indicator-toggle', { detail: { key: lseKey, enabled: changed.enabled } }));
+            }
+          } catch {}
+        }
+        onToggle?.(id, changed.enabled);
+      }
+      return next;
+    });
   };
 
   return (
     <div className="flex flex-col bg-[#1c1c1c] border-t border-[#3a3a3a]">
-      {/* Indicator tab header */}
       <div className="flex items-center gap-1 px-2 py-1 bg-[#2a2a2a] border-b border-[#3a3a3a] text-[10px] overflow-x-auto">
         <span className="font-bold tracking-wider text-[#b9b9b9] mr-2">INDICATORS</span>
         {indicators.map(ind => (
@@ -93,7 +104,7 @@ export function EdgeDepthIndicators({
             key={ind.id}
             onClick={() => toggle(ind.id)}
             className={`px-2 py-0.5 rounded border text-[10px] whitespace-nowrap ${ind.enabled ? 'bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}
-            title={ind.desc}
+            title={ind.desc + (ind.lseKey ? ' • LSE dedup: take ONE' : '')}
           >
             {ind.label}{ind.pro ? ' PRO' : ''} {ind.enabled ? '●' : '○'}
           </button>
@@ -101,7 +112,6 @@ export function EdgeDepthIndicators({
         <span className="ml-auto text-[9px] text-[#b9b9b9]">Render-in-order • Deduplicate LSE RSI/MACD/Volume/CVD take ONE</span>
       </div>
 
-      {/* Render enabled in order */}
       <div className="flex flex-col">
         {indicators.filter(i => i.enabled).map(ind => (
           <div key={ind.id} className="border-b border-[#3a3a3a]/50 bg-[#2a2a2a]" style={{ height: ind.height }}>
@@ -111,7 +121,6 @@ export function EdgeDepthIndicators({
               <span className="ml-auto">{ind.id === 'funding' ? '0.0000%' : ind.id === 'oi' ? '109.2K' : ind.id === 'vpin' ? '0.4567' : ''}</span>
             </div>
             <div className="relative w-full h-[calc(100%-18px)]">
-              {/* Simplified canvas render for each indicator */}
               {ind.id === 'volume' && (
                 <div className="absolute inset-0 flex items-end gap-px px-2">
                   {Array.from({ length: 50 }).map((_, i) => (
@@ -163,9 +172,7 @@ export function EdgeDepthIndicators({
                     <span>1.0</span><span>0.75</span><span>0.50</span><span>0.25</span><span>0.0</span>
                   </div>
                   <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 90">
-                    {/* Step-hold line */}
                     <polyline fill="none" stroke="#e8e8e8" strokeWidth={1} points={(data.vpin?.points || []).slice(-50).map((p: any, i: number) => `${i * 4},${90 - p.vpin * 80}`).join(' ')} />
-                    {/* Regime washes */}
                     {(data.vpin?.points || []).slice(-50).map((p: any, i: number) => {
                       if (p.regime === 'NORMAL') return null;
                       const color = p.regime === 'ELEVATED' ? 'rgba(33,179,164,0.05)' : p.regime === 'HIGH' ? 'rgba(240,66,108,0.07)' : 'rgba(240,66,108,0.09)';
