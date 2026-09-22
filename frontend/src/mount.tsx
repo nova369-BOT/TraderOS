@@ -691,55 +691,82 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
 
   return (
     <div className="relative h-full w-full flex flex-col bg-[#1c1c1c]" style={{ overflow: 'visible' }}>
-      {/* EdgeDepth topbar — exact UI but zinc — fixed overflow so dropdown drops */}
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] bg-[#2a2a2a] text-[11px] shrink-0 flex-wrap overflow-visible relative z-[60]">
-        <span className="font-bold tracking-wider opacity-80 text-[#e8e8e8]">EDGEDEPTH</span>
-        <span className="font-mono font-semibold text-[#e8e8e8] ml-1">{symbol}</span>
-        <div className="flex items-center gap-0.5 ml-2">
-          {(['binance','coinbase','hyperliquid'] as const).map(p => (
-            <button key={p} onClick={() => { try { (window as any).__lseShell?.setProvider?.(p); } catch {} }} className={`px-1.5 py-0.5 text-[9px] rounded border ${provider===p?'bg-[#21b3a4] text-black border-[#21b3a4] font-bold':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]'}`} title={`${p} ${p==='hyperliquid'?'15ms ⚡ ultra-fast':p==='binance'?'20ms fast':'50ms'}`}>{p==='hyperliquid'?'HL ⚡':p==='binance'?'BINANCE':'COINBASE'}</button>
-          ))}
+      {/* Professional top bar — own design, not EdgeDepth clone — clean, functional */}
+      <div className="flex items-center gap-3 px-3 h-[44px] border-b border-[#2a2a2a] bg-[#1c1c1c] text-[12px] shrink-0 overflow-visible relative z-[60]">
+        {/* Left: Symbol + Provider */}
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="font-bold tracking-wider text-[#e8e8e8] text-[11px]">LSE</span>
+            <span className="font-mono font-semibold text-[#e8e8e8] text-[13px]">{symbol}</span>
+            <span className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#262626] border border-[#3a3a3a] text-[10px] text-[#b9b9b9]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#21b3a4] animate-pulse" />
+              {provider.toUpperCase()} • {timeframe}
+            </span>
+          </div>
+          <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[#262626] border border-[#3a3a3a]">
+            {(['binance','coinbase','hyperliquid'] as const).map(p => {
+              const isActive = provider === p;
+              const label = p === 'hyperliquid' ? 'HL' : p === 'binance' ? 'BIN' : 'CB';
+              const speed = p === 'hyperliquid' ? '15ms' : p === 'binance' ? '20ms' : '50ms';
+              return (
+                <button
+                  key={p}
+                  onClick={() => { try { (window as any).__lseShell?.setProvider?.(p); } catch {} }}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
+                    isActive ? 'bg-[#e8e8e8] text-[#1c1c1c] shadow-sm' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'
+                  }`}
+                  title={`${p} ${speed} ultra-fast — auto load immediate`}
+                >
+                  {label} <span className={`text-[9px] ${isActive ? 'text-[#1c1c1c]/60' : 'text-[#6a6a6a]'}`}>{speed}{p==='hyperliquid'?' ⚡':''}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡15ms':provider==='binance'?'20ms':provider==='coinbase'?'50ms':''} • {timeframe} • LIVE</span>
-        <div className="ml-2" style={{ overflow: 'visible', position: 'relative', zIndex: 50 }}>
-          <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => {
-            // No paywall — seconds and all TFs are free, exact EdgeDepth code present
-            setEdTf(tf);
-            try {
-              const shell: any = (window as any).__lseShell;
-              if (shell?.setTimeframe) {
-                shell.setTimeframe(tf.label);
-              }
-            } catch {}
-          }} favs={edFavs} onToggleFav={toggleEdFav} />
-        </div>
-        <div className="ml-1">
+
+        {/* Center: Timeframe + Chart Type + View */}
+        <div className="flex items-center gap-2 shrink-0" style={{ overflow: 'visible' }}>
+          <div style={{ overflow: 'visible', position: 'relative', zIndex: 50 }}>
+            <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => {
+              setEdTf(tf);
+              try { (window as any).__lseShell?.setTimeframe?.(tf.label); } catch {}
+            }} favs={edFavs} onToggleFav={toggleEdFav} />
+          </div>
           <EdgeDepthChartTypePicker value={edChartType} onChange={setEdChartType} />
+          {/* Professional View selector — own UI, not native select */}
+          <div className="relative">
+            <select
+              value={layoutState.panelKinds[0] || 'chart'}
+              onChange={e => layoutStore.setPanelKind(0, e.target.value as any)}
+              className="appearance-none pl-3 pr-7 py-1.5 rounded-md border border-[#3a3a3a] bg-[#262626] text-[12px] font-medium text-[#e8e8e8] hover:bg-[#343434] hover:border-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a] cursor-pointer"
+            >
+              <option value="chart">Chart</option>
+              <option value="edgedepth">Heatmap Pro</option>
+              <option value="depth">Depth Heat</option>
+              <option value="dom">DOM Ladder</option>
+              <option value="tape">Tape</option>
+              <option value="footprint">Footprint</option>
+              <option value="vpvr">VPVR</option>
+              <option value="tpo">TPO</option>
+              <option value="liquidations">Liquidations</option>
+              <option value="watchlist">Watchlist</option>
+              <option value="indicators">Indicators</option>
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#6a6a6a]">▼</span>
+          </div>
         </div>
-        <select value={layoutState.panelKinds[0] || 'chart'} onChange={e => layoutStore.setPanelKind(0, e.target.value as any)} className="ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]">
-          <option value="chart">Chart</option>
-          <option value="edgedepth">EdgeDepth Heatmap</option>
-          <option value="depth">Depth Heat</option>
-          <option value="dom">DOM</option>
-          <option value="tape">Tape</option>
-          <option value="footprint">Footprint</option>
-          <option value="vpvr">VPVR</option>
-          <option value="tpo">TPO</option>
-          <option value="liquidations">Liquidations</option>
-          <option value="watchlist">Watchlist 1503</option>
-          <option value="indicators">Indicators</option>
-        </select>
-        <div className="flex items-center gap-1 ml-1">
+
+        {/* Right: Tools */}
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
           <EdgeDepthWidgetMenu onSelect={(id) => layoutStore.setPanelKind(0, id as any)} />
-          <button onClick={() => setEdLayersOpen(v => !v)} className="px-2 py-0.5 bg-[#262626] border border-[#3a3a3a] rounded text-[10px] text-[#e8e8e8] hover:bg-[#343434]">Layers {edLayersOpen?'▲':'▼'}</button>
-          <button onClick={() => setEdFindOpen(true)} className="px-2 py-0.5 bg-[#262626] border border-[#3a3a3a] rounded text-[10px] text-[#e8e8e8] hover:bg-[#343434]">Find Symbol</button>
-        </div>
-        <div className="ml-auto flex items-center gap-1">
-          <span className="text-[10px] text-[#b9b9b9]">RT</span>
-          <div className="w-2 h-2 rounded-full bg-[#21b3a4] animate-pulse" title="follow-live streaming" />
-          <button onClick={() => setRtMode(v => !v)} className={`px-1.5 py-0.5 rounded border text-[9px] ${rtMode?'bg-[#21b3a4]/20 border-[#21b3a4]/50 text-[#21b3a4]':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]'}`} title="Real-time follow mode — exact EdgeDepth, no paywall, code present">RT MODE {rtMode?'● ON':'○ OFF'}</button>
-          <button onClick={() => setEdAppearanceOpen(v => !v)} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">⚙ Appearance</button>
-          <button onClick={openIndicatorBrowser} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">Indicators</button>
+          <button onClick={() => setEdLayersOpen(v => !v)} className={`px-3 py-1.5 rounded-md border text-[12px] font-medium transition-colors ${edLayersOpen ? 'bg-[#e8e8e8] border-[#e8e8e8] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>Layers</button>
+          <button onClick={() => setEdFindOpen(true)} className="px-3 py-1.5 rounded-md border border-[#3a3a3a] bg-[#262626] text-[12px] font-medium text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]">Find</button>
+          <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
+          <button onClick={() => setRtMode(v => !v)} className={`px-2.5 py-1 rounded-full border text-[10px] font-medium flex items-center gap-1.5 transition-colors ${rtMode ? 'bg-[#21b3a4]/10 border-[#21b3a4]/30 text-[#21b3a4]' : 'bg-[#262626] border-[#3a3a3a] text-[#6a6a6a] hover:text-[#b9b9b9]'}`} title="Real-time follow">
+            <span className={`w-1.5 h-1.5 rounded-full ${rtMode ? 'bg-[#21b3a4] animate-pulse' : 'bg-[#6a6a6a]'}`} /> {rtMode ? 'LIVE' : 'PAUSED'}
+          </button>
+          <button onClick={() => setEdAppearanceOpen(v => !v)} className={`w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${edAppearanceOpen ? 'bg-[#e8e8e8] border-[#e8e8e8] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>⚙</button>
+          <button onClick={openIndicatorBrowser} className="px-3 py-1.5 rounded-md bg-[#e8e8e8] text-[#1c1c1c] text-[12px] font-semibold hover:bg-white transition-colors">Indicators</button>
         </div>
       </div>
       <div className="relative flex-1 min-h-0 w-full flex">

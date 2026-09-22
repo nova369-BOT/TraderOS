@@ -466,39 +466,36 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColorm
 
   return (
     <div className="absolute inset-0 flex flex-col bg-[#1c1c1c] text-[#e8e8e8] select-none">
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] text-[11px] flex-wrap shrink-0 bg-[#2a2a2a]">
-        <span className="font-bold opacity-80 tracking-wider">{embedded ? 'HEATMAP' : 'EDGEDEPTH HEATMAP'}</span>
-        <span className="font-mono font-semibold ml-1">{symbol}</span>
-        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] truncate max-w-[240px]">{status}</span>
+      {/* Professional top bar — own design */}
+      <div className="flex items-center gap-2 px-3 h-9 border-b border-[#2a2a2a] bg-[#1c1c1c] text-[12px] shrink-0">
+        <span className="font-bold tracking-wider text-[11px] text-[#e8e8e8]">{embedded ? 'HEATMAP' : 'EDGEDEPTH'}</span>
+        <span className="font-mono font-semibold text-[13px] text-[#e8e8e8]">{symbol}</span>
+        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] truncate max-w-[260px]">{status}</span>
         {!embedded && (
           <>
-            <div className="flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden">
+            <div className="flex items-center gap-0.5 ml-2 p-0.5 rounded-lg bg-[#262626] border border-[#3a3a3a]">
               {(['binance', 'coinbase', 'hyperliquid'] as const).map(p => (
-                <button key={p} onClick={() => setProviderState(p)} className={`px-2 py-0.5 text-[10px] font-medium ${providerState === p ? 'bg-[#d0d0d0] text-[#1c1c1c]' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434]'}`} title={`${p} ${p==='hyperliquid'?'15ms':p==='binance'?'20ms':'50ms'}`}>{p.toUpperCase()} {p==='hyperliquid'?'⚡15ms':p==='binance'?'20ms':'50ms'}</button>
+                <button key={p} onClick={() => setProviderState(p)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium ${providerState === p ? 'bg-[#e8e8e8] text-[#1c1c1c]' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`} title={`${p} ${p==='hyperliquid'?'15ms':p==='binance'?'20ms':'50ms'}`}>{p.toUpperCase()} {p==='hyperliquid'?'⚡':''}</button>
               ))}
             </div>
-            <div className="flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden">
-              {favList.map(t => (
-                <button key={t.label} onClick={() => setTf(t)} onContextMenu={e => { e.preventDefault(); toggleFav(t.label, e); }} className={`px-1.5 py-0.5 text-[10px] ${tf.label===t.label?'bg-[#414141] text-[#e8e8e8]':'bg-transparent text-[#b9b9b9] hover:bg-[#343434]'}`}>{t.label}</button>
-              ))}
-              <span className="text-[8px] px-1 text-[#b9b9b9] border-l border-[#3a3a3a]">FAV {favList.length}/6</span>
-            </div>
-            <div className="flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden">
-              {nonFav.slice(0,8).map(t => (
-                <button key={t.label} onClick={() => setTf(t)} onContextMenu={e => { e.preventDefault(); toggleFav(t.label, e); }} className="px-1.5 py-0.5 text-[10px] opacity-60 hover:bg-[#343434] text-[#b9b9b9]">{t.label}</button>
+            <div className="flex items-center gap-1 ml-2">
+              {favList.slice(0,6).map(t => (
+                <button key={t.label} onClick={() => setTf(t)} onContextMenu={e => { e.preventDefault(); toggleFav(t.label, e); }} className={`px-2 py-1 rounded-md text-[11px] font-medium ${tf.label===t.label?'bg-[#e8e8e8] text-[#1c1c1c]':'bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>{t.label}</button>
               ))}
             </div>
           </>
         )}
-        <select value={mode} onChange={e => setMode(e.target.value as HeatmapMode)} className="ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]">
-          {HEATMAP_TYPES.map(ht => <option key={ht.id} value={ht.id}>{ht.label}</option>)}
-        </select>
-        <div className="ml-auto flex items-center gap-1">
-          <button onClick={() => setFollow(v => !v)} className={`px-1.5 py-0.5 rounded border text-[10px] ${follow?'bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]':'border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]'}`}>{follow?'FOLLOW':'FREE'}</button>
-          <button onClick={() => setShowBubbles(v => !v)} className={`px-1.5 py-0.5 rounded border text-[10px] ${showBubbles?'bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]':'border-[#3a3a3a] text-[#b9b9b9]'}`}>Bubbles</button>
-          <button onClick={() => setUseFallback(true)} className="px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[10px] text-[#b9b9b9] hover:bg-[#343434]">Legacy</button>
-          <button onClick={() => setSettingsOpen(o => !o)} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">⚙</button>
-          {onToggleKind && <button onClick={onToggleKind} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#b9b9b9]">chart ⇄</button>}
+        <div className="flex items-center gap-1.5 ml-2">
+          <select value={mode} onChange={e => setMode(e.target.value as HeatmapMode)} className="appearance-none pl-3 pr-7 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] font-medium text-[#e8e8e8] hover:bg-[#343434] focus:outline-none cursor-pointer">
+            {HEATMAP_TYPES.map(ht => <option key={ht.id} value={ht.id}>{ht.label}</option>)}
+          </select>
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button onClick={() => setFollow(v => !v)} className={`px-3 py-1 rounded-full border text-[11px] font-medium ${follow?'bg-[#21b3a4]/10 border-[#21b3a4]/30 text-[#21b3a4]':'bg-[#262626] border-[#3a3a3a] text-[#6a6a6a] hover:text-[#b9b9b9]'}`}>{follow?'● FOLLOW':'○ FREE'}</button>
+          <button onClick={() => setShowBubbles(v => !v)} className={`px-2.5 py-1 rounded-md border text-[11px] ${showBubbles?'bg-[#262626] border-[#4a4a4a] text-[#e8e8e8]':'bg-transparent border-[#3a3a3a] text-[#6a6a6a] hover:text-[#b9b9b9]'}`}>Bubbles</button>
+          <button onClick={() => setUseFallback(true)} className="px-2.5 py-1 rounded-md border border-[#3a3a3a] bg-transparent text-[11px] text-[#6a6a6a] hover:bg-[#262626] hover:text-[#b9b9b9]">Legacy</button>
+          <button onClick={() => setSettingsOpen(o => !o)} className={`w-7 h-7 rounded-md border flex items-center justify-center ${settingsOpen?'bg-[#e8e8e8] border-[#e8e8e8] text-[#1c1c1c]':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>⚙</button>
+          {onToggleKind && <button onClick={onToggleKind} className="px-2.5 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]">Chart ⇄</button>}
         </div>
       </div>
       <div ref={containerRef} className="relative flex-1 min-h-0 w-full h-full bg-[#2a2a2a]" onWheel={onWheel} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave} onDoubleClick={onDblClick}>
