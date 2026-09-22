@@ -1765,25 +1765,47 @@ const ProChart: React.FC<ProChartProps> = ({
         // Find POC
         let pocIdx = 0, pocVol = 0;
         levels.forEach((lv, i) => { if (lv.total > pocVol) { pocVol = lv.total; pocIdx = i; } });
-        // Mark imbalances
-        const grouped = levels.map((lv, i) => {
+        // Mark imbalances — exact EdgeDepth footprint_manager.h logic
+        const groupedBase = levels.map((lv, i) => {
           let buyImb = false, sellImb = false;
           if (comparison === 'samePrice') {
             if (lv.buy >= Math.max(0, imbalanceMinVol) && lv.sell > 0 && lv.buy / lv.sell >= imbalanceRatio) buyImb = true;
             if (lv.sell >= Math.max(0, imbalanceMinVol) && lv.buy > 0 && lv.sell / lv.buy >= imbalanceRatio) sellImb = true;
           } else {
-            // Diagonal: buy at p vs sell one row below, sell at p vs buy one row above
+            // Diagonal: buy at p vs sell one row below, sell at p vs buy one row above, adjacent bucket_index+1
             if (i > 0) {
               const prev = levels[i - 1];
-              if (lv.buy >= Math.max(0, imbalanceMinVol) && prev.sell > 0 && lv.buy / prev.sell >= imbalanceRatio) buyImb = true;
+              const adjacent = prev.bucket_idx !== undefined && lv.bucket_idx === prev.bucket_idx + 1;
+              if (adjacent && lv.buy >= Math.max(0, imbalanceMinVol) && prev.sell > 0 && lv.buy / prev.sell >= imbalanceRatio) buyImb = true;
             }
             if (i + 1 < levels.length) {
               const next = levels[i + 1];
-              if (lv.sell >= Math.max(0, imbalanceMinVol) && next.buy > 0 && lv.sell / next.buy >= imbalanceRatio) sellImb = true;
+              const adjacent = lv.bucket_idx !== undefined && next.bucket_idx === lv.bucket_idx + 1;
+              if (adjacent && lv.sell >= Math.max(0, imbalanceMinVol) && next.buy > 0 && lv.sell / next.buy >= imbalanceRatio) sellImb = true;
             }
           }
-          return { ...lv, is_poc: i === pocIdx, buy_imbalance: buyImb, sell_imbalance: sellImb };
+          return { ...lv, is_poc: i === pocIdx, buy_imbalance: buyImb, sell_imbalance: sellImb, buy_stack: false, sell_stack: false };
         });
+        // Stacked_levels >=2 — linear passes mark whole maximal run independently per side (EdgeDepth)
+        const stackedLevels = 2; // 0=off else >=2, we use 2 for zoomed-in functional
+        const grouped = groupedBase.map(g=>({...g}));
+        if (stackedLevels >= 2) {
+          for (const buy of [false, true]) {
+            let begin = 0;
+            while (begin < grouped.length) {
+              const flagged = (r:any) => buy ? r.buy_imbalance : r.sell_imbalance;
+              if (!flagged(grouped[begin])) { begin++; continue; }
+              let end = begin + 1;
+              while (end < grouped.length && flagged(grouped[end]) && grouped[end-1].bucket_idx + 1 === grouped[end].bucket_idx) end++;
+              if (end - begin >= stackedLevels) {
+                for (let j = begin; j < end; j++) {
+                  if (buy) grouped[j].buy_stack = true; else grouped[j].sell_stack = true;
+                }
+              }
+              begin = end;
+            }
+          }
+        }
         return { levels: grouped, totalBuy, totalSell, totalVol, delta: totalBuy - totalSell, pocIdx, maxVol: pocVol, tickPerRow, range };
       };
 

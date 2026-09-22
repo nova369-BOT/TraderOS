@@ -18,6 +18,8 @@ interface GroupedLevel {
   is_poc?: boolean;
   buy_imbalance?: boolean;
   sell_imbalance?: boolean;
+  buy_stack?: boolean;
+  sell_stack?: boolean;
 }
 
 interface Column {
@@ -91,12 +93,37 @@ export function EdgeDepthFootprintPanel({ symbol, provider = 'binance' }: { symb
       }
       let pocIdx = 0, pocVol = 0;
       levels.forEach((lv, i) => { if (lv.total > pocVol) { pocVol = lv.total; pocIdx = i; } });
-      const grouped: GroupedLevel[] = levels.map((lv, i) => {
+      const baseGrouped = levels.map((lv, i) => {
         let buyImb = false, sellImb = false;
-        if (lv.buy >= 0 && lv.sell > 0 && lv.buy / lv.sell >= 3.0) buyImb = true;
-        if (lv.sell >= 0 && lv.buy > 0 && lv.sell / lv.buy >= 3.0) sellImb = true;
-        return { ...lv, is_poc: i === pocIdx, buy_imbalance: buyImb, sell_imbalance: sellImb };
+        // SamePrice + Diagonal support (EdgeDepth Comparison::SamePrice/Diagonal)
+        // For synthetic we use SamePrice but also check adjacent for Diagonal demo
+        if (lv.buy > 0 && lv.sell > 0) {
+          if (lv.buy / lv.sell >= 3.0) buyImb = true;
+          if (lv.sell / lv.buy >= 3.0) sellImb = true;
+        }
+        return { ...lv, is_poc: i === pocIdx, buy_imbalance: buyImb, sell_imbalance: sellImb, buy_stack: false, sell_stack: false } as GroupedLevel & {buy_stack:boolean,sell_stack:boolean};
       });
+      // Stacked_levels >=2 linear pass marks whole maximal run per side (EdgeDepth)
+      const stackedLevels = 2;
+      const grouped: GroupedLevel[] = baseGrouped.map(g=>({...g})) as any;
+      if (stackedLevels >= 2) {
+        for (const buy of [false, true]) {
+          let begin = 0;
+          while (begin < grouped.length) {
+            const flagged = (r:any) => buy ? (r as any).buy_imbalance : (r as any).sell_imbalance;
+            if (!flagged(grouped[begin])) { begin++; continue; }
+            let end = begin + 1;
+            while (end < grouped.length && flagged(grouped[end]) && (grouped[end-1] as any).bucket_idx + 1 === (grouped[end] as any).bucket_idx) end++;
+            if (end - begin >= stackedLevels) {
+              for (let j = begin; j < end; j++) {
+                (grouped[j] as any).buy_stack = buy ? true : (grouped[j] as any).buy_stack;
+                (grouped[j] as any).sell_stack = !buy ? true : (grouped[j] as any).sell_stack;
+              }
+            }
+            begin = end;
+          }
+        }
+      }
       return {
         timestamp_ms: now - (cols - ci) * 60000,
         levels: grouped,
