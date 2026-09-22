@@ -25,13 +25,11 @@ export const ALL_TF: TF[] = [
   { label: '6h', ms: 21600000, sec: 21600 },
   { label: '8h', ms: 28800000, sec: 28800 },
   { label: '12h', ms: 43200000, sec: 43200 },
-  { label: '1d', ms: 86400000, sec: 86400 },
-  { label: '3d', ms: 259200000, sec: 259200 },
-  { label: '1w', ms: 604800000, sec: 604800 },
-  { label: '1M', ms: 2592000000, sec: 2592000 },
-  // uppercase aliases for display compatibility
+  // Canonical DAY/WEEK/MONTH uppercase only — deduped to prevent 1m 5m 5m bug, no lowercase duplicates
   { label: '1D', ms: 86400000, sec: 86400 },
+  { label: '3D', ms: 259200000, sec: 259200 },
   { label: '1W', ms: 604800000, sec: 604800 },
+  { label: '1M', ms: 2592000000, sec: 2592000 },
 ];
 
 export function EdgeDepthTimeframeBar({
@@ -92,12 +90,26 @@ export function EdgeDepthTimeframeBar({
   };
 
   const isFav = (label: string) => favs.has(label) || favs.has(label.toLowerCase()) || favs.has(label.toUpperCase());
-  const favList = ALL_TF.filter(t => favs.has(t.label));
+  // Dedup favList case-insensitive to prevent 1m 5m 5m bug — user screenshot shows duplicate 5m
+  const seenFav = new Set<string>();
+  const favListRaw = ALL_TF.filter(t => favs.has(t.label) || favs.has(t.label.toLowerCase()) || favs.has(t.label.toUpperCase()));
+  const favList = favListRaw.filter(t => {
+    const k = t.label.toLowerCase();
+    if (seenFav.has(k)) return false;
+    seenFav.add(k);
+    return true;
+  });
   // Top bar: show favourites if any, else default 1m 5m 15m 1h 4h 1D
   const defaultTop = ['1m', '5m', '15m', '1h', '4h', '1D'];
-  const topBarLabels = favList.length ? favList.map(t => t.label).slice(0, 6) : defaultTop;
-  // Ensure topBarLabels unique and existent
-  const topBar = topBarLabels.filter((l, i, a) => a.indexOf(l) === i);
+  const topBarLabelsRaw = favList.length ? favList.map(t => t.label).slice(0, 6) : defaultTop;
+  // Ensure topBarLabels unique case-insensitive — professional single bar, no duplicates
+  const seenTop = new Set<string>();
+  const topBar = topBarLabelsRaw.filter(l => {
+    const k = l.toLowerCase();
+    if (seenTop.has(k)) return false;
+    seenTop.add(k);
+    return true;
+  });
 
   const handleSelect = (tf: TF) => {
     onChange(tf);

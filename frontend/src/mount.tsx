@@ -106,6 +106,33 @@ const onCtxRowIn = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style
 const onCtxRowOut = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = 'transparent'; };
 
 function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'candlestick', trades = [], engineIndicators, indicatorPatch = null, quote = null, positions = [], onPositionModify, onPositionClose, autoSelectPositionId = null }: TerminalChartProps) {
+  // Professionalism fix: hide LSE shell duplicate timeframe bar (user screenshot X marks)
+  // The shell's #timeframes nav (tick 1s 15s 30s 5m 15m 1h 2h 8h 12h 1d 3d 1w 1M Custom... Candles Indicators Panes Source)
+  // must be hidden when EdgeDepth mode is active — we have single clean EdgeDepth bar only.
+  useEffect(() => {
+    const id = 'lse-hide-shell-tf-style';
+    if (!document.getElementById(id)) {
+      const st = document.createElement('style');
+      st.id = id;
+      st.textContent = `
+        /* Hide LSE shell duplicate bars when EdgeDepth terminal active — professional single bar only */
+        #timeframes { display: none !important; }
+        #subrail { display: none !important; }
+        #controls #chart-type, #controls #ind-open, #controls #panes-open, #controls #src-open,
+        #controls #tpl-open, #controls #cs-open, #controls #sl-slot { display: none !important; }
+        /* Also hide any Simple Moving Average pill that leaks from shell */
+        #ind-active { display: none !important; }
+      `;
+      document.head.appendChild(st);
+    }
+    // Direct DOM hide as fallback (in case style not applied yet)
+    try {
+      const tf = document.getElementById('timeframes');
+      if (tf) (tf as HTMLElement).style.display = 'none';
+      const sr = document.getElementById('subrail');
+      if (sr) (sr as HTMLElement).style.display = 'none';
+    } catch {}
+  }, []);
   const scrollKey = `${provider}|${symbol}|${timeframe}`;
   const [hist, setHist] = useState<{ key: string; older: Candle[]; shift: number }>(() => {
     try {
@@ -774,6 +801,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             <EdgeDepthHeatmapPane
               symbol={symbol}
               provider={provider}
+              embedded
               onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
               liqColormap={edAppearance.liqColormap as any}
               obColormap={edAppearance.obColormap as any}

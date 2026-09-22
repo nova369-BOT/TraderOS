@@ -1,4 +1,4 @@
-import { r as y, j as n, g as Tt } from "./react-vendor-C0yw3i6b.js";
+import { r as T, j as n, g as yt } from "./react-vendor-C0yw3i6b.js";
 const ot = ["deepdom", "bookmap", "heat", "greyscale"], vt = [
   [0, [6, 2, 5]],
   [0.3, [58, 10, 16]],
@@ -54,31 +54,31 @@ function wt(t, e) {
   }
   return t[t.length - 1][1];
 }
-function He(t, e, s) {
+function $e(t, e, s) {
   const o = new Uint8ClampedArray(1024), a = 1 - Math.min(1, Math.max(0, e.dimming)), r = 1 + e.contrast, l = e.brightness * 255, i = s >= 2 ? Math.ceil(256 / Math.min(s, 256)) : 1, h = (c) => {
     const b = c / 255;
-    let T, v, f;
-    t === null ? T = v = f = b * 255 : [T, v, f] = wt(t, b);
-    const g = (T + v + f) / 3;
-    return T = g + (T - g) * e.intensity, v = g + (v - g) * e.intensity, f = g + (f - g) * e.intensity, T *= a, v *= a, f *= a, T = (T / 255 - 0.5) * r * 255 + 127.5 + l, v = (v / 255 - 0.5) * r * 255 + 127.5 + l, f = (f / 255 - 0.5) * r * 255 + 127.5 + l, [
-      Math.min(255, Math.max(0, T)),
-      Math.min(255, Math.max(0, v)),
-      Math.min(255, Math.max(0, f))
+    let y, _, d;
+    t === null ? y = _ = d = b * 255 : [y, _, d] = wt(t, b);
+    const x = (y + _ + d) / 3;
+    return y = x + (y - x) * e.intensity, _ = x + (_ - x) * e.intensity, d = x + (d - x) * e.intensity, y *= a, _ *= a, d *= a, y = (y / 255 - 0.5) * r * 255 + 127.5 + l, _ = (_ / 255 - 0.5) * r * 255 + 127.5 + l, d = (d / 255 - 0.5) * r * 255 + 127.5 + l, [
+      Math.min(255, Math.max(0, y)),
+      Math.min(255, Math.max(0, _)),
+      Math.min(255, Math.max(0, d))
     ];
   };
   for (let c = 0; c < 256; c++) {
-    const b = i > 1 ? Math.min(Math.floor(c / i) * i + Math.floor(i / 2), 255) : c, [T, v, f] = h(b);
-    o[c * 4] = T, o[c * 4 + 1] = v, o[c * 4 + 2] = f, o[c * 4 + 3] = 255;
+    const b = i > 1 ? Math.min(Math.floor(c / i) * i + Math.floor(i / 2), 255) : c, [y, _, d] = h(b);
+    o[c * 4] = y, o[c * 4 + 1] = _, o[c * 4 + 2] = d, o[c * 4 + 3] = 255;
   }
   return o;
 }
-function Be(t, e) {
+function Oe(t, e) {
   const s = e !== void 0 ? e : t.smoothing, o = ot.includes(t.scheme) ? t.scheme : "heat";
   if (o === "greyscale") {
-    const l = He(null, t, s);
+    const l = $e(null, t, s);
     return { ask: l, bid: l };
   }
-  const a = He(Je(o, "ask"), t, s), r = o === "deepdom" ? He(Je(o, "bid"), t, s) : a;
+  const a = $e(Je(o, "ask"), t, s), r = o === "deepdom" ? $e(Je(o, "bid"), t, s) : a;
   return { ask: a, bid: r };
 }
 function St(t) {
@@ -134,7 +134,7 @@ const at = {
   recenterTolerance: 15,
   resetPolicy: "session",
   resetIntervalMin: 60
-}, rt = "lset-depth-global-scheme", lt = "lset-depth-global-apply", Fe = "lse-depth-global-scheme";
+}, rt = "lset-depth-global-scheme", lt = "lset-depth-global-apply", ze = "lse-depth-global-scheme";
 function kt() {
   let t = "heat", e = !1;
   try {
@@ -144,7 +144,7 @@ function kt() {
   }
   return { scheme: t, apply: e };
 }
-function Ve(t, e) {
+function Ge(t, e) {
   try {
     localStorage.setItem(rt, t), localStorage.setItem(lt, e ? "1" : "0");
   } catch {
@@ -179,7 +179,7 @@ function Ct(t, e = 7) {
     if (s <= a * o) return a * o;
   return 10 * o;
 }
-function We(t, e) {
+function Xe(t, e) {
   const s = e >= 1 ? e >= 10 ? 0 : 1 : Math.min(6, Math.ceil(-Math.log10(e)));
   return t.toFixed(s);
 }
@@ -194,41 +194,41 @@ function Qe(t, e, s, o, a, r, l) {
   t.stroke(), t.restore();
 }
 function Pt(t, e) {
-  const { fieldW: s, cssW: o, cssH: a, centre: r, ppu: l, pLo: i, pHi: h } = e, c = (f) => a / 2 - (f - r) * l;
+  const { fieldW: s, cssW: o, cssH: a, centre: r, ppu: l, pLo: i, pHi: h } = e, c = (d) => a / 2 - (d - r) * l;
   t.fillStyle = "#0c0f14", t.fillRect(s, 0, o - s, a), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(s + 0.5, 0), t.lineTo(s + 0.5, a), t.stroke();
-  const b = Ct(h - i), T = Math.ceil(i / b) * b;
+  const b = Ct(h - i), y = Math.ceil(i / b) * b;
   t.font = Le, t.textAlign = "right", t.save(), t.setLineDash([1, 3]);
-  for (let f = T; f <= h; f += b) {
-    const g = Math.round(c(f)) + 0.5;
-    g < 8 || g > a - 4 || (t.strokeStyle = "rgba(255, 255, 255, 0.05)", t.beginPath(), t.moveTo(0, g), t.lineTo(s, g), t.stroke(), t.strokeStyle = "#3a4453", t.beginPath(), t.moveTo(s, g), t.lineTo(s + 4, g), t.stroke(), e.fused || (t.fillStyle = "#8b96a5", t.fillText(We(f, b), o - 5, g + 3)));
+  for (let d = y; d <= h; d += b) {
+    const x = Math.round(c(d)) + 0.5;
+    x < 8 || x > a - 4 || (t.strokeStyle = "rgba(255, 255, 255, 0.05)", t.beginPath(), t.moveTo(0, x), t.lineTo(s, x), t.stroke(), t.strokeStyle = "#3a4453", t.beginPath(), t.moveTo(s, x), t.lineTo(s + 4, x), t.stroke(), e.fused || (t.fillStyle = "#8b96a5", t.fillText(Xe(d, b), o - 5, x + 3)));
   }
   t.restore();
-  const v = (f, g, w) => {
-    const u = c(f);
-    u < 8 || u > a - 8 || (t.fillStyle = g, t.fillRect(s + 2, u - 8, o - s - 4, 16), t.fillStyle = w, t.font = `600 ${Le}`, t.fillText(We(f, b), o - 5, u + 3), t.font = Le);
+  const _ = (d, x, S) => {
+    const f = c(d);
+    f < 8 || f > a - 8 || (t.fillStyle = x, t.fillRect(s + 2, f - 8, o - s - 4, 16), t.fillStyle = S, t.font = `600 ${Le}`, t.fillText(Xe(d, b), o - 5, f + 3), t.font = Le);
   };
-  if (e.bookAsk !== null && v(e.bookAsk, "rgba(239, 83, 80, 0.92)", "#2b0b0a"), e.bookBid !== null && v(e.bookBid, "rgba(38, 166, 154, 0.92)", "#06201c"), e.lastPrice !== null) {
-    const f = c(e.lastPrice);
-    f >= 0 && f <= a && (t.save(), t.strokeStyle = e.lastBuy ? "rgba(38, 166, 154, 0.65)" : "rgba(239, 83, 80, 0.65)", t.setLineDash([5, 4]), t.beginPath(), t.moveTo(0, Math.round(f) + 0.5), t.lineTo(s, Math.round(f) + 0.5), t.stroke(), t.restore(), f >= 8 && f <= a - 8 && (t.fillStyle = e.lastBuy ? "#26a69a" : "#ef5350", t.fillRect(s + 2, f - 8, o - s - 4, 16), t.fillStyle = "#08131a", t.font = `700 ${Le}`, t.fillText(We(e.lastPrice, b), o - 5, f + 3), t.font = Le));
+  if (e.bookAsk !== null && _(e.bookAsk, "rgba(239, 83, 80, 0.92)", "#2b0b0a"), e.bookBid !== null && _(e.bookBid, "rgba(38, 166, 154, 0.92)", "#06201c"), e.lastPrice !== null) {
+    const d = c(e.lastPrice);
+    d >= 0 && d <= a && (t.save(), t.strokeStyle = e.lastBuy ? "rgba(38, 166, 154, 0.65)" : "rgba(239, 83, 80, 0.65)", t.setLineDash([5, 4]), t.beginPath(), t.moveTo(0, Math.round(d) + 0.5), t.lineTo(s, Math.round(d) + 0.5), t.stroke(), t.restore(), d >= 8 && d <= a - 8 && (t.fillStyle = e.lastBuy ? "#26a69a" : "#ef5350", t.fillRect(s + 2, d - 8, o - s - 4, 16), t.fillStyle = "#08131a", t.font = `700 ${Le}`, t.fillText(Xe(e.lastPrice, b), o - 5, d + 3), t.font = Le));
   }
   t.textAlign = "left";
 }
 const jt = "9px ui-monospace, Menlo, Consolas, monospace", ct = "#26a69a", ht = "#ef5350";
-function $e(t) {
+function Be(t) {
   return t >= 1e4 ? `${(t / 1e3).toFixed(0)}k` : t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 || t >= 10 ? t.toFixed(0) : t.toFixed(1);
 }
 function Dt(t, e, s, o, a, r, l, i) {
   const h = (c, b) => {
     t.strokeStyle = b, t.lineWidth = 1, t.beginPath();
-    let T = null, v = 0;
-    for (let f = s; f < o; f++) {
-      const g = c(e[f]), w = a(e[f].tsMs), u = f + 1 < o ? a(e[f + 1].tsMs) : w + 1;
-      if (g === null || g < l || g > i) {
-        T = null;
+    let y = null, _ = 0;
+    for (let d = s; d < o; d++) {
+      const x = c(e[d]), S = a(e[d].tsMs), f = d + 1 < o ? a(e[d + 1].tsMs) : S + 1;
+      if (x === null || x < l || x > i) {
+        y = null;
         continue;
       }
-      const x = Math.round(r(g)) + 0.5;
-      T !== null ? (t.moveTo(v, T), t.lineTo(w, T), t.lineTo(w, x)) : t.moveTo(w, x), t.lineTo(u, x), T = x, v = u;
+      const g = Math.round(r(x)) + 0.5;
+      y !== null ? (t.moveTo(_, y), t.lineTo(S, y), t.lineTo(S, g)) : t.moveTo(S, g), t.lineTo(f, g), y = g, _ = f;
     }
     t.stroke();
   };
@@ -239,14 +239,14 @@ function At(t, e, s, o, a, r, l, i, h) {
   t.save(), t.globalAlpha = h.alpha;
   const c = [];
   if (h.mode === "pie") {
-    const b = Math.max(4, h.cssH / 80), T = Math.max(5, 1400 / Math.max(0.5, (o - s) / Math.max(1, h.fieldW))), v = /* @__PURE__ */ new Map();
-    for (const f of e) {
-      if (f.tsMs < s || f.tsMs > o || f.price < a || f.price > r) continue;
-      const g = l(f.tsMs), w = i(f.price), u = `${Math.round(g / T)}:${Math.round(w / b)}`;
-      let x = v.get(u);
-      x || (x = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }, v.set(u, x)), x.x += g, x.y += w, x.n += 1, x.size += f.size, f.buy ? x.buy += f.size : x.sell += f.size;
+    const b = Math.max(4, h.cssH / 80), y = Math.max(5, 1400 / Math.max(0.5, (o - s) / Math.max(1, h.fieldW))), _ = /* @__PURE__ */ new Map();
+    for (const d of e) {
+      if (d.tsMs < s || d.tsMs > o || d.price < a || d.price > r) continue;
+      const x = l(d.tsMs), S = i(d.price), f = `${Math.round(x / y)}:${Math.round(S / b)}`;
+      let g = _.get(f);
+      g || (g = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }, _.set(f, g)), g.x += x, g.y += S, g.n += 1, g.size += d.size, d.buy ? g.buy += d.size : g.sell += d.size;
     }
-    for (const f of v.values()) c.push({ ...f, x: f.x / f.n, y: f.y / f.n });
+    for (const d of _.values()) c.push({ ...d, x: d.x / d.n, y: d.y / d.n });
   } else
     for (const b of e)
       b.tsMs < s || b.tsMs > o || b.price < a || b.price > r || c.push({
@@ -258,107 +258,107 @@ function At(t, e, s, o, a, r, l, i, h) {
         sell: b.buy ? 0 : b.size
       });
   for (const b of c) {
-    const T = Math.min(16, Math.max(2.5, Math.sqrt(b.size) * 0.9 * h.scale)), v = b.buy + b.sell, f = v > 0 ? b.buy / v : 0.5, g = -Math.PI / 2;
-    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g, g + f * Math.PI * 2), t.closePath(), t.fillStyle = ct, t.fill(), f < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g + f * Math.PI * 2, g + Math.PI * 2), t.closePath(), t.fillStyle = ht, t.fill()), h.mode !== "solid") {
-      const w = t.createRadialGradient(
-        b.x - T * 0.35,
-        b.y - T * 0.42,
-        T * 0.1,
+    const y = Math.min(16, Math.max(2.5, Math.sqrt(b.size) * 0.9 * h.scale)), _ = b.buy + b.sell, d = _ > 0 ? b.buy / _ : 0.5, x = -Math.PI / 2;
+    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, x, x + d * Math.PI * 2), t.closePath(), t.fillStyle = ct, t.fill(), d < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, x + d * Math.PI * 2, x + Math.PI * 2), t.closePath(), t.fillStyle = ht, t.fill()), h.mode !== "solid") {
+      const S = t.createRadialGradient(
+        b.x - y * 0.35,
+        b.y - y * 0.42,
+        y * 0.1,
         b.x,
         b.y,
-        T
+        y
       );
-      w.addColorStop(0, "rgba(255, 255, 255, 0.5)"), w.addColorStop(0.45, "rgba(255, 255, 255, 0.08)"), w.addColorStop(0.85, "rgba(0, 0, 0, 0.18)"), w.addColorStop(1, "rgba(0, 0, 0, 0.5)"), t.beginPath(), t.arc(b.x, b.y, T, 0, Math.PI * 2), t.fillStyle = w, t.fill();
+      S.addColorStop(0, "rgba(255, 255, 255, 0.5)"), S.addColorStop(0.45, "rgba(255, 255, 255, 0.08)"), S.addColorStop(0.85, "rgba(0, 0, 0, 0.18)"), S.addColorStop(1, "rgba(0, 0, 0, 0.5)"), t.beginPath(), t.arc(b.x, b.y, y, 0, Math.PI * 2), t.fillStyle = S, t.fill();
     }
-    if (t.lineWidth = 1, t.strokeStyle = "rgba(0, 0, 0, 0.55)", t.beginPath(), t.arc(b.x, b.y, T, 0, Math.PI * 2), t.stroke(), h.bigK > 0 && h.bigMedian > 0 && b.size >= h.bigK * h.bigMedian) {
-      const w = b.buy >= b.sell;
-      t.beginPath(), t.arc(b.x, b.y, T + 3, 0, Math.PI * 2), t.lineWidth = 1.5, t.strokeStyle = w ? "rgba(38, 166, 154, 0.95)" : "rgba(239, 83, 80, 0.95)", t.stroke();
-      const u = `${w ? "+" : "−"}${$e(b.size)}`;
+    if (t.lineWidth = 1, t.strokeStyle = "rgba(0, 0, 0, 0.55)", t.beginPath(), t.arc(b.x, b.y, y, 0, Math.PI * 2), t.stroke(), h.bigK > 0 && h.bigMedian > 0 && b.size >= h.bigK * h.bigMedian) {
+      const S = b.buy >= b.sell;
+      t.beginPath(), t.arc(b.x, b.y, y + 3, 0, Math.PI * 2), t.lineWidth = 1.5, t.strokeStyle = S ? "rgba(38, 166, 154, 0.95)" : "rgba(239, 83, 80, 0.95)", t.stroke();
+      const f = `${S ? "+" : "−"}${Be(b.size)}`;
       t.font = `700 ${jt}`;
-      const x = t.measureText(u).width + 8;
-      let _ = b.x + T + 6;
-      _ + x > h.fieldW - 2 && (_ = b.x - T - 6 - x);
+      const g = t.measureText(f).width + 8;
+      let M = b.x + y + 6;
+      M + g > h.fieldW - 2 && (M = b.x - y - 6 - g);
       const p = Math.min(h.cssH - 16, Math.max(2, b.y - 8));
-      t.fillStyle = w ? "rgba(38, 166, 154, 0.92)" : "rgba(239, 83, 80, 0.92)", t.fillRect(_, p, x, 14), t.fillStyle = "#08131a", t.fillText(u, _ + 4, p + 10);
+      t.fillStyle = S ? "rgba(38, 166, 154, 0.92)" : "rgba(239, 83, 80, 0.92)", t.fillRect(M, p, g, 14), t.fillStyle = "#08131a", t.fillText(f, M + 4, p + 10);
     }
   }
   t.restore();
 }
 function Nt(t, e, s, o, a, r, l, i, h, c) {
-  const T = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((g) => g / h >= 18) ?? 36e5, v = /* @__PURE__ */ new Map();
-  for (const g of e) {
-    if (g.tsMs < s || g.tsMs > o || g.price < a || g.price > r) continue;
-    const w = Math.floor(g.tsMs / T);
-    let u = v.get(w);
-    u || (u = { o: g.price, h: g.price, l: g.price, c: g.price }, v.set(w, u)), u.h = Math.max(u.h, g.price), u.l = Math.min(u.l, g.price), u.c = g.price;
+  const y = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((x) => x / h >= 18) ?? 36e5, _ = /* @__PURE__ */ new Map();
+  for (const x of e) {
+    if (x.tsMs < s || x.tsMs > o || x.price < a || x.price > r) continue;
+    const S = Math.floor(x.tsMs / y);
+    let f = _.get(S);
+    f || (f = { o: x.price, h: x.price, l: x.price, c: x.price }, _.set(S, f)), f.h = Math.max(f.h, x.price), f.l = Math.min(f.l, x.price), f.c = x.price;
   }
-  const f = Math.min(9, Math.max(2, T / h * 0.6));
+  const d = Math.min(9, Math.max(2, y / h * 0.6));
   t.save(), t.globalAlpha = 0.92;
-  for (const [g, w] of v) {
-    const u = l(g * T + T / 2);
-    if (u < -f || u > c + f) continue;
-    const _ = w.c >= w.o ? ct : ht;
-    t.strokeStyle = _, t.fillStyle = _, t.lineWidth = 1, t.beginPath(), t.moveTo(Math.round(u) + 0.5, i(w.h)), t.lineTo(Math.round(u) + 0.5, i(w.l)), t.stroke();
-    const p = i(w.o), E = i(w.c), d = Math.min(p, E);
-    t.fillRect(u - f / 2, d, f, Math.max(1, Math.abs(p - E)));
+  for (const [x, S] of _) {
+    const f = l(x * y + y / 2);
+    if (f < -d || f > c + d) continue;
+    const M = S.c >= S.o ? ct : ht;
+    t.strokeStyle = M, t.fillStyle = M, t.lineWidth = 1, t.beginPath(), t.moveTo(Math.round(f) + 0.5, i(S.h)), t.lineTo(Math.round(f) + 0.5, i(S.l)), t.stroke();
+    const p = i(S.o), E = i(S.c), u = Math.min(p, E);
+    t.fillRect(f - d / 2, u, d, Math.max(1, Math.abs(p - E)));
   }
   t.restore();
 }
 const Lt = 78, Ut = 16, dt = "9px ui-monospace, Menlo, Consolas, monospace";
-function zt(t, e, s, o, a, r, l, i, h) {
+function Ft(t, e, s, o, a, r, l, i, h) {
   t.fillStyle = "#0a0d12", t.fillRect(0, l, h, i - l), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(0, Math.round(l) + 0.5), t.lineTo(h, Math.round(l) + 0.5), t.stroke();
   const c = i - Ut - 2, b = c - l - 14;
   if (b < 8) return;
-  const v = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((d) => d / r >= 5) ?? 36e5, f = /* @__PURE__ */ new Map();
-  let g = 0;
-  for (const d of e) {
-    if (d.tsMs < s || d.tsMs > o) continue;
-    const k = Math.floor(d.tsMs / v);
-    let C = f.get(k);
-    C || (C = { b: 0, s: 0 }, f.set(k, C)), d.buy ? C.b += d.size : C.s += d.size, g = Math.max(g, C.b, C.s);
+  const _ = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((u) => u / r >= 5) ?? 36e5, d = /* @__PURE__ */ new Map();
+  let x = 0;
+  for (const u of e) {
+    if (u.tsMs < s || u.tsMs > o) continue;
+    const k = Math.floor(u.tsMs / _);
+    let P = d.get(k);
+    P || (P = { b: 0, s: 0 }, d.set(k, P)), u.buy ? P.b += u.size : P.s += u.size, x = Math.max(x, P.b, P.s);
   }
-  const w = [...f.keys()].sort((d, k) => d - k);
-  let u = 0, x = 0, _ = 0;
+  const S = [...d.keys()].sort((u, k) => u - k);
+  let f = 0, g = 0, M = 0;
   const p = [];
-  for (const d of w) {
-    const k = f.get(d);
-    u += k.b - k.s, p.push([d, u]), x = Math.min(x, u), _ = Math.max(_, u);
+  for (const u of S) {
+    const k = d.get(u);
+    f += k.b - k.s, p.push([u, f]), g = Math.min(g, f), M = Math.max(M, f);
   }
   t.font = "600 8px ui-monospace, Menlo, monospace";
-  const E = Math.floor(s / v) * v;
-  for (let d = E; d <= o; d += v) {
-    const k = a(d), C = a(d + v);
-    if (C < -4 || k > h + 4) continue;
-    const O = C - k, L = f.get(Math.floor(d / v));
-    if (!L) continue;
-    const q = Math.max(1, O * 0.36), N = k + O / 2, I = g > 0 ? L.s / g * b : 0, $ = g > 0 ? L.b / g * b : 0;
-    t.fillStyle = "rgba(239, 83, 80, 0.85)", t.fillRect(N - q - 0.5, c - I, q, I), t.fillStyle = "rgba(100, 165, 240, 0.85)", t.fillRect(N + 0.5, c - $, q, $), O >= 26 && (t.textAlign = "center", t.fillStyle = "rgba(255, 150, 147, 0.9)", t.fillText($e(L.s), N - q / 2, c - I - 3), t.fillStyle = "rgba(147, 197, 253, 0.9)", t.fillText($e(L.b), N + q / 2 + 1, c - $ - 3));
+  const E = Math.floor(s / _) * _;
+  for (let u = E; u <= o; u += _) {
+    const k = a(u), P = a(u + _);
+    if (P < -4 || k > h + 4) continue;
+    const z = P - k, F = d.get(Math.floor(u / _));
+    if (!F) continue;
+    const q = Math.max(1, z * 0.36), L = k + z / 2, U = x > 0 ? F.s / x * b : 0, H = x > 0 ? F.b / x * b : 0;
+    t.fillStyle = "rgba(239, 83, 80, 0.85)", t.fillRect(L - q - 0.5, c - U, q, U), t.fillStyle = "rgba(100, 165, 240, 0.85)", t.fillRect(L + 0.5, c - H, q, H), z >= 26 && (t.textAlign = "center", t.fillStyle = "rgba(255, 150, 147, 0.9)", t.fillText(Be(F.s), L - q / 2, c - U - 3), t.fillStyle = "rgba(147, 197, 253, 0.9)", t.fillText(Be(F.b), L + q / 2 + 1, c - H - 3));
   }
-  if (p.length > 1 && _ > x && (t.strokeStyle = "rgba(226, 238, 255, 0.6)", t.lineWidth = 1, t.beginPath(), p.forEach(([d, k], C) => {
-    const O = a(d * v + v / 2), L = c - 2 - (k - x) / (_ - x) * (b - 4);
-    C === 0 ? t.moveTo(O, L) : t.lineTo(O, L);
-  }), t.stroke()), u !== 0) {
-    const d = `CVD ${u > 0 ? "+" : "−"}${$e(Math.abs(u))}`;
+  if (p.length > 1 && M > g && (t.strokeStyle = "rgba(226, 238, 255, 0.6)", t.lineWidth = 1, t.beginPath(), p.forEach(([u, k], P) => {
+    const z = a(u * _ + _ / 2), F = c - 2 - (k - g) / (M - g) * (b - 4);
+    P === 0 ? t.moveTo(z, F) : t.lineTo(z, F);
+  }), t.stroke()), f !== 0) {
+    const u = `CVD ${f > 0 ? "+" : "−"}${Be(Math.abs(f))}`;
     t.font = `700 ${dt}`;
-    const k = t.measureText(d).width + 8;
-    t.fillStyle = "rgba(10, 13, 18, 0.85)", t.fillRect(h - k - 4, l + 3, k, 13), t.fillStyle = u > 0 ? "#26a69a" : "#ef5350", t.fillText(d, h - k, l + 13);
+    const k = t.measureText(u).width + 8;
+    t.fillStyle = "rgba(10, 13, 18, 0.85)", t.fillRect(h - k - 4, l + 3, k, 13), t.fillStyle = f > 0 ? "#26a69a" : "#ef5350", t.fillText(u, h - k, l + 13);
   }
   t.textAlign = "left";
 }
-function Ft(t, e, s, o) {
+function zt(t, e, s, o) {
   let a = 0, r = 0;
-  for (const g of e)
-    g.tsMs < s || g.tsMs > o || (g.buy ? a += g.size : r += g.size);
-  const l = a + r, i = l > 0 ? (a - r) / l : 0, h = l > 0 ? (a - r) / l : 0, c = 178, b = 44, T = 8, v = 8;
-  t.save(), t.fillStyle = "rgba(10, 13, 18, 0.78)", t.fillRect(T, v, c, b), t.strokeStyle = "#232a35", t.strokeRect(T + 0.5, v + 0.5, c - 1, b - 1);
-  const f = (g, w, u, x) => {
-    t.font = `700 ${dt}`, t.fillStyle = "#8b96a5", t.fillText(g, T + 8, x + 7);
-    const _ = T + 40, p = 92, E = 6;
-    t.fillStyle = "rgba(239, 83, 80, 0.55)", t.fillRect(_, x, p / 2, E), t.fillStyle = "rgba(38, 166, 154, 0.55)", t.fillRect(_ + p / 2, x, p / 2, E);
-    const d = _ + p / 2 + (u ? w * (p / 2 - 2) : 0);
-    t.fillStyle = u ? "#eef1f6" : "#5c6672", t.fillRect(d - 1, x - 2, 2, E + 4), t.textAlign = "right", t.fillStyle = u ? w >= 0 ? "#26a69a" : "#ef5350" : "#5c6672", t.fillText(u ? `${w >= 0 ? "+" : "−"}${Math.abs(Math.round(w * 100))}%` : "—", T + c - 8, x + 7), t.textAlign = "left";
+  for (const x of e)
+    x.tsMs < s || x.tsMs > o || (x.buy ? a += x.size : r += x.size);
+  const l = a + r, i = l > 0 ? (a - r) / l : 0, h = l > 0 ? (a - r) / l : 0, c = 178, b = 44, y = 8, _ = 8;
+  t.save(), t.fillStyle = "rgba(10, 13, 18, 0.78)", t.fillRect(y, _, c, b), t.strokeStyle = "#232a35", t.strokeRect(y + 0.5, _ + 0.5, c - 1, b - 1);
+  const d = (x, S, f, g) => {
+    t.font = `700 ${dt}`, t.fillStyle = "#8b96a5", t.fillText(x, y + 8, g + 7);
+    const M = y + 40, p = 92, E = 6;
+    t.fillStyle = "rgba(239, 83, 80, 0.55)", t.fillRect(M, g, p / 2, E), t.fillStyle = "rgba(38, 166, 154, 0.55)", t.fillRect(M + p / 2, g, p / 2, E);
+    const u = M + p / 2 + (f ? S * (p / 2 - 2) : 0);
+    t.fillStyle = f ? "#eef1f6" : "#5c6672", t.fillRect(u - 1, g - 2, 2, E + 4), t.textAlign = "right", t.fillStyle = f ? S >= 0 ? "#26a69a" : "#ef5350" : "#5c6672", t.fillText(f ? `${S >= 0 ? "+" : "−"}${Math.abs(Math.round(S * 100))}%` : "—", y + c - 8, g + 7), t.textAlign = "left";
   };
-  f("IMB", i, l > 0, v + 8), f("CVD", h, l > 0, v + 26), t.restore();
+  d("IMB", i, l > 0, _ + 8), d("CVD", h, l > 0, _ + 26), t.restore();
 }
 function It(t) {
   return t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 ? t.toFixed(0) : t >= 1 ? t.toFixed(1) : t.toPrecision(2);
@@ -372,32 +372,32 @@ function Bt(t) {
 function $t(t, e, s, o) {
   const { bids: a, asks: r } = s.sorted();
   if (!a.length && !r.length) return;
-  const l = (_) => e.fH / 2 - (_ - e.centre) * e.ppu, i = o.activeRange > 0, h = [...a, ...r].filter(([_]) => _ >= e.lo && _ <= e.hi).map(([_]) => _).sort((_, p) => _ - p);
+  const l = (M) => e.fH / 2 - (M - e.centre) * e.ppu, i = o.activeRange > 0, h = [...a, ...r].filter(([M]) => M >= e.lo && M <= e.hi).map(([M]) => M).sort((M, p) => M - p);
   let c = 8;
   if (h.length >= 2) {
-    const _ = [];
+    const M = [];
     for (let p = 1; p < h.length; p++)
-      _.push(h[p] - h[p - 1]);
-    _.sort((p, E) => p - E), c = Math.min(20, Math.max(2.5, e.ppu * _[_.length >> 1]));
+      M.push(h[p] - h[p - 1]);
+    M.sort((p, E) => p - E), c = Math.min(20, Math.max(2.5, e.ppu * M[M.length >> 1]));
   }
   let b = 0;
-  for (const [_, p] of [...a, ...r])
-    _ >= e.lo && _ <= e.hi && (b = Math.max(b, p));
-  const T = e.fieldW + 5, v = e.fieldW + 46, f = 22, g = e.cssW - 4, w = (_, p, E, d, k) => {
-    const C = l(_);
-    if (C < -c || C > e.fH + c) return;
-    const O = C - c / 2, L = b > 0 ? Math.max(1.5, p / b * f) : 1.5;
-    t.fillStyle = E === "bid" ? d ? "rgba(38,166,154,0.18)" : "rgba(38, 166, 154, 0.68)" : d ? "rgba(239,83,80,0.18)" : "rgba(239, 83, 80, 0.68)", t.fillRect(v, O, L, Math.max(1, c - 1)), t.font = k ? "700 9px ui-monospace, Menlo, monospace" : "9px ui-monospace, Menlo, monospace", t.textAlign = "left", t.fillStyle = d ? "#4a5260" : k ? E === "bid" ? "#26a69a" : "#ef5350" : "#8b96a5", t.fillText(Ot(_), T, C + 3), t.textAlign = "right", t.fillStyle = d ? "#4a5260" : E === "bid" ? "#9fd6cd" : "#f4b3ae", t.fillText(It(p), g, C + 3);
-  }, u = a.length ? a[0][0] : null, x = r.length ? r[0][0] : null;
-  if (a.forEach(([_, p], E) => {
-    w(_, p, "bid", i && E >= o.activeRange, _ === u);
-  }), r.forEach(([_, p], E) => {
-    w(_, p, "ask", i && E >= o.activeRange, _ === x);
+  for (const [M, p] of [...a, ...r])
+    M >= e.lo && M <= e.hi && (b = Math.max(b, p));
+  const y = e.fieldW + 5, _ = e.fieldW + 46, d = 22, x = e.cssW - 4, S = (M, p, E, u, k) => {
+    const P = l(M);
+    if (P < -c || P > e.fH + c) return;
+    const z = P - c / 2, F = b > 0 ? Math.max(1.5, p / b * d) : 1.5;
+    t.fillStyle = E === "bid" ? u ? "rgba(38,166,154,0.18)" : "rgba(38, 166, 154, 0.68)" : u ? "rgba(239,83,80,0.18)" : "rgba(239, 83, 80, 0.68)", t.fillRect(_, z, F, Math.max(1, c - 1)), t.font = k ? "700 9px ui-monospace, Menlo, monospace" : "9px ui-monospace, Menlo, monospace", t.textAlign = "left", t.fillStyle = u ? "#4a5260" : k ? E === "bid" ? "#26a69a" : "#ef5350" : "#8b96a5", t.fillText(Ot(M), y, P + 3), t.textAlign = "right", t.fillStyle = u ? "#4a5260" : E === "bid" ? "#9fd6cd" : "#f4b3ae", t.fillText(It(p), x, P + 3);
+  }, f = a.length ? a[0][0] : null, g = r.length ? r[0][0] : null;
+  if (a.forEach(([M, p], E) => {
+    S(M, p, "bid", i && E >= o.activeRange, M === f);
+  }), r.forEach(([M, p], E) => {
+    S(M, p, "ask", i && E >= o.activeRange, M === g);
   }), i) {
     t.strokeStyle = "rgba(255, 179, 0, 0.75)", t.setLineDash([3, 3]);
-    const _ = [];
-    a.length && o.activeRange <= a.length && _.push(l(a[o.activeRange - 1][0]) + c / 2 + 1), r.length && o.activeRange <= r.length && _.push(l(r[o.activeRange - 1][0]) - c / 2 - 1);
-    for (const p of _)
+    const M = [];
+    a.length && o.activeRange <= a.length && M.push(l(a[o.activeRange - 1][0]) + c / 2 + 1), r.length && o.activeRange <= r.length && M.push(l(r[o.activeRange - 1][0]) - c / 2 - 1);
+    for (const p of M)
       p < 0 || p > e.fH || (t.beginPath(), t.moveTo(e.fieldW, p), t.lineTo(e.cssW, p), t.stroke());
     t.setLineDash([]);
   }
@@ -474,7 +474,7 @@ class qt {
   disposed = !1;
   onHoverTime = null;
   constructor(e) {
-    this.settings = e, this.luts = Be(e), this.off = document.createElement("canvas"), this.offCtx = this.off.getContext("2d"), this.glow = document.createElement("canvas"), this.glowCtx = this.glow.getContext("2d");
+    this.settings = e, this.luts = Oe(e), this.off = document.createElement("canvas"), this.offCtx = this.off.getContext("2d"), this.glow = document.createElement("canvas"), this.glowCtx = this.glow.getContext("2d");
   }
   // ── public API ─────────────────────────────────────────────────────────
   attach(e) {
@@ -517,7 +517,7 @@ class qt {
     return Math.max(40, this.cssH - this.subH());
   }
   setSettings(e) {
-    this.settings = e, this.luts = Be(e, this.effSmoothing()), this.dirty = !0;
+    this.settings = e, this.luts = Oe(e, this.effSmoothing()), this.dirty = !0;
   }
   /** S4: resolved vertical-smoothing shade count (0 = no quantization).
    * Auto = zoom-adaptive: the tighter the price zoom, the finer the bands. */
@@ -574,7 +574,7 @@ class qt {
   wheel(e, s, o) {
     if (this.recenterTarget = null, o) {
       const a = Math.exp(-s * 1e-3);
-      this.pxPerUnit = (this.pxPerUnit ?? this.autoPxPerUnit()) * a, this.settings.smoothingMode === "auto" && (this.luts = Be(this.settings, this.effSmoothing()));
+      this.pxPerUnit = (this.pxPerUnit ?? this.autoPxPerUnit()) * a, this.settings.smoothingMode === "auto" && (this.luts = Oe(this.settings, this.effSmoothing()));
     } else {
       const a = Math.exp(s * 1e-3);
       this.msPerPx = Math.min(120, Math.max(0.5, this.msPerPx * a)), this.follow = !1;
@@ -715,55 +715,55 @@ class qt {
     this.basePpu === null && (this.basePpu = r);
     const l = this.priceCenter ?? (s + o) / 2, i = (p) => a / 2 - (p - l) * r;
     this.viewLo = s, this.viewHi = o, this.viewCentre = l, this.viewPpu = r, this.viewH = a, this.viewVersion += 1;
-    const h = this.fieldW(), c = this.settings.subpanes, b = this.xToTs(0), T = this.xToTs(h);
-    let v = this.lowerBound(b), f = this.lowerBound(T);
-    f = Math.min(f, this.cols.length), this.follow && this.rightOffsetPx <= 0 && (this.rightOffsetPx = 0);
-    const g = c ? this.cssH - 14 : a;
-    this.settings.view === "footprint" ? (this.paintFootprint(e, b, T, s, o, i, a), Qe(
+    const h = this.fieldW(), c = this.settings.subpanes, b = this.xToTs(0), y = this.xToTs(h);
+    let _ = this.lowerBound(b), d = this.lowerBound(y);
+    d = Math.min(d, this.cols.length), this.follow && this.rightOffsetPx <= 0 && (this.rightOffsetPx = 0);
+    const x = c ? this.cssH - 14 : a;
+    this.settings.view === "footprint" ? (this.paintFootprint(e, b, y, s, o, i, a), Qe(
       e,
       h,
-      g,
+      x,
       (p) => this.tsToX(p),
       b,
-      T,
+      y,
       this.niceTimeStep(h * this.msPerPx)
-    )) : this.paintHeatField(e, v, f, b, T, s, o, i, h, a, g), c && (zt(
+    )) : this.paintHeatField(e, _, d, b, y, s, o, i, h, a, x), c && (Ft(
       e,
       this.dots,
       b,
-      T,
+      y,
       (p) => this.tsToX(p),
       this.msPerPx,
       a,
       this.cssH,
       h
-    ), this.settings.view === "heat" && Ft(e, this.dots, b, T));
-    const w = (p, E) => {
+    ), this.settings.view === "heat" && zt(e, this.dots, b, y));
+    const S = (p, E) => {
       if (p === null || p < s || p > o) return;
-      const d = i(p);
-      e.strokeStyle = E, e.setLineDash([4, 3]), e.beginPath(), e.moveTo(0, d), e.lineTo(h, d), e.stroke(), e.setLineDash([]);
+      const u = i(p);
+      e.strokeStyle = E, e.setLineDash([4, 3]), e.beginPath(), e.moveTo(0, u), e.lineTo(h, u), e.stroke(), e.setLineDash([]);
     };
-    if (w(this.bookBid, "rgba(38, 166, 154, 0.55)"), w(this.bookAsk, "rgba(239, 83, 80, 0.55)"), this.syncedCrosshair !== null) {
+    if (S(this.bookBid, "rgba(38, 166, 154, 0.55)"), S(this.bookAsk, "rgba(239, 83, 80, 0.55)"), this.syncedCrosshair !== null) {
       const p = this.tsToX(this.syncedCrosshair);
       p >= 0 && p <= h && (e.strokeStyle = "rgba(150, 160, 175, 0.55)", e.setLineDash([3, 3]), e.beginPath(), e.moveTo(p, 0), e.lineTo(p, a), e.stroke(), e.setLineDash([]));
     }
     if (this.hover) {
       const { x: p, y: E } = this.hover;
       p <= h && E <= a && (e.strokeStyle = "rgba(150, 160, 175, 0.45)", e.setLineDash([3, 3]), e.beginPath(), e.moveTo(p, 0), e.lineTo(p, a), e.moveTo(0, E), e.lineTo(h, E), e.stroke(), e.setLineDash([]));
-      const d = l + (a / 2 - E) / r;
-      e.fillStyle = "rgba(30, 34, 41, 0.95)", e.fillRect(h - 74, E - 9, 72, 18), e.fillStyle = "#d1d4dc", e.font = "10px monospace", e.textAlign = "right", e.fillText(d.toPrecision(6), h - 6, E + 3);
-      const C = new Date(this.xToTs(p)).toISOString().slice(11, 19);
-      e.fillRect(Math.min(p, h - 30) - 28, this.cssH - 16, 56, 15), e.textAlign = "center", e.fillText(C, Math.min(p, h - 30), this.cssH - 5);
+      const u = l + (a / 2 - E) / r;
+      e.fillStyle = "rgba(30, 34, 41, 0.95)", e.fillRect(h - 74, E - 9, 72, 18), e.fillStyle = "#d1d4dc", e.font = "10px monospace", e.textAlign = "right", e.fillText(u.toPrecision(6), h - 6, E + 3);
+      const P = new Date(this.xToTs(p)).toISOString().slice(11, 19);
+      e.fillRect(Math.min(p, h - 30) - 28, this.cssH - 16, 56, 15), e.textAlign = "center", e.fillText(P, Math.min(p, h - 30), this.cssH - 5);
     }
     e.fillStyle = "rgba(150,160,175,0.7)", e.font = "9px monospace", e.textAlign = "left";
-    const u = this.niceTimeStep(h * this.msPerPx), x = Math.ceil(b / u) * u;
-    for (let p = x; p <= T; p += u) {
+    const f = this.niceTimeStep(h * this.msPerPx), g = Math.ceil(b / f) * f;
+    for (let p = g; p <= y; p += f) {
       const E = this.tsToX(p);
       if (E > h - 52) continue;
-      const d = new Date(p);
-      e.fillText(d.toISOString().slice(11, 19), E + 2, this.cssH - 4), e.fillRect(E, this.cssH - 14, 1, 4);
+      const u = new Date(p);
+      e.fillText(u.toISOString().slice(11, 19), E + 2, this.cssH - 4), e.fillRect(E, this.cssH - 14, 1, 4);
     }
-    const _ = this.settings.ladderMode === "fused";
+    const M = this.settings.ladderMode === "fused";
     Pt(e, {
       fieldW: h,
       cssW: this.cssW,
@@ -776,8 +776,8 @@ class qt {
       bookAsk: this.bookAsk,
       lastPrice: this.lastTradePrice,
       lastBuy: this.lastTradeBuy,
-      fused: _
-    }), _ && this.bookSource && $t(e, {
+      fused: M
+    }), M && this.bookSource && $t(e, {
       fieldW: h,
       cssW: this.cssW,
       fH: a,
@@ -790,51 +790,51 @@ class qt {
   /** V1+V2 heat field: intensity+side offscreen fold → per-side LUT
    * colourise → blit → glow → time grid → path → candles → bubbles →
    * volume strip. */
-  paintHeatField(e, s, o, a, r, l, i, h, c, b, T) {
-    const v = this.settings, f = Math.max(1, o - s), g = Xt, w = (i - l) / g;
-    (this.off.width !== f || this.off.height !== g) && (this.off.width = f, this.off.height = g, this.glow.width = f, this.glow.height = g);
-    const u = Math.min(1, Math.max(0.25, v.gamma || 1)), x = new Uint8ClampedArray(f * g), _ = new Uint8Array(f * g).fill(255);
-    for (let N = 0; N < f; N++) {
-      const I = this.cols[s + N], { keys: $, sizes: W, sides: J } = I;
-      for (let ye = 0; ye < $.length; ye++) {
-        const pe = $[ye];
-        if (pe < l || pe > i) continue;
-        const be = W[ye];
-        if (be <= 0) continue;
-        const de = Math.min(g - 1, Math.max(0, Math.floor((i - pe) / w))) * f + N, R = Rt(be, this.lo, this.hi, u);
-        R > x[de] && (x[de] = R, _[de] = J[ye]);
+  paintHeatField(e, s, o, a, r, l, i, h, c, b, y) {
+    const _ = this.settings, d = Math.max(1, o - s), x = Xt, S = (i - l) / x;
+    (this.off.width !== d || this.off.height !== x) && (this.off.width = d, this.off.height = x, this.glow.width = d, this.glow.height = x);
+    const f = Math.min(1, Math.max(0.25, _.gamma || 1)), g = new Uint8ClampedArray(d * x), M = new Uint8Array(d * x).fill(255);
+    for (let L = 0; L < d; L++) {
+      const U = this.cols[s + L], { keys: H, sizes: $, sides: J } = U;
+      for (let ce = 0; ce < H.length; ce++) {
+        const ge = H[ce];
+        if (ge < l || ge > i) continue;
+        const ae = $[ce];
+        if (ae <= 0) continue;
+        const ne = Math.min(x - 1, Math.max(0, Math.floor((i - ge) / S))) * d + L, C = Rt(ae, this.lo, this.hi, f);
+        C > g[ne] && (g[ne] = C, M[ne] = J[ce]);
       }
     }
-    const p = this.offCtx.createImageData(f, g), E = this.glowCtx.createImageData(f, g), d = p.data, k = E.data;
-    for (let N = 0; N < x.length; N++) {
-      const I = _[N];
-      if (I === 255) continue;
-      const $ = I === 1 ? this.luts.ask : this.luts.bid, W = x[N] * 4, J = N * 4;
-      d[J] = $[W], d[J + 1] = $[W + 1], d[J + 2] = $[W + 2], d[J + 3] = 255, x[N] >= Gt && (k[J] = $[W], k[J + 1] = $[W + 1], k[J + 2] = $[W + 2], k[J + 3] = 255);
+    const p = this.offCtx.createImageData(d, x), E = this.glowCtx.createImageData(d, x), u = p.data, k = E.data;
+    for (let L = 0; L < g.length; L++) {
+      const U = M[L];
+      if (U === 255) continue;
+      const H = U === 1 ? this.luts.ask : this.luts.bid, $ = g[L] * 4, J = L * 4;
+      u[J] = H[$], u[J + 1] = H[$ + 1], u[J + 2] = H[$ + 2], u[J + 3] = 255, g[L] >= Gt && (k[J] = H[$], k[J + 1] = H[$ + 1], k[J + 2] = H[$ + 2], k[J + 3] = 255);
     }
     this.offCtx.putImageData(p, 0, 0), this.glowCtx.putImageData(E, 0, 0);
-    const C = this.tsToX(this.cols[s].tsMs), O = this.tsToX(this.cols[s].tsMs + f * this.columnMs()), L = h(i), q = h(l);
-    if (e.imageSmoothingEnabled = v.smoothColumns, e.drawImage(this.off, C, L, Math.max(1, O - C), Math.max(1, q - L)), e.imageSmoothingEnabled = !1, v.glow && (e.save(), e.globalCompositeOperation = "lighter", e.globalAlpha = 0.38, "filter" in e && (e.filter = "blur(6px)"), e.imageSmoothingEnabled = !0, e.drawImage(this.glow, C, L, Math.max(1, O - C), Math.max(1, q - L)), e.restore()), Qe(
+    const P = this.tsToX(this.cols[s].tsMs), z = this.tsToX(this.cols[s].tsMs + d * this.columnMs()), F = h(i), q = h(l);
+    if (e.imageSmoothingEnabled = _.smoothColumns, e.drawImage(this.off, P, F, Math.max(1, z - P), Math.max(1, q - F)), e.imageSmoothingEnabled = !1, _.glow && (e.save(), e.globalCompositeOperation = "lighter", e.globalAlpha = 0.38, "filter" in e && (e.filter = "blur(6px)"), e.imageSmoothingEnabled = !0, e.drawImage(this.glow, P, F, Math.max(1, z - P), Math.max(1, q - F)), e.restore()), Qe(
       e,
       c,
-      T,
-      (N) => this.tsToX(N),
+      y,
+      (L) => this.tsToX(L),
       a,
       r,
       this.niceTimeStep(c * this.msPerPx)
-    ), v.showPath && Dt(e, this.cols, s, o, (N) => this.tsToX(N), h, l, i), v.showCandles && Nt(
+    ), _.showPath && Dt(e, this.cols, s, o, (L) => this.tsToX(L), h, l, i), _.showCandles && Nt(
       e,
       this.dots,
       a,
       r,
       l,
       i,
-      (N) => this.tsToX(N),
+      (L) => this.tsToX(L),
       h,
       this.msPerPx,
       c
-    ), v.dots) {
-      const N = v.dotType === "pie" ? "pie" : v.dotType === "solid" ? "solid" : "sphere";
+    ), _.dots) {
+      const L = _.dotType === "pie" ? "pie" : _.dotType === "solid" ? "solid" : "sphere";
       At(
         e,
         this.dots,
@@ -842,13 +842,13 @@ class qt {
         r,
         l,
         i,
-        (I) => this.tsToX(I),
+        (U) => this.tsToX(U),
         h,
         {
-          alpha: Math.min(1, Math.max(0, v.dotAlpha)),
-          scale: v.dotScale,
-          mode: N,
-          bigK: v.bigTradeK,
+          alpha: Math.min(1, Math.max(0, _.dotAlpha)),
+          scale: _.dotScale,
+          mode: L,
+          bigK: _.bigTradeK,
           bigMedian: this.bigMedian,
           fieldW: c,
           cssH: b
@@ -862,7 +862,7 @@ class qt {
    * get a tinted backdrop; wide buckets print sell×buy figures. Prints
    * without a side never enter — the view stays honest about its data. */
   paintFootprint(e, s, o, a, r, l, i) {
-    const c = [5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((d) => d / this.msPerPx >= 72) ?? 36e5, b = r - a, v = [
+    const c = [5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((u) => u / this.msPerPx >= 72) ?? 36e5, b = r - a, _ = [
       1e-3,
       2e-3,
       5e-3,
@@ -885,43 +885,43 @@ class qt {
       250,
       500,
       1e3
-    ].find((d) => b / d <= 20) ?? b / 20, f = /* @__PURE__ */ new Map(), g = /* @__PURE__ */ new Map();
-    let w = 0, u = 0;
-    for (const d of this.dots) {
-      if (d.tsMs < s || d.tsMs > o || d.price < a || d.price > r) continue;
-      u += 1;
-      const k = Math.floor(d.tsMs / c), C = Math.floor(d.price / v), O = k + ":" + C;
-      let L = f.get(O);
-      L || (L = { b: 0, s: 0 }, f.set(O, L)), d.buy ? L.b += d.size : L.s += d.size, w = Math.max(w, L.b, L.s);
-      let q = g.get(k);
-      q || (q = { b: 0, s: 0 }, g.set(k, q)), d.buy ? q.b += d.size : q.s += d.size;
+    ].find((u) => b / u <= 20) ?? b / 20, d = /* @__PURE__ */ new Map(), x = /* @__PURE__ */ new Map();
+    let S = 0, f = 0;
+    for (const u of this.dots) {
+      if (u.tsMs < s || u.tsMs > o || u.price < a || u.price > r) continue;
+      f += 1;
+      const k = Math.floor(u.tsMs / c), P = Math.floor(u.price / _), z = k + ":" + P;
+      let F = d.get(z);
+      F || (F = { b: 0, s: 0 }, d.set(z, F)), u.buy ? F.b += u.size : F.s += u.size, S = Math.max(S, F.b, F.s);
+      let q = x.get(k);
+      q || (q = { b: 0, s: 0 }, x.set(k, q)), u.buy ? q.b += u.size : q.s += u.size;
     }
-    if (!u) {
+    if (!f) {
       e.fillStyle = "#5c6672", e.font = "11px ui-monospace, Menlo, monospace", e.textAlign = "center", e.fillText("no side-stamped prints in view", this.cssW / 2, i / 2 - 8), e.font = "10px ui-monospace, Menlo, monospace", e.fillText("the footprint builds from executed trades (demo and", this.cssW / 2, i / 2 + 10), e.fillText("crypto feeds carry sides; sources without prints stay blank)", this.cssW / 2, i / 2 + 24);
       return;
     }
-    const x = (d) => d >= 1e3 ? `${(d / 1e3).toFixed(1)}k` : d >= 100 || d >= 10 ? d.toFixed(0) : d.toFixed(1), _ = this.fieldW(), p = Math.min(22, Math.max(9, v * this.viewPpu * 0.85)), E = Math.floor(s / c) * c;
-    for (let d = E; d <= o; d += c) {
-      const k = this.tsToX(d), C = this.tsToX(d + c);
-      if (C < -4 || k > _ + 4) continue;
-      const O = C - k, L = Math.floor(d / c), q = O >= 92, N = O / 2 - 4;
-      e.strokeStyle = "rgba(30, 36, 47, 0.95)", e.beginPath(), e.moveTo(Math.round(C) + 0.5, 0), e.lineTo(Math.round(C) + 0.5, i), e.stroke();
-      for (const [$, W] of f) {
-        const [J, ye] = $.split(":");
-        if (Number(J) !== L) continue;
-        const pe = Number(ye), be = l((pe + 0.5) * v);
-        if (be < -p || be > i + p) continue;
-        const ce = be - (p - 2) / 2, de = W.b >= W.s * 3 && W.b > 0 ? 1 : W.s >= W.b * 3 && W.s > 0 ? -1 : 0;
-        de !== 0 && (e.fillStyle = de > 0 ? "rgba(38, 166, 154, 0.13)" : "rgba(239, 83, 80, 0.13)", e.fillRect(k + 2, ce, O - 4, p - 2));
-        const R = k + O / 2, A = w > 0 ? W.s / w * N : 0, H = w > 0 ? W.b / w * N : 0;
-        e.fillStyle = "rgba(239, 83, 80, 0.75)", e.fillRect(R - 1 - A, ce, A, p - 2), e.fillStyle = "rgba(38, 166, 154, 0.75)", e.fillRect(R + 1, ce, H, p - 2), q && (e.font = "9px ui-monospace, Menlo, monospace", e.textAlign = "right", e.fillStyle = de < 0 ? "#ffc9c5" : "#b2807d", e.fillText(x(W.s), R - 4, be + 3), e.textAlign = "left", e.fillStyle = de > 0 ? "#b8f2e9" : "#7fa8a1", e.fillText(x(W.b), R + 4, be + 3));
+    const g = (u) => u >= 1e3 ? `${(u / 1e3).toFixed(1)}k` : u >= 100 || u >= 10 ? u.toFixed(0) : u.toFixed(1), M = this.fieldW(), p = Math.min(22, Math.max(9, _ * this.viewPpu * 0.85)), E = Math.floor(s / c) * c;
+    for (let u = E; u <= o; u += c) {
+      const k = this.tsToX(u), P = this.tsToX(u + c);
+      if (P < -4 || k > M + 4) continue;
+      const z = P - k, F = Math.floor(u / c), q = z >= 92, L = z / 2 - 4;
+      e.strokeStyle = "rgba(30, 36, 47, 0.95)", e.beginPath(), e.moveTo(Math.round(P) + 0.5, 0), e.lineTo(Math.round(P) + 0.5, i), e.stroke();
+      for (const [H, $] of d) {
+        const [J, ce] = H.split(":");
+        if (Number(J) !== F) continue;
+        const ge = Number(ce), ae = l((ge + 0.5) * _);
+        if (ae < -p || ae > i + p) continue;
+        const fe = ae - (p - 2) / 2, ne = $.b >= $.s * 3 && $.b > 0 ? 1 : $.s >= $.b * 3 && $.s > 0 ? -1 : 0;
+        ne !== 0 && (e.fillStyle = ne > 0 ? "rgba(38, 166, 154, 0.13)" : "rgba(239, 83, 80, 0.13)", e.fillRect(k + 2, fe, z - 4, p - 2));
+        const C = k + z / 2, j = S > 0 ? $.s / S * L : 0, W = S > 0 ? $.b / S * L : 0;
+        e.fillStyle = "rgba(239, 83, 80, 0.75)", e.fillRect(C - 1 - j, fe, j, p - 2), e.fillStyle = "rgba(38, 166, 154, 0.75)", e.fillRect(C + 1, fe, W, p - 2), q && (e.font = "9px ui-monospace, Menlo, monospace", e.textAlign = "right", e.fillStyle = ne < 0 ? "#ffc9c5" : "#b2807d", e.fillText(g($.s), C - 4, ae + 3), e.textAlign = "left", e.fillStyle = ne > 0 ? "#b8f2e9" : "#7fa8a1", e.fillText(g($.b), C + 4, ae + 3));
       }
-      const I = g.get(L);
-      if (I) {
-        const $ = I.b - I.s;
-        e.font = "9px ui-monospace, Menlo, monospace", e.textAlign = "center", e.fillStyle = $ > 0 ? "#26a69a" : $ < 0 ? "#ef5350" : "#8b96a5", e.fillText(
-          `Δ${$ >= 0 ? "+" : "−"}${x(Math.abs($))} · ${x(I.b + I.s)}`,
-          k + O / 2,
+      const U = x.get(F);
+      if (U) {
+        const H = U.b - U.s;
+        e.font = "9px ui-monospace, Menlo, monospace", e.textAlign = "center", e.fillStyle = H > 0 ? "#26a69a" : H < 0 ? "#ef5350" : "#8b96a5", e.fillText(
+          `Δ${H >= 0 ? "+" : "−"}${g(Math.abs(H))} · ${g(U.b + U.s)}`,
+          k + z / 2,
           i - 6
         );
       }
@@ -953,13 +953,13 @@ class qt {
     return 864e5;
   }
 }
-function re({ label: t, children: e, hint: s }) {
+function oe({ label: t, children: e, hint: s }) {
   return /* @__PURE__ */ n.jsxs("div", { className: "dh-row", title: s, children: [
     /* @__PURE__ */ n.jsx("span", { className: "dh-label", children: t }),
     e
   ] });
 }
-function _e({ label: t, value: e, min: s, max: o, step: a, onChange: r, fmt: l, hint: i, disabled: h }) {
+function ve({ label: t, value: e, min: s, max: o, step: a, onChange: r, fmt: l, hint: i, disabled: h }) {
   return /* @__PURE__ */ n.jsxs("div", { className: "dh-row", style: h ? { opacity: 0.45 } : void 0, title: i, children: [
     /* @__PURE__ */ n.jsx("span", { className: "dh-label", children: t }),
     /* @__PURE__ */ n.jsx(
@@ -992,7 +992,7 @@ function De({ options: t, value: e, onChange: s }) {
     o.id
   )) });
 }
-function Ee({ on: t, onChange: e, label: s }) {
+function we({ on: t, onChange: e, label: s }) {
   return /* @__PURE__ */ n.jsx(
     "button",
     {
@@ -1005,8 +1005,8 @@ function Ee({ on: t, onChange: e, label: s }) {
   );
 }
 function Ue({ value: t, onCommit: e, min: s, max: o, disabled: a, suffix: r }) {
-  const [l, i] = Tt.useState(String(t));
-  y.useEffect(() => {
+  const [l, i] = yt.useState(String(t));
+  T.useEffect(() => {
     i(String(t));
   }, [t]);
   const h = () => {
@@ -1035,12 +1035,12 @@ function Ue({ value: t, onCommit: e, min: s, max: o, disabled: a, suffix: r }) {
   ] });
 }
 function Vt({ settings: t }) {
-  const e = y.useRef(null);
-  return y.useEffect(() => {
+  const e = T.useRef(null);
+  return T.useEffect(() => {
     const s = e.current;
     if (!s) return;
     s.width = 256, s.height = 14;
-    const o = s.getContext("2d"), { ask: a, bid: r } = Be({ ...t }), l = o.createImageData(256, 14);
+    const o = s.getContext("2d"), { ask: a, bid: r } = Oe({ ...t }), l = o.createImageData(256, 14);
     for (let i = 0; i < 256; i++)
       for (let h = 0; h < 14; h++) {
         const c = h < 7 ? a : r, b = (h * 256 + i) * 4;
@@ -1063,13 +1063,13 @@ function Yt({
   onChange: o,
   onClose: a
 }) {
-  y.useEffect(() => {
+  T.useEffect(() => {
     const i = (h) => {
       h.key === "Escape" && a();
     };
     return window.addEventListener("keydown", i), () => window.removeEventListener("keydown", i);
   }, [a]);
-  const r = e, l = y.useMemo(() => {
+  const r = e, l = T.useMemo(() => {
     if (!s) return null;
     const i = (h) => h >= 100 ? h.toFixed(0) : h >= 1 ? h.toFixed(2) : h.toPrecision(3);
     return `${i(s[0])} → ${i(s[1])}`;
@@ -1089,8 +1089,8 @@ function Yt({
             className: `dh-scheme${r.scheme === i ? " on" : ""}`,
             title: St(i),
             onClick: () => {
-              o({ scheme: i }), r.applySchemeGlobally && (Ve(i, !0), window.dispatchEvent(new CustomEvent(
-                Fe,
+              o({ scheme: i }), r.applySchemeGlobally && (Ge(i, !0), window.dispatchEvent(new CustomEvent(
+                ze,
                 { detail: { scheme: i, source: t } }
               )));
             },
@@ -1102,7 +1102,7 @@ function Yt({
           i
         )) }),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Intensity",
             value: r.intensity,
@@ -1114,7 +1114,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Dimming",
             value: r.dimming,
@@ -1126,14 +1126,14 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsxs(
-          re,
+          oe,
           {
             label: "Apply scheme globally",
             hint: "Persists the colour scheme terminal-wide; every Depth Heat pane follows it.",
             children: [
-              /* @__PURE__ */ n.jsx(Ee, { on: r.applySchemeGlobally, onChange: (i) => {
-                Ve(r.scheme, i), o({ applySchemeGlobally: i }), window.dispatchEvent(new CustomEvent(
-                  Fe,
+              /* @__PURE__ */ n.jsx(we, { on: r.applySchemeGlobally, onChange: (i) => {
+                Ge(r.scheme, i), o({ applySchemeGlobally: i }), window.dispatchEvent(new CustomEvent(
+                  ze,
                   { detail: { scheme: r.scheme, source: t } }
                 ));
               } }),
@@ -1145,7 +1145,7 @@ function Yt({
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "FIELD & OVERLAYS" }),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Intensity γ",
             value: r.gamma,
@@ -1157,20 +1157,20 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Wall glow",
             hint: "Bloom pass over the hottest levels — walls burn against a calm field.",
-            children: /* @__PURE__ */ n.jsx(Ee, { on: r.glow, onChange: (i) => o({ glow: i }) })
+            children: /* @__PURE__ */ n.jsx(we, { on: r.glow, onChange: (i) => o({ glow: i }) })
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Smooth columns",
             hint: "Bilinear blend between columns (watercolour feel). Off = crisp terminal columns.",
             children: /* @__PURE__ */ n.jsx(
-              Ee,
+              we,
               {
                 on: r.smoothColumns,
                 onChange: (i) => o({ smoothColumns: i })
@@ -1179,21 +1179,21 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Price path",
             hint: "Stepped bid/ask lines from the carried book — the Bookmap/DeepDom signature overlay.",
-            children: /* @__PURE__ */ n.jsx(Ee, { on: r.showPath, onChange: (i) => o({ showPath: i }) })
+            children: /* @__PURE__ */ n.jsx(we, { on: r.showPath, onChange: (i) => o({ showPath: i }) })
           }
         ),
         /* @__PURE__ */ n.jsxs(
-          re,
+          oe,
           {
             label: "Candles over heat",
             hint: "OHLC candles derived from the executed print stream (trade-derived — no invented feed).",
             children: [
               /* @__PURE__ */ n.jsx(
-                Ee,
+                we,
                 {
                   on: r.showCandles,
                   onChange: (i) => o({ showCandles: i })
@@ -1204,12 +1204,12 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Context strips",
             hint: "V3 bottom stack sharing the time axis: buy/sell-split volume histogram + CVD line, and the Imb/Cvd gauges top-left.",
             children: /* @__PURE__ */ n.jsx(
-              Ee,
+              we,
               {
                 on: r.subpanes,
                 onChange: (i) => o({ subpanes: i })
@@ -1218,7 +1218,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Big-trade ×",
             value: r.bigTradeK,
@@ -1233,7 +1233,7 @@ function Yt({
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "CUT-OFF" }),
-        /* @__PURE__ */ n.jsxs(re, { label: "Mode", hint: "Percentile: relative to this session's sizes. Exact: fixed size thresholds.", children: [
+        /* @__PURE__ */ n.jsxs(oe, { label: "Mode", hint: "Percentile: relative to this session's sizes. Exact: fixed size thresholds.", children: [
           /* @__PURE__ */ n.jsx(
             De,
             {
@@ -1249,7 +1249,7 @@ function Yt({
         ] }),
         r.cutoffMode === "percentile" ? /* @__PURE__ */ n.jsxs(n.Fragment, { children: [
           /* @__PURE__ */ n.jsx(
-            _e,
+            ve,
             {
               label: "Lower",
               value: r.cutoffLower,
@@ -1265,7 +1265,7 @@ function Yt({
             }
           ),
           /* @__PURE__ */ n.jsx(
-            _e,
+            ve,
             {
               label: "Upper",
               value: r.cutoffUpper,
@@ -1281,7 +1281,7 @@ function Yt({
             }
           )
         ] }) : /* @__PURE__ */ n.jsxs(n.Fragment, { children: [
-          /* @__PURE__ */ n.jsx(re, { label: "Lower size", children: /* @__PURE__ */ n.jsx(
+          /* @__PURE__ */ n.jsx(oe, { label: "Lower size", children: /* @__PURE__ */ n.jsx(
             Ue,
             {
               value: r.cutoffLower,
@@ -1292,7 +1292,7 @@ function Yt({
               })
             }
           ) }),
-          /* @__PURE__ */ n.jsx(re, { label: "Upper size", children: /* @__PURE__ */ n.jsx(
+          /* @__PURE__ */ n.jsx(oe, { label: "Upper size", children: /* @__PURE__ */ n.jsx(
             Ue,
             {
               value: r.cutoffUpper,
@@ -1308,7 +1308,7 @@ function Yt({
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "VERTICAL SMOOTHING" }),
-        /* @__PURE__ */ n.jsx(re, { label: "Mode", hint: "Auto adapts the shade count to your price zoom.", children: /* @__PURE__ */ n.jsx(
+        /* @__PURE__ */ n.jsx(oe, { label: "Mode", hint: "Auto adapts the shade count to your price zoom.", children: /* @__PURE__ */ n.jsx(
           De,
           {
             value: r.smoothingMode,
@@ -1321,7 +1321,7 @@ function Yt({
           }
         ) }),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Shades",
             value: r.smoothing,
@@ -1338,7 +1338,7 @@ function Yt({
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "ADVANCED COLOUR" }),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Contrast",
             value: r.contrast,
@@ -1350,7 +1350,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Brightness",
             value: r.brightness,
@@ -1364,9 +1364,9 @@ function Yt({
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "VOLUME DOTS" }),
-        /* @__PURE__ */ n.jsx(re, { label: "Show executed trades", children: /* @__PURE__ */ n.jsx(Ee, { on: r.dots, onChange: (i) => o({ dots: i }) }) }),
+        /* @__PURE__ */ n.jsx(oe, { label: "Show executed trades", children: /* @__PURE__ */ n.jsx(we, { on: r.dots, onChange: (i) => o({ dots: i }) }) }),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Drawing type",
             hint: "Pie aggregates prints per price-time cell and splits the disc by aggressor-side volume.",
@@ -1393,7 +1393,7 @@ function Yt({
             )
           }
         ),
-        /* @__PURE__ */ n.jsx(re, { label: "Min accountable size", hint: "Prints below this size draw no dot.", children: /* @__PURE__ */ n.jsx(
+        /* @__PURE__ */ n.jsx(oe, { label: "Min accountable size", hint: "Prints below this size draw no dot.", children: /* @__PURE__ */ n.jsx(
           Ue,
           {
             value: r.dotMinSize,
@@ -1403,7 +1403,7 @@ function Yt({
           }
         ) }),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Dot size",
             value: r.dotScale,
@@ -1415,7 +1415,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Transparency",
             value: 1 - r.dotAlpha,
@@ -1431,7 +1431,7 @@ function Yt({
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "BOOK & MOTION" }),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Ladder",
             hint: "V4: fused puts the size figures + bars inside the price-axis gutter (Bookmap layout); panel keeps the separate COB column.",
@@ -1449,12 +1449,12 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Time & sales",
             hint: "V4 drawer: every executed print with min-size and ALL/BUY/SELL filters.",
             children: /* @__PURE__ */ n.jsx(
-              Ee,
+              we,
               {
                 on: r.showTsPanel,
                 onChange: (i) => o({ showTsPanel: i })
@@ -1463,15 +1463,15 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsxs(
-          re,
+          oe,
           {
             label: "COB column",
             hint: "S8: the numeric DOM ladder beside the heatmap — per-level size + cumulative, spread and BBO rows.",
             children: [
-              /* @__PURE__ */ n.jsx(Ee, { on: r.cob, onChange: (i) => o({ cob: i }) }),
+              /* @__PURE__ */ n.jsx(we, { on: r.cob, onChange: (i) => o({ cob: i }) }),
               /* @__PURE__ */ n.jsx("span", { className: "dh-hint", style: { marginLeft: r.cob ? 0 : 8 }, children: "cumulative column" }),
               /* @__PURE__ */ n.jsx(
-                Ee,
+                we,
                 {
                   on: r.cobCumulative,
                   onChange: (i) => o({ cobCumulative: i })
@@ -1481,13 +1481,13 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsxs(
-          re,
+          oe,
           {
             label: "Active range",
             hint: "S6 override: expose only N levels around mid instead of the full transmitted book. Amber boundary lines mark the window on the COB column.",
             children: [
               /* @__PURE__ */ n.jsx(
-                Ee,
+                we,
                 {
                   on: r.activeRange > 0,
                   onChange: (i) => o({ activeRange: i ? 10 : 0 })
@@ -1508,7 +1508,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          re,
+          oe,
           {
             label: "Auto-recenter",
             hint: "S9: glides the price axis back when the anchor drifts beyond tolerance. Double-click recenters instantly.",
@@ -1527,7 +1527,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsx(
-          _e,
+          ve,
           {
             label: "Tolerance",
             value: r.recenterTolerance,
@@ -1541,7 +1541,7 @@ function Yt({
           }
         ),
         /* @__PURE__ */ n.jsxs(
-          re,
+          oe,
           {
             label: "Depth reset",
             hint: "S11: how stale last-seen liquidity is dropped — per session, or on a fixed interval.",
@@ -1644,92 +1644,92 @@ function Qt({
   settings: s,
   width: o = 148
 }) {
-  const a = y.useRef(null), r = y.useRef(s);
-  return r.current = s, y.useEffect(() => {
+  const a = T.useRef(null), r = T.useRef(s);
+  return r.current = s, T.useEffect(() => {
     const l = a.current;
     if (!l) return;
     const i = l.getContext("2d");
-    let h = 0, c = -1, b = -1, T = !1;
-    const v = () => {
-      const u = l.getBoundingClientRect(), x = window.devicePixelRatio || 1;
-      l.width = Math.max(1, Math.round(u.width * x)), l.height = Math.max(1, Math.round(u.height * x)), c = -1;
-    }, f = new ResizeObserver(v);
-    f.observe(l), v();
-    const g = () => {
-      const u = t.current;
-      if (!u) return;
-      const x = u.getViewMetrics();
-      if (x.version === c && e.version === b) return;
-      c = x.version, b = e.version;
-      const _ = window.devicePixelRatio || 1, p = l.width / _, E = l.height / _;
-      i.setTransform(_, 0, 0, _, 0, 0), i.fillStyle = "#0d1117", i.fillRect(0, 0, p, E);
-      const { bids: d, asks: k } = e.sorted();
-      if (!d.length && !k.length) {
+    let h = 0, c = -1, b = -1, y = !1;
+    const _ = () => {
+      const f = l.getBoundingClientRect(), g = window.devicePixelRatio || 1;
+      l.width = Math.max(1, Math.round(f.width * g)), l.height = Math.max(1, Math.round(f.height * g)), c = -1;
+    }, d = new ResizeObserver(_);
+    d.observe(l), _();
+    const x = () => {
+      const f = t.current;
+      if (!f) return;
+      const g = f.getViewMetrics();
+      if (g.version === c && e.version === b) return;
+      c = g.version, b = e.version;
+      const M = window.devicePixelRatio || 1, p = l.width / M, E = l.height / M;
+      i.setTransform(M, 0, 0, M, 0, 0), i.fillStyle = "#0d1117", i.fillRect(0, 0, p, E);
+      const { bids: u, asks: k } = e.sorted();
+      if (!u.length && !k.length) {
         i.fillStyle = "#5c6672", i.font = "10px monospace", i.textAlign = "center", i.fillText("no book", p / 2, E / 2);
         return;
       }
-      const C = r.current, O = e.bestBid(), L = e.bestAsk(), q = C.activeRange > 0, N = [...d, ...k].filter(([R]) => R >= x.lo && R <= x.hi).map(([R]) => R).sort((R, A) => R - A);
-      let I = 8;
-      if (N.length >= 2) {
-        const R = [];
-        for (let A = 1; A < N.length; A++) R.push(N[A] - N[A - 1]);
-        R.sort((A, H) => A - H), I = Math.min(20, Math.max(2.5, x.ppu * R[R.length >> 1]));
+      const P = r.current, z = e.bestBid(), F = e.bestAsk(), q = P.activeRange > 0, L = [...u, ...k].filter(([C]) => C >= g.lo && C <= g.hi).map(([C]) => C).sort((C, j) => C - j);
+      let U = 8;
+      if (L.length >= 2) {
+        const C = [];
+        for (let j = 1; j < L.length; j++) C.push(L[j] - L[j - 1]);
+        C.sort((j, W) => j - W), U = Math.min(20, Math.max(2.5, g.ppu * C[C.length >> 1]));
       }
-      let $ = 0, W = 0;
+      let H = 0, $ = 0;
       {
-        let R = 0;
-        for (const [A, H] of d)
-          A >= x.lo && A <= x.hi && ($ = Math.max($, H)), R += H, W = Math.max(W, R);
-        R = 0;
-        for (const [A, H] of k)
-          A >= x.lo && A <= x.hi && ($ = Math.max($, H)), R += H, W = Math.max(W, R);
+        let C = 0;
+        for (const [j, W] of u)
+          j >= g.lo && j <= g.hi && (H = Math.max(H, W)), C += W, $ = Math.max($, C);
+        C = 0;
+        for (const [j, W] of k)
+          j >= g.lo && j <= g.hi && (H = Math.max(H, W)), C += W, $ = Math.max($, C);
       }
-      const J = p - 52, ye = C.cobCumulative ? 26 : 0, pe = p - 8 - ye - 40, be = (R, A, H, Te, oe) => {
-        const ue = x.yOf(R);
-        if (ue < -I || ue > E + I) return;
-        const Z = ue - I / 2, S = q && !oe;
-        if (C.cobCumulative && W > 0) {
-          const ee = Math.max(1, Te / W * 18);
-          i.fillStyle = H === "bid" ? "rgba(38, 166, 154, 0.14)" : "rgba(239, 83, 80, 0.14)", i.fillRect(p - 20, Z, 18, I - 1), i.fillStyle = H === "bid" ? "rgba(38, 166, 154, 0.45)" : "rgba(239, 83, 80, 0.45)", i.fillRect(p - 20, Z, ee, I - 1);
+      const J = p - 52, ce = P.cobCumulative ? 26 : 0, ge = p - 8 - ce - 40, ae = (C, j, W, Ce, _e) => {
+        const K = g.yOf(C);
+        if (K < -U || K > E + U) return;
+        const xe = K - U / 2, v = q && !_e;
+        if (P.cobCumulative && $ > 0) {
+          const G = Math.max(1, Ce / $ * 18);
+          i.fillStyle = W === "bid" ? "rgba(38, 166, 154, 0.14)" : "rgba(239, 83, 80, 0.14)", i.fillRect(p - 20, xe, 18, U - 1), i.fillStyle = W === "bid" ? "rgba(38, 166, 154, 0.45)" : "rgba(239, 83, 80, 0.45)", i.fillRect(p - 20, xe, G, U - 1);
         }
-        const U = $ > 0 ? Math.max(1.5, A / $ * J) : 1.5;
-        i.fillStyle = H === "bid" ? S ? "rgba(38,166,154,0.16)" : "rgba(38, 166, 154, 0.62)" : S ? "rgba(239,83,80,0.16)" : "rgba(239, 83, 80, 0.62)", i.fillRect(pe + 40 - U, Z, U, I - 1), i.font = "9px monospace", i.textAlign = "right", i.fillStyle = S ? "#4a5260" : H === "bid" ? "#9fd6cd" : "#f4b3ae", i.fillText(Kt(A), pe + 38, ue + 3);
+        const I = H > 0 ? Math.max(1.5, j / H * J) : 1.5;
+        i.fillStyle = W === "bid" ? v ? "rgba(38,166,154,0.16)" : "rgba(38, 166, 154, 0.62)" : v ? "rgba(239,83,80,0.16)" : "rgba(239, 83, 80, 0.62)", i.fillRect(ge + 40 - I, xe, I, U - 1), i.font = "9px monospace", i.textAlign = "right", i.fillStyle = v ? "#4a5260" : W === "bid" ? "#9fd6cd" : "#f4b3ae", i.fillText(Kt(j), ge + 38, K + 3);
       };
-      let ce = 0;
-      for (let R = 0; R < d.length; R++) {
-        const [A, H] = d[R];
-        ce += H, !(A < x.lo - I || A > x.hi + I) && be(A, H, "bid", ce, !q || R < C.activeRange);
+      let fe = 0;
+      for (let C = 0; C < u.length; C++) {
+        const [j, W] = u[C];
+        fe += W, !(j < g.lo - U || j > g.hi + U) && ae(j, W, "bid", fe, !q || C < P.activeRange);
       }
-      ce = 0;
-      for (let R = 0; R < k.length; R++) {
-        const [A, H] = k[R];
-        ce += H, !(A < x.lo - I || A > x.hi + I) && be(A, H, "ask", ce, !q || R < C.activeRange);
+      fe = 0;
+      for (let C = 0; C < k.length; C++) {
+        const [j, W] = k[C];
+        fe += W, !(j < g.lo - U || j > g.hi + U) && ae(j, W, "ask", fe, !q || C < P.activeRange);
       }
-      const de = (R, A) => {
-        const H = x.yOf(R);
-        H < 0 || H > E || (i.strokeStyle = A, i.lineWidth = 1, i.beginPath(), i.moveTo(0, Math.round(H) + 0.5), i.lineTo(p, Math.round(H) + 0.5), i.stroke());
+      const ne = (C, j) => {
+        const W = g.yOf(C);
+        W < 0 || W > E || (i.strokeStyle = j, i.lineWidth = 1, i.beginPath(), i.moveTo(0, Math.round(W) + 0.5), i.lineTo(p, Math.round(W) + 0.5), i.stroke());
       };
-      if (O !== null && de(O, "rgba(38, 166, 154, 0.95)"), L !== null && de(L, "rgba(239, 83, 80, 0.95)"), O !== null && L !== null && L > O) {
-        const R = (x.yOf(O) + x.yOf(L)) / 2;
-        if (R > 10 && R < E - 10) {
-          const A = `Δ ${Jt(L - O)}`;
+      if (z !== null && ne(z, "rgba(38, 166, 154, 0.95)"), F !== null && ne(F, "rgba(239, 83, 80, 0.95)"), z !== null && F !== null && F > z) {
+        const C = (g.yOf(z) + g.yOf(F)) / 2;
+        if (C > 10 && C < E - 10) {
+          const j = `Δ ${Jt(F - z)}`;
           i.font = "9px monospace";
-          const H = i.measureText(A).width + 10;
-          i.fillStyle = "rgba(20, 24, 31, 0.95)", i.fillRect(2, R - 8, H, 16), i.strokeStyle = "#2a3140", i.strokeRect(2.5, R - 7.5, H - 1, 15), i.fillStyle = "#c8cfda", i.textAlign = "left", i.fillText(A, 7, R + 3);
+          const W = i.measureText(j).width + 10;
+          i.fillStyle = "rgba(20, 24, 31, 0.95)", i.fillRect(2, C - 8, W, 16), i.strokeStyle = "#2a3140", i.strokeRect(2.5, C - 7.5, W - 1, 15), i.fillStyle = "#c8cfda", i.textAlign = "left", i.fillText(j, 7, C + 3);
         }
       }
       if (q) {
-        const R = [];
-        d.length && C.activeRange <= d.length && R.push(x.yOf(d[C.activeRange - 1][0]) + I / 2 + 1), k.length && C.activeRange <= k.length && R.push(x.yOf(k[C.activeRange - 1][0]) - I / 2 - 1), i.strokeStyle = "rgba(255, 179, 0, 0.75)", i.setLineDash([3, 3]);
-        for (const A of R)
-          A < 0 || A > E || (i.beginPath(), i.moveTo(0, A), i.lineTo(p, A), i.stroke());
+        const C = [];
+        u.length && P.activeRange <= u.length && C.push(g.yOf(u[P.activeRange - 1][0]) + U / 2 + 1), k.length && P.activeRange <= k.length && C.push(g.yOf(k[P.activeRange - 1][0]) - U / 2 - 1), i.strokeStyle = "rgba(255, 179, 0, 0.75)", i.setLineDash([3, 3]);
+        for (const j of C)
+          j < 0 || j > E || (i.beginPath(), i.moveTo(0, j), i.lineTo(p, j), i.stroke());
         i.setLineDash([]);
       }
-    }, w = () => {
-      T || (g(), h = requestAnimationFrame(w));
+    }, S = () => {
+      y || (x(), h = requestAnimationFrame(S));
     };
-    return h = requestAnimationFrame(w), () => {
-      T = !0, cancelAnimationFrame(h), f.disconnect();
+    return h = requestAnimationFrame(S), () => {
+      y = !0, cancelAnimationFrame(h), d.disconnect();
     };
   }, [t, e]), /* @__PURE__ */ n.jsxs("div", { style: {
     flex: `0 0 ${o}px`,
@@ -1778,59 +1778,59 @@ function ss({
   onLoad: e,
   onClose: s
 }) {
-  const [o, a] = y.useState(null), [r, l] = y.useState(null), [i, h] = y.useState(null), [c, b] = y.useState(null), [T, v] = y.useState(null), f = y.useCallback(() => {
-    fetch("/api/orderflow/sessions").then((u) => u.ok ? u.json() : Promise.reject(new Error(`HTTP ${u.status}`))).then((u) => {
-      a(u.filter((x) => x.symbol === t)), l(null);
-    }).catch((u) => l(String(u)));
+  const [o, a] = T.useState(null), [r, l] = T.useState(null), [i, h] = T.useState(null), [c, b] = T.useState(null), [y, _] = T.useState(null), d = T.useCallback(() => {
+    fetch("/api/orderflow/sessions").then((f) => f.ok ? f.json() : Promise.reject(new Error(`HTTP ${f.status}`))).then((f) => {
+      a(f.filter((g) => g.symbol === t)), l(null);
+    }).catch((f) => l(String(f)));
   }, [t]);
-  y.useEffect(() => {
-    f();
-    const u = setInterval(f, 4e3);
-    return () => clearInterval(u);
-  }, [f]), y.useEffect(() => {
-    const u = (x) => {
-      x.key === "Escape" && s();
+  T.useEffect(() => {
+    d();
+    const f = setInterval(d, 4e3);
+    return () => clearInterval(f);
+  }, [d]), T.useEffect(() => {
+    const f = (g) => {
+      g.key === "Escape" && s();
     };
-    return window.addEventListener("keydown", u), () => window.removeEventListener("keydown", u);
+    return window.addEventListener("keydown", f), () => window.removeEventListener("keydown", f);
   }, [s]);
-  const g = async (u) => {
-    h(u.id), v(null);
+  const x = async (f) => {
+    h(f.id), _(null);
     try {
-      const x = await fetch(
-        `/api/orderflow/sessions/${encodeURIComponent(u.id)}/events`
+      const g = await fetch(
+        `/api/orderflow/sessions/${encodeURIComponent(f.id)}/events`
       );
-      if (!x.ok) {
-        const p = await x.json().catch(() => ({ detail: `HTTP ${x.status}` }));
-        throw new Error(String(p.detail || x.status));
+      if (!g.ok) {
+        const p = await g.json().catch(() => ({ detail: `HTTP ${g.status}` }));
+        throw new Error(String(p.detail || g.status));
       }
-      const _ = await x.json();
-      await e(_.events || [], { ...u, rows: (_.events || []).length }), _.truncated && v("Large session: loaded up to the event cap — the tail stays in the file."), s();
-    } catch (x) {
-      l(String(x));
+      const M = await g.json();
+      await e(M.events || [], { ...f, rows: (M.events || []).length }), M.truncated && _("Large session: loaded up to the event cap — the tail stays in the file."), s();
+    } catch (g) {
+      l(String(g));
     } finally {
       h(null);
     }
-  }, w = async (u) => {
-    if (c !== u.id) {
-      b(u.id);
+  }, S = async (f) => {
+    if (c !== f.id) {
+      b(f.id);
       return;
     }
     b(null);
     try {
-      const x = await fetch(
-        `/api/orderflow/sessions/${encodeURIComponent(u.id)}`,
+      const g = await fetch(
+        `/api/orderflow/sessions/${encodeURIComponent(f.id)}`,
         { method: "DELETE" }
       );
-      if (!x.ok) {
-        const _ = await x.json().catch(() => ({ detail: `HTTP ${x.status}` }));
-        throw new Error(String(_.detail || x.status));
+      if (!g.ok) {
+        const M = await g.json().catch(() => ({ detail: `HTTP ${g.status}` }));
+        throw new Error(String(M.detail || g.status));
       }
-      f();
-    } catch (x) {
-      l(String(x));
+      d();
+    } catch (g) {
+      l(String(g));
     }
   };
-  return /* @__PURE__ */ n.jsx("div", { className: "dh-backdrop", onMouseDown: s, children: /* @__PURE__ */ n.jsxs("div", { className: "dh-window", onMouseDown: (u) => u.stopPropagation(), children: [
+  return /* @__PURE__ */ n.jsx("div", { className: "dh-backdrop", onMouseDown: s, children: /* @__PURE__ */ n.jsxs("div", { className: "dh-window", onMouseDown: (f) => f.stopPropagation(), children: [
     /* @__PURE__ */ n.jsxs("div", { className: "dh-head", children: [
       /* @__PURE__ */ n.jsx("span", { className: "dh-head-title", children: "RECORDED SESSIONS" }),
       /* @__PURE__ */ n.jsx("span", { className: "dh-head-sym", children: t }),
@@ -1848,7 +1848,7 @@ function ss({
         /* @__PURE__ */ n.jsx("b", { children: "● REC" }),
         " above the heatmap to capture live depth — it lands here, in workspace/MY DATA."
       ] }),
-      o?.map((u) => /* @__PURE__ */ n.jsxs("div", { className: "dh-sess", children: [
+      o?.map((f) => /* @__PURE__ */ n.jsxs("div", { className: "dh-sess", children: [
         /* @__PURE__ */ n.jsxs("div", { style: { minWidth: 0, flex: 1 }, children: [
           /* @__PURE__ */ n.jsxs("div", { style: {
             display: "flex",
@@ -1856,21 +1856,21 @@ function ss({
             gap: 6,
             flexWrap: "wrap"
           }, children: [
-            u.recording && /* @__PURE__ */ n.jsx("span", { className: "dh-rec-dot", title: "Recording now" }),
-            /* @__PURE__ */ n.jsx("span", { style: { fontFamily: "ui-monospace, Menlo, monospace" }, children: u.id }),
-            u.demo && /* @__PURE__ */ n.jsx("span", { className: "dh-chip demo", children: "DEMO" }),
-            /* @__PURE__ */ n.jsx("span", { className: "dh-chip", children: u.source || "live" })
+            f.recording && /* @__PURE__ */ n.jsx("span", { className: "dh-rec-dot", title: "Recording now" }),
+            /* @__PURE__ */ n.jsx("span", { style: { fontFamily: "ui-monospace, Menlo, monospace" }, children: f.id }),
+            f.demo && /* @__PURE__ */ n.jsx("span", { className: "dh-chip demo", children: "DEMO" }),
+            /* @__PURE__ */ n.jsx("span", { className: "dh-chip", children: f.source || "live" })
           ] }),
           /* @__PURE__ */ n.jsxs("div", { className: "dh-hint", style: { marginTop: 2 }, children: [
-            es(u.started),
+            es(f.started),
             " · ",
-            ts(u.started, u.stopped),
+            ts(f.started, f.stopped),
             " · ",
-            Zt(u.bytes),
+            Zt(f.bytes),
             " · ",
-            u.rows.toLocaleString(),
+            f.rows.toLocaleString(),
             " rows",
-            u.stopped === null ? " · recording…" : ""
+            f.stopped === null ? " · recording…" : ""
           ] })
         ] }),
         /* @__PURE__ */ n.jsx(
@@ -1878,23 +1878,23 @@ function ss({
           {
             className: "dh-btn primary",
             disabled: i !== null,
-            onClick: () => g(u),
+            onClick: () => x(f),
             title: "Load this recording into the pane",
-            children: i === u.id ? "loading…" : "Load"
+            children: i === f.id ? "loading…" : "Load"
           }
         ),
         /* @__PURE__ */ n.jsx(
           "button",
           {
             className: "dh-btn",
-            style: c === u.id ? { borderColor: "#ef5350", color: "#ef9a9a" } : void 0,
-            onClick: () => w(u),
+            style: c === f.id ? { borderColor: "#ef5350", color: "#ef9a9a" } : void 0,
+            onClick: () => S(f),
             title: "Delete this recording",
-            children: c === u.id ? "sure?" : "Delete"
+            children: c === f.id ? "sure?" : "Delete"
           }
         )
-      ] }, u.id)),
-      T && /* @__PURE__ */ n.jsx("div", { className: "dh-empty", children: T })
+      ] }, f.id)),
+      y && /* @__PURE__ */ n.jsx("div", { className: "dh-empty", children: y })
     ] }),
     /* @__PURE__ */ n.jsxs("div", { className: "dh-foot", children: [
       /* @__PURE__ */ n.jsx("span", { className: "dh-hint", children: "recordings are parquet files in workspace/MY DATA" }),
@@ -1907,7 +1907,7 @@ const is = 4 * 3600;
 function ut(t) {
   return `lset-depth-settings:${t}`;
 }
-function Ge(t) {
+function He(t) {
   let e = { ...at }, s = null;
   try {
     const a = localStorage.getItem(ut(t));
@@ -1932,173 +1932,173 @@ function ns({
   onCrosshairMove: a,
   onToggleKind: r
 }) {
-  const l = y.useRef(null), i = y.useRef(null), h = y.useRef(null);
+  const l = T.useRef(null), i = T.useRef(null), h = T.useRef(null);
   h.current || (h.current = new Ae());
-  const [c, b] = y.useState({ kind: "loading" }), [T, v] = y.useState(
-    () => Ge(t)
-  ), [f, g] = y.useState(50), [w, u] = y.useState(!1), [x, _] = y.useState(null), [p, E] = y.useState(!1), [d, k] = y.useState(null), [C, O] = y.useState(null), [L, q] = y.useState(0), [N, I] = y.useState(null), [$, W] = y.useState(0), J = y.useCallback((S) => {
-    v((U) => {
-      const ee = { ...U, ...S };
-      return ee.applySchemeGlobally && S.scheme && S.scheme !== U.scheme && (Ve(S.scheme, !0), window.dispatchEvent(new CustomEvent(
-        Fe,
-        { detail: { scheme: S.scheme, source: t } }
-      ))), tt(t, ee), i.current?.setSettings(ee), i.current?.refreshCutoffs(), ee;
+  const [c, b] = T.useState({ kind: "loading" }), [y, _] = T.useState(
+    () => He(t)
+  ), [d, x] = T.useState(50), [S, f] = T.useState(!1), [g, M] = T.useState(null), [p, E] = T.useState(!1), [u, k] = T.useState(null), [P, z] = T.useState(null), [F, q] = T.useState(0), [L, U] = T.useState(null), [H, $] = T.useState(0), J = T.useCallback((v) => {
+    _((I) => {
+      const G = { ...I, ...v };
+      return G.applySchemeGlobally && v.scheme && v.scheme !== I.scheme && (Ge(v.scheme, !0), window.dispatchEvent(new CustomEvent(
+        ze,
+        { detail: { scheme: v.scheme, source: t } }
+      ))), tt(t, G), i.current?.setSettings(G), i.current?.refreshCutoffs(), G;
     });
   }, [t]);
-  y.useEffect(() => {
-    const S = (U) => {
-      const ee = U.detail;
-      ee.source !== t && v((fe) => {
-        if (!fe.applySchemeGlobally || fe.scheme === ee.scheme) return fe;
-        const Me = { ...fe, scheme: ee.scheme };
-        return tt(t, Me), i.current?.setSettings(Me), Me;
+  T.useEffect(() => {
+    const v = (I) => {
+      const G = I.detail;
+      G.source !== t && _((he) => {
+        if (!he.applySchemeGlobally || he.scheme === G.scheme) return he;
+        const Se = { ...he, scheme: G.scheme };
+        return tt(t, Se), i.current?.setSettings(Se), Se;
       });
     };
-    return window.addEventListener(Fe, S), () => window.removeEventListener(Fe, S);
+    return window.addEventListener(ze, v), () => window.removeEventListener(ze, v);
   }, [t]);
-  const ye = y.useCallback(async () => {
-    O(null);
+  const ce = T.useCallback(async () => {
+    z(null);
     try {
-      const S = await fetch("/api/orderflow/record", {
+      const v = await fetch("/api/orderflow/record", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symbol: t })
-      }), U = await S.json().catch(() => ({}));
-      if (!S.ok) throw new Error(String(U.detail || `HTTP ${S.status}`));
-      k({ rid: U.id ?? U.sid ?? "", since: Date.now() });
-    } catch (S) {
-      O(String(S));
+      }), I = await v.json().catch(() => ({}));
+      if (!v.ok) throw new Error(String(I.detail || `HTTP ${v.status}`));
+      k({ rid: I.id ?? I.sid ?? "", since: Date.now() });
+    } catch (v) {
+      z(String(v));
     }
-  }, [t]), pe = y.useCallback(async () => {
+  }, [t]), ge = T.useCallback(async () => {
     try {
       await fetch("/api/orderflow/record/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: d?.rid ?? "" })
+        body: JSON.stringify({ id: u?.rid ?? "" })
       });
     } catch {
     }
     k(null), q(0);
-  }, [d]);
-  y.useEffect(() => {
-    if (!d) return;
-    const S = setInterval(() => {
-      q(Math.floor((Date.now() - d.since) / 1e3));
+  }, [u]);
+  T.useEffect(() => {
+    if (!u) return;
+    const v = setInterval(() => {
+      q(Math.floor((Date.now() - u.since) / 1e3));
     }, 1e3);
-    return () => clearInterval(S);
-  }, [d]);
-  const be = y.useCallback((S, U) => {
-    const ee = i.current;
-    if (!ee || !S.length) return;
-    const fe = S.filter((G) => G.type === "SNAPSHOT" || G.type === "DELTA"), Me = S.filter((G) => typeof G.side == "string");
-    ee.ingestHistory(fe), h.current?.seed([], []);
-    for (const G of fe) h.current?.apply(G);
-    for (const G of Me) ee.addTrade(G);
-    I(U.id);
-  }, []), ce = y.useCallback(() => {
-    I(null), W((S) => S + 1);
+    return () => clearInterval(v);
+  }, [u]);
+  const ae = T.useCallback((v, I) => {
+    const G = i.current;
+    if (!G || !v.length) return;
+    const he = v.filter((me) => me.type === "SNAPSHOT" || me.type === "DELTA"), Se = v.filter((me) => typeof me.side == "string");
+    G.ingestHistory(he), h.current?.seed([], []);
+    for (const me of he) h.current?.apply(me);
+    for (const me of Se) G.addTrade(me);
+    U(I.id);
+  }, []), fe = T.useCallback(() => {
+    U(null), $((v) => v + 1);
   }, []);
-  y.useEffect(() => {
-    const S = l.current;
-    if (!S) return;
-    const U = new qt(Ge(t));
-    return i.current = U, U.attach(S), U.setBookSource(h.current), a && (U.onHoverTime = (ee) => a(ee)), () => {
-      U.dispose(), i.current = null;
+  T.useEffect(() => {
+    const v = l.current;
+    if (!v) return;
+    const I = new qt(He(t));
+    return i.current = I, I.attach(v), I.setBookSource(h.current), a && (I.onHoverTime = (G) => a(G)), () => {
+      I.dispose(), i.current = null;
     };
-  }, [t]), y.useEffect(() => {
-    i.current?.setSettings(T);
-  }, [T]), y.useEffect(() => {
+  }, [t]), T.useEffect(() => {
+    i.current?.setSettings(y);
+  }, [y]), T.useEffect(() => {
     i.current?.setSyncedCrosshair(
       o ?? null
     );
-  }, [o]), y.useEffect(() => {
-    let S = !1, U = null;
+  }, [o]), T.useEffect(() => {
+    let v = !1, I = null;
     return b({ kind: "loading" }), h.current?.seed([], []), (async () => {
-      const fe = i.current;
-      if (!fe) return;
-      const Me = Date.now() / 1e3, G = e ? `&provider=${encodeURIComponent(e)}` : "";
-      let Ie = !1, Pe = "";
+      const he = i.current;
+      if (!he) return;
+      const Se = Date.now() / 1e3, me = e ? `&provider=${encodeURIComponent(e)}` : "";
+      let se = !1, Ie = "";
       try {
-        const F = await fetch(
-          `/api/orderflow/depth?symbol=${encodeURIComponent(t)}` + G + `&from=${Me - is}&to=${Me}&column_ms=1000&max_levels=60`
+        const re = await fetch(
+          `/api/orderflow/depth?symbol=${encodeURIComponent(t)}` + me + `&from=${Se - is}&to=${Se}&column_ms=1000&max_levels=60`
         );
-        if (!F.ok) {
-          const ge = await F.json().catch(() => ({ detail: `HTTP ${F.status}` }));
-          S || b({ kind: "nodata", reason: String(ge.detail || F.status) });
+        if (!re.ok) {
+          const pe = await re.json().catch(() => ({ detail: `HTTP ${re.status}` }));
+          v || b({ kind: "nodata", reason: String(pe.detail || re.status) });
           return;
         }
-        const Q = await F.json();
-        if (S) return;
-        Ie = !!Q.demo, Pe = Q.provider, fe.ingestHistory(Q.events || []);
-        for (const ge of Q.trades || [])
-          fe.addTrade(ge);
-      } catch (F) {
-        S || b({ kind: "nodata", reason: `engine unreachable: ${F}` });
+        const A = await re.json();
+        if (v) return;
+        se = !!A.demo, Ie = A.provider, he.ingestHistory(A.events || []);
+        for (const pe of A.trades || [])
+          he.addTrade(pe);
+      } catch (re) {
+        v || b({ kind: "nodata", reason: `engine unreachable: ${re}` });
         return;
       }
       try {
-        const F = Ge(t), Q = new URLSearchParams({ symbol: t });
-        e && Q.set("provider", e), F.activeRange > 0 && Q.set("active_levels", String(F.activeRange)), Q.set("reset", F.resetPolicy), F.resetPolicy === "interval" && Q.set("reset_interval_min", String(F.resetIntervalMin));
-        const ge = await fetch(`/api/orderflow/book?${Q.toString()}`);
-        if (ge.ok) {
-          const ve = await ge.json();
-          fe.setBook(ve.best_bid ?? null, ve.best_ask ?? null), h.current?.seed(ve.bids ?? [], ve.asks ?? []);
+        const re = He(t), A = new URLSearchParams({ symbol: t });
+        e && A.set("provider", e), re.activeRange > 0 && A.set("active_levels", String(re.activeRange)), A.set("reset", re.resetPolicy), re.resetPolicy === "interval" && A.set("reset_interval_min", String(re.resetIntervalMin));
+        const pe = await fetch(`/api/orderflow/book?${A.toString()}`);
+        if (pe.ok) {
+          const Te = await pe.json();
+          he.setBook(Te.best_bid ?? null, Te.best_ask ?? null), h.current?.seed(Te.bids ?? [], Te.asks ?? []);
         }
       } catch {
       }
-      S || b({ kind: "live", demo: Ie, provider: Pe });
-      const Oe = location.protocol === "https:" ? "wss" : "ws";
-      U = new WebSocket(
-        `${Oe}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(t)}${G}`
-      ), U.onmessage = (F) => {
-        if (S) return;
-        let Q;
+      v || b({ kind: "live", demo: se, provider: Ie });
+      const Ne = location.protocol === "https:" ? "wss" : "ws";
+      I = new WebSocket(
+        `${Ne}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(t)}${me}`
+      ), I.onmessage = (re) => {
+        if (v) return;
+        let A;
         try {
-          Q = JSON.parse(F.data);
+          A = JSON.parse(re.data);
         } catch {
           return;
         }
-        const ge = i.current;
-        if (ge)
-          if (Q.type === "depth") {
-            if (ge.applyDepth(Q.event), h.current?.apply(Q.event), Q.event.type === "SNAPSHOT") {
-              let ve = null, Re = null;
-              for (const [Ce] of Q.event.bids)
-                (ve === null || Ce > ve) && (ve = Ce);
-              for (const [Ce] of Q.event.asks)
-                (Re === null || Ce < Re) && (Re = Ce);
-              ge.setBook(ve, Re);
+        const pe = i.current;
+        if (pe)
+          if (A.type === "depth") {
+            if (pe.applyDepth(A.event), h.current?.apply(A.event), A.event.type === "SNAPSHOT") {
+              let Te = null, Re = null;
+              for (const [ke] of A.event.bids)
+                (Te === null || ke > Te) && (Te = ke);
+              for (const [ke] of A.event.asks)
+                (Re === null || ke < Re) && (Re = ke);
+              pe.setBook(Te, Re);
             }
-          } else Q.type === "trade" ? ge.addTrade(Q.event) : Q.type === "error" && b({ kind: "nodata", reason: Q.message });
-      }, U.onclose = () => {
+          } else A.type === "trade" ? pe.addTrade(A.event) : A.type === "error" && b({ kind: "nodata", reason: A.message });
+      }, I.onclose = () => {
       };
     })(), () => {
-      S = !0;
+      v = !0;
       try {
-        U?.close();
+        I?.close();
       } catch {
       }
     };
-  }, [t, $]), y.useEffect(() => {
-    if (!(T.cutoffMode === "percentile")) return;
-    const U = 90 - f * 0.8, ee = Math.max(0, 50 - U / 2), fe = Math.min(100, 50 + U / 2);
-    J({ cutoffLower: ee, cutoffUpper: fe });
-  }, [f]);
-  const de = y.useMemo(() => c.kind === "live" && c.demo ? "DEMO" : c.kind === "live" ? c.provider.toUpperCase() : "", [c]), R = y.useCallback((S) => {
-    i.current?.wheel(S.deltaX, S.deltaY, S.shiftKey);
-  }, []), A = y.useRef(null), H = y.useCallback((S) => {
-    A.current = { x: S.clientX, y: S.clientY };
-  }, []), Te = y.useCallback((S) => {
-    const U = S.currentTarget.getBoundingClientRect();
-    A.current && S.buttons & 1 && (i.current?.drag(
-      S.clientX - A.current.x,
-      S.clientY - A.current.y
-    ), A.current = { x: S.clientX, y: S.clientY }), i.current?.setHover(S.clientX - U.left, S.clientY - U.top);
-  }, []), oe = y.useCallback(() => {
-    A.current = null;
-  }, []), ue = y.useCallback(() => {
-    A.current = null, i.current?.setHover(null, null);
-  }, []), Z = y.useCallback(() => {
+  }, [t, H]), T.useEffect(() => {
+    if (!(y.cutoffMode === "percentile")) return;
+    const I = 90 - d * 0.8, G = Math.max(0, 50 - I / 2), he = Math.min(100, 50 + I / 2);
+    J({ cutoffLower: G, cutoffUpper: he });
+  }, [d]);
+  const ne = T.useMemo(() => c.kind === "live" && c.demo ? "DEMO" : c.kind === "live" ? c.provider.toUpperCase() : "", [c]), C = T.useCallback((v) => {
+    i.current?.wheel(v.deltaX, v.deltaY, v.shiftKey);
+  }, []), j = T.useRef(null), W = T.useCallback((v) => {
+    j.current = { x: v.clientX, y: v.clientY };
+  }, []), Ce = T.useCallback((v) => {
+    const I = v.currentTarget.getBoundingClientRect();
+    j.current && v.buttons & 1 && (i.current?.drag(
+      v.clientX - j.current.x,
+      v.clientY - j.current.y
+    ), j.current = { x: v.clientX, y: v.clientY }), i.current?.setHover(v.clientX - I.left, v.clientY - I.top);
+  }, []), _e = T.useCallback(() => {
+    j.current = null;
+  }, []), K = T.useCallback(() => {
+    j.current = null, i.current?.setHover(null, null);
+  }, []), xe = T.useCallback(() => {
     i.current?.recenter();
   }, []);
   return /* @__PURE__ */ n.jsxs("div", { style: {
@@ -2125,32 +2125,32 @@ function ns({
         border: "1px solid #2a2e39",
         borderRadius: 4,
         overflow: "hidden"
-      }, children: ["heat", "footprint"].map((S) => /* @__PURE__ */ n.jsx(
+      }, children: ["heat", "footprint"].map((v) => /* @__PURE__ */ n.jsx(
         "button",
         {
-          onClick: () => J({ view: S }),
-          title: S === "heat" ? "Resting liquidity heat field" : "Footprint: bid×ask executed volume per price and time bucket",
+          onClick: () => J({ view: v }),
+          title: v === "heat" ? "Resting liquidity heat field" : "Footprint: bid×ask executed volume per price and time bucket",
           style: {
-            background: T.view === S ? "#2b3547" : "transparent",
-            color: T.view === S ? "#eef1f6" : "#93a0b1",
+            background: y.view === v ? "#2b3547" : "transparent",
+            color: y.view === v ? "#eef1f6" : "#93a0b1",
             border: "none",
             fontSize: 9,
             letterSpacing: 0.5,
             padding: "2px 7px",
             cursor: "pointer"
           },
-          children: S === "heat" ? "HEAT" : "FOOTPRINT"
+          children: v === "heat" ? "HEAT" : "FOOTPRINT"
         },
-        S
+        v
       )) }),
-      de && /* @__PURE__ */ n.jsx("span", { style: {
+      ne && /* @__PURE__ */ n.jsx("span", { style: {
         padding: "0 6px",
         borderRadius: 3,
         fontSize: 9,
         letterSpacing: 0.5,
         background: c.kind === "live" && c.demo ? "rgba(255, 152, 0, 0.25)" : "rgba(120, 144, 156, 0.25)",
         color: c.kind === "live" && c.demo ? "#ffb74d" : "#b0bec5"
-      }, children: de }),
+      }, children: ne }),
       /* @__PURE__ */ n.jsx("span", { style: {
         marginLeft: "auto",
         fontSize: 9,
@@ -2163,16 +2163,16 @@ function ns({
           type: "range",
           min: 0,
           max: 100,
-          value: f,
-          onChange: (S) => g(Number(S.target.value)),
+          value: d,
+          onChange: (v) => x(Number(v.target.value)),
           title: "Cut-off window — narrows/widens where the gradient saturates (S3)",
           style: { width: 90, accentColor: "#78909c" }
         }
       ),
-      d ? /* @__PURE__ */ n.jsxs(
+      u ? /* @__PURE__ */ n.jsxs(
         "button",
         {
-          onClick: pe,
+          onClick: ge,
           title: "Stop recording this symbol's depth to MY DATA",
           style: {
             background: "rgba(239, 83, 80, 0.14)",
@@ -2196,16 +2196,16 @@ function ns({
               animation: "dh-pulse 1.1s infinite"
             } }),
             "REC ",
-            Math.floor(L / 60),
+            Math.floor(F / 60),
             ":",
-            String(L % 60).padStart(2, "0"),
+            String(F % 60).padStart(2, "0"),
             " — stop"
           ]
         }
       ) : /* @__PURE__ */ n.jsx(
         "button",
         {
-          onClick: ye,
+          onClick: ce,
           title: "Record live depth + trades to workspace/MY DATA (S10)",
           style: {
             background: "transparent",
@@ -2239,10 +2239,10 @@ function ns({
       /* @__PURE__ */ n.jsx(
         "button",
         {
-          onClick: () => J({ showTsPanel: !T.showTsPanel }),
+          onClick: () => J({ showTsPanel: !y.showTsPanel }),
           title: "Time & sales drawer: every executed print with min-size and side filters (V4)",
           style: {
-            background: T.showTsPanel ? "#1d232e" : "transparent",
+            background: y.showTsPanel ? "#1d232e" : "transparent",
             border: "1px solid #2a2e39",
             color: "#9aa4b2",
             borderRadius: 4,
@@ -2253,7 +2253,7 @@ function ns({
           children: "T&S"
         }
       ),
-      N && /* @__PURE__ */ n.jsxs("span", { style: {
+      L && /* @__PURE__ */ n.jsxs("span", { style: {
         display: "inline-flex",
         alignItems: "center",
         gap: 5,
@@ -2268,7 +2268,7 @@ function ns({
         /* @__PURE__ */ n.jsx(
           "button",
           {
-            onClick: ce,
+            onClick: fe,
             title: "Return to the live feed",
             style: {
               background: "transparent",
@@ -2282,7 +2282,7 @@ function ns({
           }
         )
       ] }),
-      C && /* @__PURE__ */ n.jsxs("span", { title: C, style: {
+      P && /* @__PURE__ */ n.jsxs("span", { title: P, style: {
         fontSize: 9,
         color: "#ef9a9a",
         maxWidth: 150,
@@ -2291,17 +2291,17 @@ function ns({
         whiteSpace: "nowrap"
       }, children: [
         "rec: ",
-        C
+        P
       ] }),
       /* @__PURE__ */ n.jsxs(
         "button",
         {
           onClick: () => {
-            _(i.current?.getCutoffs() ?? null), u(!0);
+            M(i.current?.getCutoffs() ?? null), f(!0);
           },
           title: "Depth Heat settings (or right-click the heatmap)",
           style: {
-            background: w ? "#1d232e" : "transparent",
+            background: S ? "#1d232e" : "transparent",
             border: "1px solid #2a2e39",
             color: "#c8cfda",
             borderRadius: 4,
@@ -2346,8 +2346,8 @@ function ns({
           display: "flex",
           flexDirection: "row"
         },
-        onContextMenu: (S) => {
-          S.preventDefault(), _(i.current?.getCutoffs() ?? null), u(!0);
+        onContextMenu: (v) => {
+          v.preventDefault(), M(i.current?.getCutoffs() ?? null), f(!0);
         },
         children: [
           /* @__PURE__ */ n.jsxs("div", { style: { position: "relative", flex: 1, minWidth: 0 }, children: [
@@ -2356,12 +2356,12 @@ function ns({
               {
                 ref: l,
                 style: { position: "absolute", inset: 0, width: "100%", height: "100%" },
-                onWheel: R,
-                onMouseDown: H,
-                onMouseMove: Te,
-                onMouseUp: oe,
-                onMouseLeave: ue,
-                onDoubleClick: Z
+                onWheel: C,
+                onMouseDown: W,
+                onMouseMove: Ce,
+                onMouseUp: _e,
+                onMouseLeave: K,
+                onDoubleClick: xe
               }
             ),
             c.kind === "loading" && /* @__PURE__ */ n.jsx("div", { style: st, children: "Loading depth history…" }),
@@ -2373,31 +2373,31 @@ function ns({
               /* @__PURE__ */ n.jsx("div", { style: { opacity: 0.7, maxWidth: 340, textAlign: "center" }, children: c.reason })
             ] })
           ] }),
-          T.cob && T.ladderMode === "panel" && c.kind === "live" && /* @__PURE__ */ n.jsx(
+          y.cob && y.ladderMode === "panel" && c.kind === "live" && /* @__PURE__ */ n.jsx(
             Qt,
             {
               rendererRef: i,
               book: h.current,
-              settings: T
+              settings: y
             }
           ),
-          w && /* @__PURE__ */ n.jsx(
+          S && /* @__PURE__ */ n.jsx(
             Yt,
             {
               symbol: t,
-              settings: T,
-              cutoffRange: x,
-              onChange: (S) => {
-                J(S), _(i.current?.getCutoffs() ?? null);
+              settings: y,
+              cutoffRange: g,
+              onChange: (v) => {
+                J(v), M(i.current?.getCutoffs() ?? null);
               },
-              onClose: () => u(!1)
+              onClose: () => f(!1)
             }
           ),
           p && /* @__PURE__ */ n.jsx(
             ss,
             {
               symbol: t,
-              onLoad: be,
+              onLoad: ae,
               onClose: () => E(!1)
             }
           )
@@ -2419,7 +2419,7 @@ const st = {
 }, os = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
   default: ns
-}, Symbol.toStringTag, { value: "Module" })), le = 8192, he = 1024, as = [
+}, Symbol.toStringTag, { value: "Module" })), le = 8192, de = 1024, as = [
   { t: 0, r: 0, g: 0, b: 0 },
   { t: 0.06, r: 6, g: 4, b: 15 },
   { t: 0.14, r: 14, g: 9, b: 34 },
@@ -2449,7 +2449,7 @@ const st = {
   { t: 0.75, r: 252, g: 137, b: 97 },
   { t: 1, r: 252, g: 253, b: 191 }
 ];
-function ze(t, e) {
+function Fe(t, e) {
   if (e <= t[0].t) return [t[0].r, t[0].g, t[0].b];
   for (let o = 1; o < t.length; o++)
     if (e <= t[o].t) {
@@ -2553,7 +2553,7 @@ function it(t, e = 1) {
   for (let o = 0; o < 256; o++) {
     const a = o / 255;
     let r, l, i, h;
-    if (t === "ember" ? [r, l, i] = ze(as, a) : t === "viridis" ? [r, l, i] = ze(rs, a) : t === "magma" ? [r, l, i] = ze(ls, a) : t === "inferno" ? [r, l, i] = cs(a) : t === "deepdom" || t === "bookmap" ? [r, l, i] = ds(a) : t === "realtime" ? [r, l, i] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.08, r: 12, g: 27, b: 36 }, { t: 0.25, r: 22, g: 83, b: 108 }, { t: 0.5, r: 48, g: 182, b: 201 }, { t: 0.75, r: 218, g: 217, b: 95 }, { t: 1, r: 255, g: 250, b: 220 }], a) : t === "realtime_warm" ? [r, l, i] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.15, r: 15, g: 30, b: 64 }, { t: 0.4, r: 28, g: 92, b: 153 }, { t: 0.65, r: 75, g: 181, b: 190 }, { t: 0.8, r: 240, g: 205, b: 75 }, { t: 0.94, r: 248, g: 108, b: 40 }, { t: 1, r: 255, g: 55, b: 35 }], a) : [r, l, i] = hs(a), t === "inferno" || t === "ember" || t === "viridis" || t === "magma") {
+    if (t === "ember" ? [r, l, i] = Fe(as, a) : t === "viridis" ? [r, l, i] = Fe(rs, a) : t === "magma" ? [r, l, i] = Fe(ls, a) : t === "inferno" ? [r, l, i] = cs(a) : t === "deepdom" || t === "bookmap" ? [r, l, i] = ds(a) : t === "realtime" ? [r, l, i] = Fe([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.08, r: 12, g: 27, b: 36 }, { t: 0.25, r: 22, g: 83, b: 108 }, { t: 0.5, r: 48, g: 182, b: 201 }, { t: 0.75, r: 218, g: 217, b: 95 }, { t: 1, r: 255, g: 250, b: 220 }], a) : t === "realtime_warm" ? [r, l, i] = Fe([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.15, r: 15, g: 30, b: 64 }, { t: 0.4, r: 28, g: 92, b: 153 }, { t: 0.65, r: 75, g: 181, b: 190 }, { t: 0.8, r: 240, g: 205, b: 75 }, { t: 0.94, r: 248, g: 108, b: 40 }, { t: 1, r: 255, g: 55, b: 35 }], a) : [r, l, i] = hs(a), t === "inferno" || t === "ember" || t === "viridis" || t === "magma") {
       if (a < 0.05) h = 0;
       else if (a < 0.15) {
         const c = (a - 0.05) / 0.1;
@@ -2759,7 +2759,7 @@ class ms {
       console.error("Program link", e.getProgramInfoLog(a));
       return;
     }
-    this.program = a, e.useProgram(a), this.vao = e.createVertexArray(), e.bindVertexArray(this.vao), this.dataTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.dataTex), e.texImage2D(e.TEXTURE_2D, 0, e.R32F, le, he, 0, e.RED, e.FLOAT, new Float32Array(le * he)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.reachTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.reachTex), e.texImage2D(e.TEXTURE_2D, 0, e.R32F, le, he, 0, e.RED, e.FLOAT, new Float32Array(le * he)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.LINEAR), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.LINEAR), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.metaTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.metaTex), e.texImage2D(e.TEXTURE_2D, 0, e.RGBA32F, le, 1, 0, e.RGBA, e.FLOAT, new Float32Array(le * 4)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.colormapTex = e.createTexture(), this.colormapWarmTex = e.createTexture(), this.updateColormap();
+    this.program = a, e.useProgram(a), this.vao = e.createVertexArray(), e.bindVertexArray(this.vao), this.dataTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.dataTex), e.texImage2D(e.TEXTURE_2D, 0, e.R32F, le, de, 0, e.RED, e.FLOAT, new Float32Array(le * de)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.reachTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.reachTex), e.texImage2D(e.TEXTURE_2D, 0, e.R32F, le, de, 0, e.RED, e.FLOAT, new Float32Array(le * de)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.LINEAR), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.LINEAR), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.metaTex = e.createTexture(), e.bindTexture(e.TEXTURE_2D, this.metaTex), e.texImage2D(e.TEXTURE_2D, 0, e.RGBA32F, le, 1, 0, e.RGBA, e.FLOAT, new Float32Array(le * 4)), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MIN_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_MAG_FILTER, e.NEAREST), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_S, e.CLAMP_TO_EDGE), e.texParameteri(e.TEXTURE_2D, e.TEXTURE_WRAP_T, e.CLAMP_TO_EDGE), this.colormapTex = e.createTexture(), this.colormapWarmTex = e.createTexture(), this.updateColormap();
     const r = ["u_data", "u_meta", "u_colormap", "u_colormap_warm", "u_reach_data", "u_plot_origin", "u_plot_size", "u_viewport_time_min", "u_viewport_time_max", "u_viewport_price_min", "u_viewport_price_max", "u_data_time_start", "u_observation_hold_until", "u_time_step", "u_ring_start", "u_ring_count", "u_ring_size", "u_max_rows", "u_bucket_size", "u_bucket_multiplier", "u_sensitivity", "u_max_qty", "u_color_low", "u_color_peak", "u_mode", "u_opacity", "u_use_reach", "u_use_warm"];
     for (const l of r) this.uniforms[l] = e.getUniformLocation(a, l);
     e.bindVertexArray(null);
@@ -2848,91 +2848,87 @@ class ms {
       this.ringCount = 0, this.gpuDirty = !1;
       return;
     }
-    const s = Array.from(this.timeline.entries()).sort((v, f) => v[0] - f[0]), o = s[0][0];
+    const s = Array.from(this.timeline.entries()).sort((_, d) => _[0] - d[0]), o = s[0][0];
     this.gpuOriginMs = Math.floor(o / this.timeStepMs) * this.timeStepMs, this.gpuBucketSize = this.nativeBucket * (this.mode === "orderbook" ? this.bucketMultiplier : 1), this.globalMaxQty = 0.01;
     let a = 1 / 0, r = -1 / 0;
-    for (const [, v] of s)
-      for (const f of v.keys())
-        f < a && (a = f), f > r && (r = f);
-    const i = (a + r) / 2 - he / 2 * this.gpuBucketSize, h = new Float32Array(le * he), c = new Float32Array(le * 4), b = new Float32Array(le * he);
-    let T = 0;
-    for (const [v, f] of s) {
-      const g = Math.floor((v - this.gpuOriginMs) / this.timeStepMs);
-      if (g < 0 || g >= le) continue;
-      g >= T && (T = g + 1);
-      const w = new Float32Array(he);
-      let u = 0, x = 0;
-      for (const [p, E] of f) {
-        const d = Math.floor((p - i) / this.nativeBucket);
-        if (d >= 0 && d < he) {
-          w[d] += E, d > u && (u = d);
-          const k = Math.abs(w[d]);
-          k > x && (x = k), k > this.globalMaxQty && (this.globalMaxQty = k);
+    for (const [, _] of s)
+      for (const d of _.keys())
+        d < a && (a = d), d > r && (r = d);
+    const i = (a + r) / 2 - de / 2 * this.gpuBucketSize, h = new Float32Array(le * de), c = new Float32Array(le * 4), b = new Float32Array(le * de);
+    let y = 0;
+    for (const [_, d] of s) {
+      const x = Math.floor((_ - this.gpuOriginMs) / this.timeStepMs);
+      if (x < 0 || x >= le) continue;
+      x >= y && (y = x + 1);
+      const S = new Float32Array(de);
+      let f = 0, g = 0;
+      for (const [p, E] of d) {
+        const u = Math.floor((p - i) / this.nativeBucket);
+        if (u >= 0 && u < de) {
+          S[u] += E, u > f && (f = u);
+          const k = Math.abs(S[u]);
+          k > g && (g = k), k > this.globalMaxQty && (this.globalMaxQty = k);
         }
       }
-      if (this.mode === "liquidation" && u > 0) {
-        const p = new Float32Array(he), E = [0.61, 0.14];
-        for (let d = 0; d <= u; d++) {
-          const k = w[d];
+      if (this.mode === "liquidation" && f > 0) {
+        const p = new Float32Array(de), E = [0.61, 0.14];
+        for (let u = 0; u <= f; u++) {
+          const k = S[u];
           if (Math.abs(k) < 0.05) continue;
-          const C = k < 0 ? -1 : 1;
-          for (let O = 1; O <= 2; O++) {
-            const L = Math.abs(k) * E[O - 1];
+          const P = k < 0 ? -1 : 1;
+          for (let z = 1; z <= 2; z++) {
+            const F = Math.abs(k) * E[z - 1];
             for (const q of [-1, 1]) {
-              const N = d + q * O;
-              if (N >= 0 && N < he) {
-                const I = C * L;
-                Math.abs(I) > Math.abs(p[N]) && (p[N] = I);
+              const L = u + q * z;
+              if (L >= 0 && L < de) {
+                const U = P * F;
+                Math.abs(U) > Math.abs(p[L]) && (p[L] = U);
               }
             }
           }
         }
-        for (let d = 0; d < he; d++)
-          Math.abs(p[d]) > Math.abs(w[d]) && (w[d] = p[d]);
+        for (let u = 0; u < de; u++)
+          Math.abs(p[u]) > Math.abs(S[u]) && (S[u] = p[u]);
       }
-      for (let p = 0; p < he; p++) h[p * le + g] = w[p];
-      c[g * 4] = i, c[g * 4 + 1] = u + 1, c[g * 4 + 2] = x, c[g * 4 + 3] = 1;
-      const _ = this.reachTimeline.get(v);
-      if (_)
-        for (const [p, E] of _) {
-          const d = Math.floor((p - i) / this.nativeBucket);
-          d >= 0 && d < he && (b[d * le + g] = Math.max(0, Math.min(1, E)));
+      for (let p = 0; p < de; p++) h[p * le + x] = S[p];
+      c[x * 4] = i, c[x * 4 + 1] = f + 1, c[x * 4 + 2] = g, c[x * 4 + 3] = 1;
+      const M = this.reachTimeline.get(_);
+      if (M)
+        for (const [p, E] of M) {
+          const u = Math.floor((p - i) / this.nativeBucket);
+          u >= 0 && u < de && (b[u * le + x] = Math.max(0, Math.min(1, E)));
         }
-      this.columnMeta[g] = { timestamp_ms: v, price_min: i, price_step: this.nativeBucket, num_rows: u + 1, max_value: x, finalized: !0, values: w };
+      this.columnMeta[x] = { timestamp_ms: _, price_min: i, price_step: this.nativeBucket, num_rows: f + 1, max_value: g, finalized: !0, values: S };
     }
-    this.ringCount = T, e.bindTexture(e.TEXTURE_2D, this.dataTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, he, e.RED, e.FLOAT, h), e.bindTexture(e.TEXTURE_2D, this.metaTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, 1, e.RGBA, e.FLOAT, c), e.bindTexture(e.TEXTURE_2D, this.reachTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, he, e.RED, e.FLOAT, b), this.gpuDirty = !1;
+    this.ringCount = y, e.bindTexture(e.TEXTURE_2D, this.dataTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, de, e.RED, e.FLOAT, h), e.bindTexture(e.TEXTURE_2D, this.metaTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, 1, e.RGBA, e.FLOAT, c), e.bindTexture(e.TEXTURE_2D, this.reachTex), e.texSubImage2D(e.TEXTURE_2D, 0, 0, 0, le, de, e.RED, e.FLOAT, b), this.gpuDirty = !1;
   }
   render(e, s, o, a, r, l) {
     const i = this.gl, h = this.canvas;
     if (!i || !h || !this.program || (this.gpuDirty && this.syncGpuFromTimeline(), this.ringCount === 0)) return;
     this.viewTimeMin = e, this.viewTimeMax = s, this.viewPriceMin = o, this.viewPriceMax = a;
-    const c = window.devicePixelRatio || 1, b = h.clientWidth, T = h.clientHeight;
-    b < 10 || T < 10 || (h.width = Math.round(b * c), h.height = Math.round(T * c), i.viewport(0, 0, h.width, h.height), i.clearColor(0.1647, 0.1647, 0.1647, 1), i.clear(i.COLOR_BUFFER_BIT), i.useProgram(this.program), i.bindVertexArray(this.vao), i.activeTexture(i.TEXTURE0), i.bindTexture(i.TEXTURE_2D, this.dataTex), i.uniform1i(this.uniforms.u_data, 0), i.activeTexture(i.TEXTURE1), i.bindTexture(i.TEXTURE_2D, this.metaTex), i.uniform1i(this.uniforms.u_meta, 1), i.activeTexture(i.TEXTURE2), i.bindTexture(i.TEXTURE_2D, this.colormapTex), i.uniform1i(this.uniforms.u_colormap, 2), i.activeTexture(i.TEXTURE3), i.bindTexture(i.TEXTURE_2D, this.colormapWarmTex), i.uniform1i(this.uniforms.u_colormap_warm, 3), i.activeTexture(i.TEXTURE4), i.bindTexture(i.TEXTURE_2D, this.reachTex), i.uniform1i(this.uniforms.u_reach_data, 4), i.uniform2f(this.uniforms.u_plot_origin, r[0] * c, r[1] * c), i.uniform2f(this.uniforms.u_plot_size, l[0] * c, l[1] * c), i.uniform1f(this.uniforms.u_viewport_time_min, e / 1e3), i.uniform1f(this.uniforms.u_viewport_time_max, s / 1e3), i.uniform1f(this.uniforms.u_viewport_price_min, o), i.uniform1f(this.uniforms.u_viewport_price_max, a), i.uniform1f(this.uniforms.u_data_time_start, this.gpuOriginMs / 1e3), i.uniform1f(this.uniforms.u_observation_hold_until, this.observationHoldUntilMs / 1e3), i.uniform1f(this.uniforms.u_time_step, this.timeStepMs / 1e3), i.uniform1i(this.uniforms.u_ring_start, 0), i.uniform1i(this.uniforms.u_ring_count, this.ringCount), i.uniform1i(this.uniforms.u_ring_size, le), i.uniform1i(this.uniforms.u_max_rows, he), i.uniform1f(this.uniforms.u_bucket_size, this.nativeBucket || 0.01), i.uniform1i(this.uniforms.u_bucket_multiplier, this.bucketMultiplier), i.uniform1f(this.uniforms.u_sensitivity, this.sensitivity), i.uniform1f(this.uniforms.u_max_qty, this.globalMaxQty), i.uniform1f(this.uniforms.u_color_low, this.colorLow), i.uniform1f(this.uniforms.u_color_peak, this.colorPeak), i.uniform1i(this.uniforms.u_mode, this.mode === "liquidation" ? 1 : this.mode === "flow" ? 2 : 0), i.uniform1f(this.uniforms.u_opacity, this.opacity), i.uniform1i(this.uniforms.u_use_reach, this.useReach ? 1 : 0), i.uniform1i(this.uniforms.u_use_warm, 0), i.drawArrays(i.TRIANGLES, 0, 3), i.bindVertexArray(null));
+    const c = window.devicePixelRatio || 1, b = h.clientWidth, y = h.clientHeight;
+    b < 10 || y < 10 || (h.width = Math.round(b * c), h.height = Math.round(y * c), i.viewport(0, 0, h.width, h.height), i.clearColor(0.1647, 0.1647, 0.1647, 1), i.clear(i.COLOR_BUFFER_BIT), i.useProgram(this.program), i.bindVertexArray(this.vao), i.activeTexture(i.TEXTURE0), i.bindTexture(i.TEXTURE_2D, this.dataTex), i.uniform1i(this.uniforms.u_data, 0), i.activeTexture(i.TEXTURE1), i.bindTexture(i.TEXTURE_2D, this.metaTex), i.uniform1i(this.uniforms.u_meta, 1), i.activeTexture(i.TEXTURE2), i.bindTexture(i.TEXTURE_2D, this.colormapTex), i.uniform1i(this.uniforms.u_colormap, 2), i.activeTexture(i.TEXTURE3), i.bindTexture(i.TEXTURE_2D, this.colormapWarmTex), i.uniform1i(this.uniforms.u_colormap_warm, 3), i.activeTexture(i.TEXTURE4), i.bindTexture(i.TEXTURE_2D, this.reachTex), i.uniform1i(this.uniforms.u_reach_data, 4), i.uniform2f(this.uniforms.u_plot_origin, r[0] * c, r[1] * c), i.uniform2f(this.uniforms.u_plot_size, l[0] * c, l[1] * c), i.uniform1f(this.uniforms.u_viewport_time_min, e / 1e3), i.uniform1f(this.uniforms.u_viewport_time_max, s / 1e3), i.uniform1f(this.uniforms.u_viewport_price_min, o), i.uniform1f(this.uniforms.u_viewport_price_max, a), i.uniform1f(this.uniforms.u_data_time_start, this.gpuOriginMs / 1e3), i.uniform1f(this.uniforms.u_observation_hold_until, this.observationHoldUntilMs / 1e3), i.uniform1f(this.uniforms.u_time_step, this.timeStepMs / 1e3), i.uniform1i(this.uniforms.u_ring_start, 0), i.uniform1i(this.uniforms.u_ring_count, this.ringCount), i.uniform1i(this.uniforms.u_ring_size, le), i.uniform1i(this.uniforms.u_max_rows, de), i.uniform1f(this.uniforms.u_bucket_size, this.nativeBucket || 0.01), i.uniform1i(this.uniforms.u_bucket_multiplier, this.bucketMultiplier), i.uniform1f(this.uniforms.u_sensitivity, this.sensitivity), i.uniform1f(this.uniforms.u_max_qty, this.globalMaxQty), i.uniform1f(this.uniforms.u_color_low, this.colorLow), i.uniform1f(this.uniforms.u_color_peak, this.colorPeak), i.uniform1i(this.uniforms.u_mode, this.mode === "liquidation" ? 1 : this.mode === "flow" ? 2 : 0), i.uniform1f(this.uniforms.u_opacity, this.opacity), i.uniform1i(this.uniforms.u_use_reach, this.useReach ? 1 : 0), i.uniform1i(this.uniforms.u_use_warm, 0), i.drawArrays(i.TRIANGLES, 0, 3), i.bindVertexArray(null));
   }
   dispose() {
     const e = this.gl;
     e && (this.dataTex && e.deleteTexture(this.dataTex), this.metaTex && e.deleteTexture(this.metaTex), this.reachTex && e.deleteTexture(this.reachTex), this.colormapTex && e.deleteTexture(this.colormapTex), this.colormapWarmTex && e.deleteTexture(this.colormapWarmTex), this.program && e.deleteProgram(this.program), this.vao && e.deleteVertexArray(this.vao), this.gl = null);
   }
 }
-const ps = y.lazy(() => Promise.resolve().then(() => os).then((t) => ({ default: t.DepthHeatPane }))), qe = [
-  // SECONDS PRO locked
+const ps = T.lazy(() => Promise.resolve().then(() => os).then((t) => ({ default: t.DepthHeatPane }))), We = [
   { label: "1s", ms: 1e3, sec: 1 },
   { label: "5s", ms: 5e3, sec: 5 },
   { label: "15s", ms: 15e3, sec: 15 },
   { label: "30s", ms: 3e4, sec: 30 },
-  // MINUTES
   { label: "1m", ms: 6e4, sec: 60 },
   { label: "3m", ms: 18e4, sec: 180 },
   { label: "5m", ms: 3e5, sec: 300 },
   { label: "15m", ms: 9e5, sec: 900 },
   { label: "30m", ms: 18e5, sec: 1800 },
-  // HOURS
   { label: "1h", ms: 36e5, sec: 3600 },
   { label: "2h", ms: 72e5, sec: 7200 },
   { label: "4h", ms: 144e5, sec: 14400 },
   { label: "6h", ms: 216e5, sec: 21600 },
   { label: "12h", ms: 432e5, sec: 43200 },
-  // DAYS
   { label: "1D", ms: 864e5, sec: 86400 },
   { label: "1W", ms: 6048e5, sec: 604800 }
 ], bs = [
@@ -2942,398 +2938,352 @@ const ps = y.lazy(() => Promise.resolve().then(() => os).then((t) => ({ default:
   { id: "trade_intensity", label: "Trade Intensity" },
   { id: "flow", label: "Flow & Positioning" }
 ];
-function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColormap: a, opacity: r, intensity: l, gamma: i, noiseFloor: h, tickPerRow: c, halfLife: b }) {
-  const T = y.useRef(null), v = y.useRef(null), f = y.useRef(null), g = y.useRef(null), w = y.useRef(0), u = y.useRef(null), [x, _] = y.useState(qe[4]), [p, E] = y.useState(() => {
+function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColormap: a, opacity: r, intensity: l, gamma: i, noiseFloor: h, tickPerRow: c, halfLife: b, embedded: y }) {
+  const _ = T.useRef(null), d = T.useRef(null), x = T.useRef(null), S = T.useRef(null), f = T.useRef(0), g = T.useRef(null), [M, p] = T.useState(We[4]), [E, u] = T.useState(() => {
     try {
       const m = localStorage.getItem("ed_fav_tf");
       return new Set(m ? JSON.parse(m) : ["1m", "5m", "15m", "1h", "4h", "1D"]);
     } catch {
       return /* @__PURE__ */ new Set(["1m", "5m", "15m", "1h", "4h", "1D"]);
     }
-  }), [d, k] = y.useState("orderbook"), [C, O] = y.useState("ember"), [L, q] = y.useState("orderbook"), [N, I] = y.useState(l ?? 1), [$, W] = y.useState(r ?? 0.95), [J, ye] = y.useState(c ?? 1);
-  y.useEffect(() => {
-    o && O(o);
-  }, [o]), y.useEffect(() => {
-    a && q(a);
-  }, [a]), y.useEffect(() => {
-    r !== void 0 && W(r);
-  }, [r]), y.useEffect(() => {
-    l !== void 0 && I(l);
-  }, [l]), y.useEffect(() => {
-    c !== void 0 && ye(c);
+  }), [k, P] = T.useState("orderbook"), [z, F] = T.useState("ember"), [q, L] = T.useState("orderbook"), [U, H] = T.useState(l ?? 1), [$, J] = T.useState(r ?? 0.95), [ce, ge] = T.useState(c ?? 1);
+  T.useEffect(() => {
+    o && F(o);
+  }, [o]), T.useEffect(() => {
+    a && L(a);
+  }, [a]), T.useEffect(() => {
+    r !== void 0 && J(r);
+  }, [r]), T.useEffect(() => {
+    l !== void 0 && H(l);
+  }, [l]), T.useEffect(() => {
+    c !== void 0 && ge(c);
   }, [c]);
-  const [pe, be] = y.useState(!1), [ce, de] = y.useState(!1), [R, A] = y.useState(!0), [H, Te] = y.useState("loading"), [oe, ue] = y.useState([0, 0]), [Z, S] = y.useState([Date.now() - 36e5, Date.now()]), [U, ee] = y.useState(null), [fe, Me] = y.useState(!1), [G, Ie] = y.useState(e || "binance"), [Pe, Oe] = y.useState([]), [F, Q] = y.useState({ bid: null, ask: null }), [ge, ve] = y.useState(!1), [Re, Ce] = y.useState(!0), je = y.useMemo(() => G === "hyperliquid" ? 15 : G === "binance" ? 20 : G === "coinbase" ? 50 : 33, [G]);
-  y.useEffect(() => {
+  const [ae, fe] = T.useState(!1), [ne, C] = T.useState(!1), [j, W] = T.useState(!0), [Ce, _e] = T.useState("loading"), [K, xe] = T.useState([0, 0]), [v, I] = T.useState([Date.now() - 36e5, Date.now()]), [G, he] = T.useState(null), [Se, me] = T.useState(!1), [se, Ie] = T.useState(e || "binance"), [Ne, re] = T.useState([]), [A, pe] = T.useState({ bid: null, ask: null }), [Te, Re] = T.useState(!1), [ke, qe] = T.useState(!0), Pe = T.useMemo(() => se === "hyperliquid" ? 15 : se === "binance" ? 20 : se === "coinbase" ? 50 : 33, [se]);
+  T.useEffect(() => {
     try {
-      localStorage.setItem("ed_fav_tf", JSON.stringify([...p]));
+      localStorage.setItem("ed_fav_tf", JSON.stringify([...E]));
     } catch {
     }
-  }, [p]);
-  const Ye = y.useCallback((m, B) => {
-    B?.preventDefault(), E((K) => {
-      const te = new Set(K);
-      if (te.has(m)) te.delete(m);
+  }, [E]);
+  const Ve = T.useCallback((m, O) => {
+    O?.preventDefault(), u((V) => {
+      const Q = new Set(V);
+      if (Q.has(m)) Q.delete(m);
       else {
-        if (te.size >= 6) {
-          const se = te.values().next().value;
-          se && te.delete(se);
+        if (Q.size >= 6) {
+          const te = Q.values().next().value;
+          te && Q.delete(te);
         }
-        te.add(m);
+        Q.add(m);
       }
-      return te;
+      return Q;
     });
   }, []);
-  y.useEffect(() => {
-    const m = T.current, B = f.current;
-    if (!m || !B) return;
-    const K = new ms();
-    if (!K.attach(m)) {
-      console.warn("WebGL2 not available, fallback to Canvas2D DepthHeatPane"), ve(!0);
+  T.useEffect(() => {
+    const m = _.current, O = x.current;
+    if (!m || !O) return;
+    const V = new ms();
+    if (!V.attach(m)) {
+      Re(!0);
       return;
     }
-    K.setColumnInterval(x.ms), K.setMode(d), K.setLiqColormap(C), K.setObColormap(L), K.setSensitivity(N), K.setOpacity($), K.setBucketMultiplier(J), K.setReachModulation(pe), K.setLinearFiltering(ce), g.current = K;
-    const se = new ResizeObserver(() => {
+    V.setColumnInterval(M.ms), V.setMode(k), V.setLiqColormap(z), V.setObColormap(q), V.setSensitivity(U), V.setOpacity($), V.setBucketMultiplier(ce), V.setReachModulation(ae), V.setLinearFiltering(ne), S.current = V;
+    const te = new ResizeObserver(() => {
     });
-    return se.observe(B), () => {
-      se.disconnect(), K.dispose(), g.current = null;
+    return te.observe(O), () => {
+      te.disconnect(), V.dispose(), S.current = null;
     };
-  }, []), y.useEffect(() => {
-    const m = g.current;
-    m && (m.setMode(d), m.setLiqColormap(C), m.setObColormap(L), m.setSensitivity(N), m.setOpacity($), m.setBucketMultiplier(J), m.setReachModulation(pe), m.setLinearFiltering(ce), m.setColumnInterval(x.ms));
-  }, [d, C, L, N, $, J, pe, ce, x.ms]), y.useEffect(() => {
-    if (!Re) return;
-    const m = setInterval(() => {
-      S([Date.now() - 36e5, Date.now()]);
-    }, 1e3);
+  }, []), T.useEffect(() => {
+    const m = S.current;
+    m && (m.setMode(k), m.setLiqColormap(z), m.setObColormap(q), m.setSensitivity(U), m.setOpacity($), m.setBucketMultiplier(ce), m.setReachModulation(ae), m.setLinearFiltering(ne), m.setColumnInterval(M.ms));
+  }, [k, z, q, U, $, ce, ae, ne, M.ms]), T.useEffect(() => {
+    if (!ke) return;
+    const m = setInterval(() => I([Date.now() - 36e5, Date.now()]), 1e3);
     return () => clearInterval(m);
-  }, [Re]), y.useEffect(() => {
-    let m = !1, B = null;
-    const K = g.current;
-    if (!K && !ge) return;
-    const te = async () => {
-      Te("loading history...");
-      let se = 0.5, P = !1;
+  }, [ke]), T.useEffect(() => {
+    let m = !1, O = null;
+    const V = S.current;
+    if (!V && !Te) return;
+    const Q = async () => {
+      _e("loading history...");
+      let te = 0.5, D = !1;
       try {
-        const me = Date.now(), we = me - 4 * 3600 * 1e3;
-        let M = !1;
+        const be = Date.now(), Me = be - 4 * 3600 * 1e3;
+        let w = !1;
         try {
-          const V = await fetch(`/api/orderflow/heatmap?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}&from=${we / 1e3}&to=${me / 1e3}&column_ms=${x.ms}&max_levels=80`);
-          if (V.ok) {
-            const X = await V.json(), D = X.columns || [];
-            if (D.length) {
-              X.bucket_size && (se = X.bucket_size);
-              for (const j of D) {
-                const z = /* @__PURE__ */ new Map(), Y = j.qtys || [], ie = j.price_min || 0, ne = j.bucket_size || se || 0.5;
-                for (let Se = 0; Se < Y.length; Se++) {
-                  const ke = Y[Se];
-                  if (Math.abs(ke) < 1e-4) continue;
-                  const Ne = ie + Se * ne;
-                  z.set(Ne, ke);
+          const Y = await fetch(`/api/orderflow/heatmap?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(se)}&from=${Me / 1e3}&to=${be / 1e3}&column_ms=${M.ms}&max_levels=80`);
+          if (Y.ok) {
+            const X = await Y.json(), N = X.columns || [];
+            if (N.length) {
+              X.bucket_size && (te = X.bucket_size);
+              for (const R of N) {
+                const B = /* @__PURE__ */ new Map(), Z = R.qtys || [], ee = R.price_min || 0, Ee = R.bucket_size || te || 0.5;
+                for (let ye = 0; ye < Z.length; ye++) {
+                  const je = Z[ye];
+                  Math.abs(je) < 1e-4 || B.set(ee + ye * Ee, je);
                 }
-                z.size && (K?.processSnapshot(j.timestamp_ms, z, ne), P = !0);
+                B.size && (V?.processSnapshot(R.timestamp_ms, B, Ee), D = !0);
               }
               if (X.price_min && X.price_max) {
-                const j = (X.price_max - X.price_min) * 0.15;
-                ue([X.price_min - j, X.price_max + j]);
+                const R = (X.price_max - X.price_min) * 0.15;
+                xe([X.price_min - R, X.price_max + R]);
               }
-              M = P, Te(`${G.toUpperCase()} ${je}ms ${d} — heatmap ${D.length} cols live_buffer`);
+              w = D, _e(`${se.toUpperCase()} ${Pe}ms ${k} — heatmap ${N.length} cols`);
             }
           }
         } catch {
         }
-        if (!M) {
-          const V = await fetch(`/api/orderflow/depth?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}&from=${we / 1e3}&to=${me / 1e3}&column_ms=${x.ms}&max_levels=80`);
-          if (V.ok) {
-            const X = await V.json();
-            if (m) return;
-            const D = X.events || [];
-            for (const z of D)
-              if (z.bids?.length || z.asks?.length) {
-                const Y = [...z.bids || [], ...z.asks || []];
-                if (Y.length) {
-                  const ne = Y.map(([ke]) => ke).sort((ke, Ne) => ke - Ne), Se = ne.slice(1).map((ke, Ne) => ke - ne[Ne]).filter((ke) => ke > 0 && ke < 1e3);
-                  Se.length && (se = Math.min(...Se));
+        if (!w) {
+          const Y = await fetch(`/api/orderflow/depth?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(se)}&from=${Me / 1e3}&to=${be / 1e3}&column_ms=${M.ms}&max_levels=80`);
+          if (Y.ok) {
+            const X = await Y.json(), N = X.events || [];
+            for (const R of N)
+              if (R.bids?.length || R.asks?.length) {
+                const B = [...R.bids || [], ...R.asks || []];
+                if (B.length) {
+                  const ee = B.map(([ye]) => ye).sort((ye, je) => ye - je), Ee = ee.slice(1).map((ye, je) => ye - ee[je]).filter((ye) => ye > 0 && ye < 1e3);
+                  Ee.length && (te = Math.min(...Ee));
                 }
-                const ie = /* @__PURE__ */ new Map();
-                for (const [ne, Se] of z.bids) ie.set(ne, (ie.get(ne) || 0) + Se);
-                for (const [ne, Se] of z.asks) ie.set(ne, (ie.get(ne) || 0) + Se);
-                K?.processSnapshot(z.ts * 1e3, ie, se), P = !0;
+                const Z = /* @__PURE__ */ new Map();
+                for (const [ee, Ee] of R.bids) Z.set(ee, (Z.get(ee) || 0) + Ee);
+                for (const [ee, Ee] of R.asks) Z.set(ee, (Z.get(ee) || 0) + Ee);
+                V?.processSnapshot(R.ts * 1e3, Z, te), D = !0;
               }
-            const j = X.trades || [];
-            if (Oe(j.slice(-500)), D.length) {
-              let z = 1 / 0, Y = -1 / 0;
-              for (const ie of D.slice(-30)) {
-                for (const [ne] of ie.bids)
-                  ne < z && (z = ne), ne > Y && (Y = ne);
-                for (const [ne] of ie.asks)
-                  ne < z && (z = ne), ne > Y && (Y = ne);
+            if (re((X.trades || []).slice(-500)), N.length) {
+              let R = 1 / 0, B = -1 / 0;
+              for (const Z of N.slice(-30)) {
+                for (const [ee] of Z.bids)
+                  ee < R && (R = ee), ee > B && (B = ee);
+                for (const [ee] of Z.asks)
+                  ee < R && (R = ee), ee > B && (B = ee);
               }
-              if (isFinite(z) && isFinite(Y) && Y > z) {
-                const ie = (Y - z) * 0.15;
-                ue([z - ie, Y + ie]), P = !0;
+              if (isFinite(R) && isFinite(B) && B > R) {
+                const Z = (B - R) * 0.15;
+                xe([R - Z, B + Z]), D = !0;
               }
             }
-          } else {
-            const X = await V.json().catch(() => ({}));
-            m || Te(`no depth: ${X.detail || V.status} — live only`);
           }
         }
         try {
-          const V = await fetch(`/api/orderflow/book?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}`);
-          if (V.ok) {
-            const X = await V.json(), D = X.best_bid ?? null, j = X.best_ask ?? null;
-            if (Q({ bid: D, ask: j }), D !== null && j !== null) {
-              const z = (D + j) / 2, Y = j - D, ie = Math.max(Y * 10, z * 0.01);
-              ue([z - ie, z + ie]), P = !0;
-            } else D !== null ? (ue([D * 0.99, D * 1.01]), P = !0) : j !== null && (ue([j * 0.99, j * 1.01]), P = !0);
+          const Y = await fetch(`/api/orderflow/book?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(se)}`);
+          if (Y.ok) {
+            const X = await Y.json(), N = X.best_bid ?? null, R = X.best_ask ?? null;
+            if (pe({ bid: N, ask: R }), N !== null && R !== null) {
+              const B = (N + R) / 2, Z = Math.max((R - N) * 10, B * 0.01);
+              xe([B - Z, B + Z]), D = !0;
+            }
           }
         } catch {
         }
-        m || Te(P ? `${G.toUpperCase()} ${je}ms ${d} — live` : `${G.toUpperCase()} ${je}ms — waiting for live book...`);
-      } catch (me) {
-        m || Te(`engine unreachable: ${me}`);
+        m || _e(D ? `${se.toUpperCase()} ${Pe}ms ${k} — live` : `${se.toUpperCase()} ${Pe}ms — waiting live book...`);
+      } catch (be) {
+        m || _e(`engine unreachable: ${be}`);
       }
-      const ae = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}`;
+      const ie = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(se)}`;
       try {
-        B = new WebSocket(ae), B.onopen = () => {
-          m || Te(`${G.toUpperCase()} ${je}ms ${d} — WS live`);
-        }, B.onmessage = (me) => {
+        O = new WebSocket(ie), O.onopen = () => {
+          m || _e(`${se.toUpperCase()} ${Pe}ms ${k} — WS live`);
+        }, O.onmessage = (be) => {
           if (!m)
             try {
-              const we = JSON.parse(me.data);
-              if (we.type === "depth") {
-                const M = we.event, V = /* @__PURE__ */ new Map();
-                for (const [j, z] of M.bids) V.set(j, (V.get(j) || 0) + z);
-                for (const [j, z] of M.asks) V.set(j, (V.get(j) || 0) + z);
-                if (V.size) {
-                  const j = Array.from(V.keys()).sort((Y, ie) => Y - ie), z = j.slice(1).map((Y, ie) => Y - j[ie]).filter((Y) => Y > 0 && Y < 1e3);
-                  z.length && (se = Math.min(...z));
-                }
-                K?.updateLiveColumn(M.ts * 1e3, V);
-                let X = null, D = null;
-                for (const [j] of M.bids) (X === null || j > X) && (X = j);
-                for (const [j] of M.asks) (D === null || j < D) && (D = j);
-                (X !== null || D !== null) && (Q({ bid: X, ask: D }), ue((j) => {
-                  if (j[0] !== 0 || j[1] !== 0) return j;
-                  if (X !== null && D !== null) {
-                    const z = (X + D) / 2, Y = Math.max((D - X) * 10, z * 0.01);
-                    return [z - Y, z + Y];
+              const Me = JSON.parse(be.data);
+              if (Me.type === "depth") {
+                const w = Me.event, Y = /* @__PURE__ */ new Map();
+                for (const [R, B] of w.bids) Y.set(R, (Y.get(R) || 0) + B);
+                for (const [R, B] of w.asks) Y.set(R, (Y.get(R) || 0) + B);
+                V?.updateLiveColumn(w.ts * 1e3, Y);
+                let X = null, N = null;
+                for (const [R] of w.bids) (X === null || R > X) && (X = R);
+                for (const [R] of w.asks) (N === null || R < N) && (N = R);
+                (X !== null || N !== null) && (pe({ bid: X, ask: N }), xe((R) => {
+                  if (R[0] !== 0 || R[1] !== 0) return R;
+                  if (X !== null && N !== null) {
+                    const B = (X + N) / 2, Z = Math.max((N - X) * 10, B * 0.01);
+                    return [B - Z, B + Z];
                   }
-                  return j;
+                  return R;
                 }));
-              } else we.type === "trade" && Oe((M) => [...M.slice(-499), we.event]);
+              } else Me.type === "trade" && re((w) => [...w.slice(-499), Me.event]);
             } catch {
             }
-        }, B.onerror = () => {
-          m || Te(`${G.toUpperCase()} WS error — retrying...`);
-        }, B.onclose = () => {
-          m || Te(`${G.toUpperCase()} WS closed — reconnecting...`), m || setTimeout(() => {
-            m || te();
+        }, O.onerror = () => {
+          m || _e(`${se.toUpperCase()} WS error — retrying...`);
+        }, O.onclose = () => {
+          m || setTimeout(() => {
+            m || Q();
           }, 2e3);
         };
-      } catch (me) {
-        m || Te(`WS failed: ${me}`);
-      }
-    };
-    return te(), () => {
-      m = !0;
-      try {
-        B?.close();
       } catch {
       }
     };
-  }, [t, G, x.ms, je, d, ge]), y.useEffect(() => {
-    const m = T.current, B = v.current, K = f.current, te = g.current;
-    if (!m || !B || !K || !te) return;
-    const se = () => {
-      const P = K.getBoundingClientRect();
-      if (P.width < 10 || P.height < 10) {
-        w.current = requestAnimationFrame(se);
+    return Q(), () => {
+      m = !0;
+      try {
+        O?.close();
+      } catch {
+      }
+    };
+  }, [t, se, M.ms, Pe, k, Te]), T.useEffect(() => {
+    const m = _.current, O = d.current, V = x.current, Q = S.current;
+    if (!m || !O || !V || !Q) return;
+    const te = () => {
+      const D = V.getBoundingClientRect();
+      if (D.width < 10 || D.height < 10) {
+        f.current = requestAnimationFrame(te);
         return;
       }
-      const xe = window.devicePixelRatio || 1;
-      B.width = Math.round(P.width * xe), B.height = Math.round(P.height * xe), B.style.width = `${P.width}px`, B.style.height = `${P.height}px`;
-      let ae = oe;
-      if (ae[0] === 0 && ae[1] === 0)
-        if (F.bid !== null && F.ask !== null) {
-          const V = (F.bid + F.ask) / 2, X = Math.max((F.ask - F.bid) * 10, V * 0.01);
-          ae = [V - X, V + X];
-        } else
-          ae = [6e4, 7e4];
-      const me = [0, 0], we = [P.width - 58, P.height - 20];
-      te.render(Z[0], Z[1], ae[0], ae[1], me, we);
-      const M = B.getContext("2d");
-      if (M) {
-        M.setTransform(xe, 0, 0, xe, 0, 0), M.clearRect(0, 0, P.width, P.height), M.fillStyle = "#2a2a2a", M.fillRect(P.width - 58, 0, 58, P.height - 20), M.strokeStyle = "#3a3a3a", M.beginPath(), M.moveTo(P.width - 58, 0), M.lineTo(P.width - 58, P.height - 20), M.stroke(), M.fillStyle = "#262626", M.fillRect(0, P.height - 20, P.width, 20), M.strokeStyle = "#3a3a3a", M.beginPath(), M.moveTo(0, P.height - 20), M.lineTo(P.width, P.height - 20), M.stroke();
-        const V = ae[1] - ae[0] || 1e3;
-        M.fillStyle = "#e8e8e8", M.font = "10px monospace", M.textAlign = "right";
-        for (let D = 0; D <= 4; D++) {
-          const j = D / 4 * (P.height - 20), z = ae[1] - D / 4 * V;
-          M.fillText(z.toFixed(2), P.width - 4, j + 10), M.strokeStyle = "#3a3a3a", M.beginPath(), M.moveTo(0, j), M.lineTo(P.width - 58, j), M.stroke();
+      const ue = window.devicePixelRatio || 1;
+      O.width = Math.round(D.width * ue), O.height = Math.round(D.height * ue), O.style.width = `${D.width}px`, O.style.height = `${D.height}px`;
+      let ie = K;
+      if (ie[0] === 0 && ie[1] === 0)
+        if (A.bid !== null && A.ask !== null) {
+          const Y = (A.bid + A.ask) / 2, X = Math.max((A.ask - A.bid) * 10, Y * 0.01);
+          ie = [Y - X, Y + X];
+        } else ie = [6e4, 7e4];
+      const be = [0, 0], Me = [D.width - 58, D.height - 20];
+      Q.render(v[0], v[1], ie[0], ie[1], be, Me);
+      const w = O.getContext("2d");
+      if (w) {
+        w.setTransform(ue, 0, 0, ue, 0, 0), w.clearRect(0, 0, D.width, D.height), w.fillStyle = "#2a2a2a", w.fillRect(D.width - 58, 0, 58, D.height - 20), w.strokeStyle = "#3a3a3a", w.beginPath(), w.moveTo(D.width - 58, 0), w.lineTo(D.width - 58, D.height - 20), w.stroke(), w.fillStyle = "#262626", w.fillRect(0, D.height - 20, D.width, 20), w.beginPath(), w.moveTo(0, D.height - 20), w.lineTo(D.width, D.height - 20), w.stroke();
+        const Y = ie[1] - ie[0] || 1e3;
+        w.fillStyle = "#e8e8e8", w.font = "10px monospace", w.textAlign = "right";
+        for (let N = 0; N <= 4; N++) {
+          const R = N / 4 * (D.height - 20), B = ie[1] - N / 4 * Y;
+          w.fillText(B.toFixed(2), D.width - 4, R + 10), w.strokeStyle = "#3a3a3a", w.beginPath(), w.moveTo(0, R), w.lineTo(D.width - 58, R), w.stroke();
         }
-        const X = Z[1] - Z[0];
-        M.textAlign = "center", M.fillStyle = "#b9b9b9";
-        for (let D = 0; D <= 4; D++) {
-          const j = D / 4 * (P.width - 58), z = new Date(Z[0] + D / 4 * X);
-          M.fillText(z.toLocaleTimeString(), j, P.height - 5);
+        const X = v[1] - v[0];
+        w.textAlign = "center", w.fillStyle = "#b9b9b9";
+        for (let N = 0; N <= 4; N++) {
+          const R = N / 4 * (D.width - 58), B = new Date(v[0] + N / 4 * X);
+          w.fillText(B.toLocaleTimeString(), R, D.height - 5);
         }
-        if (U && (M.strokeStyle = "#d0d0d0", M.setLineDash([2, 2]), M.beginPath(), M.moveTo(U.x, 0), M.lineTo(U.x, P.height - 20), M.stroke(), M.beginPath(), M.moveTo(0, U.y), M.lineTo(P.width - 58, U.y), M.stroke(), M.setLineDash([]), M.fillStyle = "#e8e8e8", M.fillRect(U.x + 4, U.y - 20, 120, 18), M.fillStyle = "#1c1c1c", M.fillText(`${U.price.toFixed(2)} @ ${new Date(U.time).toLocaleTimeString()}`, U.x + 8, U.y - 8)), R && Pe.length)
-          for (const D of Pe.slice(-100)) {
-            const j = (D.ts * 1e3 - Z[0]) / Math.max(X, 1) * (P.width - 58), z = (ae[1] - D.price) / Math.max(V, 1) * (P.height - 20);
-            if (j < 0 || j > P.width - 58 || z < 0 || z > P.height - 20) continue;
-            const Y = D.side === "BUY" || D.side === "B";
-            M.fillStyle = Y ? "#21b3a4" : "#f0426c";
-            const ie = Math.min(8, Math.max(2, Math.log10(D.size + 1) * 2));
-            M.beginPath(), M.arc(j, z, ie, 0, Math.PI * 2), M.fill();
+        if (G && (w.strokeStyle = "#d0d0d0", w.setLineDash([2, 2]), w.beginPath(), w.moveTo(G.x, 0), w.lineTo(G.x, D.height - 20), w.stroke(), w.beginPath(), w.moveTo(0, G.y), w.lineTo(D.width - 58, G.y), w.stroke(), w.setLineDash([]), w.fillStyle = "#e8e8e8", w.fillRect(G.x + 4, G.y - 20, 120, 18), w.fillStyle = "#1c1c1c", w.fillText(`${G.price.toFixed(2)} @ ${new Date(G.time).toLocaleTimeString()}`, G.x + 8, G.y - 8)), j && Ne.length)
+          for (const N of Ne.slice(-100)) {
+            const R = (N.ts * 1e3 - v[0]) / Math.max(X, 1) * (D.width - 58), B = (ie[1] - N.price) / Math.max(Y, 1) * (D.height - 20);
+            if (R < 0 || R > D.width - 58 || B < 0 || B > D.height - 20) continue;
+            const Z = N.side === "BUY" || N.side === "B";
+            w.fillStyle = Z ? "#21b3a4" : "#f0426c";
+            const ee = Math.min(8, Math.max(2, Math.log10(N.size + 1) * 2));
+            w.beginPath(), w.arc(R, B, ee, 0, Math.PI * 2), w.fill();
           }
-        if (F.bid !== null) {
-          const D = (ae[1] - F.bid) / Math.max(V, 1) * (P.height - 20);
-          M.strokeStyle = "#21b3a4", M.setLineDash([4, 2]), M.beginPath(), M.moveTo(0, D), M.lineTo(P.width - 58, D), M.stroke(), M.setLineDash([]);
+        if (A.bid !== null) {
+          const N = (ie[1] - A.bid) / Math.max(Y, 1) * (D.height - 20);
+          w.strokeStyle = "#21b3a4", w.setLineDash([4, 2]), w.beginPath(), w.moveTo(0, N), w.lineTo(D.width - 58, N), w.stroke(), w.setLineDash([]);
         }
-        if (F.ask !== null) {
-          const D = (ae[1] - F.ask) / Math.max(V, 1) * (P.height - 20);
-          M.strokeStyle = "#f0426c", M.setLineDash([4, 2]), M.beginPath(), M.moveTo(0, D), M.lineTo(P.width - 58, D), M.stroke(), M.setLineDash([]);
+        if (A.ask !== null) {
+          const N = (ie[1] - A.ask) / Math.max(Y, 1) * (D.height - 20);
+          w.strokeStyle = "#f0426c", w.setLineDash([4, 2]), w.beginPath(), w.moveTo(0, N), w.lineTo(D.width - 58, N), w.stroke(), w.setLineDash([]);
         }
       }
-      w.current = requestAnimationFrame(se);
+      f.current = requestAnimationFrame(te);
     };
-    return w.current = requestAnimationFrame(se), () => cancelAnimationFrame(w.current);
-  }, [Z, oe, U, Pe, R, F]);
-  const ft = y.useCallback((m) => {
+    return f.current = requestAnimationFrame(te), () => cancelAnimationFrame(f.current);
+  }, [v, K, G, Ne, j, A]);
+  const ft = T.useCallback((m) => {
     m.preventDefault();
-    const B = m.currentTarget.getBoundingClientRect(), K = B.width - 58;
-    if (B.height - 20, m.shiftKey) {
-      const te = oe[1] - oe[0] || 1e3, se = m.deltaY > 0 ? 1.1 : 0.9, P = (oe[0] + oe[1]) / 2, xe = te * se / 2;
-      ue([P - xe, P + xe]);
+    const O = m.currentTarget.getBoundingClientRect(), V = O.width - 58;
+    if (m.shiftKey) {
+      const Q = K[1] - K[0] || 1e3, te = m.deltaY > 0 ? 1.1 : 0.9, D = (K[0] + K[1]) / 2, ue = Q * te / 2;
+      xe([D - ue, D + ue]);
     } else {
-      const te = Z[1] - Z[0], se = m.deltaY > 0 ? 1.1 : 0.9, xe = (m.clientX - B.left) / Math.max(K, 1), ae = Z[0] + xe * te, me = te * se;
-      S([ae - xe * me, ae + (1 - xe) * me]);
+      const Q = v[1] - v[0], te = m.deltaY > 0 ? 1.1 : 0.9, ue = (m.clientX - O.left) / Math.max(V, 1), ie = v[0] + ue * Q, be = Q * te;
+      I([ie - ue * be, ie + (1 - ue) * be]);
     }
-  }, [Z, oe]), mt = y.useCallback((m) => {
-    u.current = { x: m.clientX, y: m.clientY, t0: [...Z], p0: [...oe] };
-  }, [Z, oe]), pt = y.useCallback((m) => {
-    const B = m.currentTarget.getBoundingClientRect(), K = m.clientX - B.left, te = m.clientY - B.top, se = B.width - 58, P = B.height - 20, xe = Z[1] - Z[0], ae = oe[1] - oe[0] || 1e3, me = (oe[0] + oe[1]) / 2 + (P / 2 - te) / (P / ae), we = Z[0] + K / Math.max(se, 1) * xe;
-    if (ee({ x: K, y: te, price: me, time: we }), u.current && m.buttons & 1) {
-      const M = m.clientX - u.current.x, V = m.clientY - u.current.y, X = M / Math.max(se, 1) * xe, D = V / Math.max(P, 1) * ae;
-      S([u.current.t0[0] - X, u.current.t0[1] - X]);
-      const j = u.current.p0[0] === 0 && u.current.p0[1] === 0 ? F.bid && F.ask ? [(F.bid + F.ask) / 2 - 500, (F.bid + F.ask) / 2 + 500] : [6e4, 7e4] : u.current.p0;
-      ue([j[0] + D, j[1] + D]);
+  }, [v, K]), mt = T.useCallback((m) => {
+    g.current = { x: m.clientX, y: m.clientY, t0: [...v], p0: [...K] };
+  }, [v, K]), pt = T.useCallback((m) => {
+    const O = m.currentTarget.getBoundingClientRect(), V = m.clientX - O.left, Q = m.clientY - O.top, te = O.width - 58, D = O.height - 20, ue = v[1] - v[0], ie = K[1] - K[0] || 1e3, be = (K[0] + K[1]) / 2 + (D / 2 - Q) / (D / ie), Me = v[0] + V / Math.max(te, 1) * ue;
+    if (he({ x: V, y: Q, price: be, time: Me }), g.current && m.buttons & 1) {
+      const w = m.clientX - g.current.x, Y = m.clientY - g.current.y, X = w / Math.max(te, 1) * ue, N = Y / Math.max(D, 1) * ie;
+      I([g.current.t0[0] - X, g.current.t0[1] - X]);
+      const R = g.current.p0[0] === 0 && g.current.p0[1] === 0 ? A.bid && A.ask ? [(A.bid + A.ask) / 2 - 500, (A.bid + A.ask) / 2 + 500] : [6e4, 7e4] : g.current.p0;
+      xe([R[0] + N, R[1] + N]);
     }
-  }, [Z, oe, F]), bt = y.useCallback(() => {
-    u.current = null;
-  }, []), gt = y.useCallback(() => {
-    u.current = null, ee(null);
-  }, []), xt = y.useCallback(() => {
-    if (Ce(!0), S([Date.now() - 36e5, Date.now()]), F.bid !== null && F.ask !== null) {
-      const m = (F.bid + F.ask) / 2, B = Math.max((F.ask - F.bid) * 10, m * 0.01);
-      ue([m - B, m + B]);
+  }, [v, K, A]), bt = T.useCallback(() => {
+    g.current = null;
+  }, []), gt = T.useCallback(() => {
+    g.current = null, he(null);
+  }, []), xt = T.useCallback(() => {
+    if (qe(!0), I([Date.now() - 36e5, Date.now()]), A.bid !== null && A.ask !== null) {
+      const m = (A.bid + A.ask) / 2, O = Math.max((A.ask - A.bid) * 10, m * 0.01);
+      xe([m - O, m + O]);
     }
-  }, [F]);
-  if (ge)
-    return /* @__PURE__ */ n.jsx(y.Suspense, { fallback: /* @__PURE__ */ n.jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-[var(--panel)] text-[var(--dim)] text-[11px]", children: "Loading fallback depth..." }), children: /* @__PURE__ */ n.jsx(ps, { symbol: t, sourceProvider: G, onToggleKind: s }) });
-  const Xe = qe.filter((m) => p.has(m.label)), yt = qe.filter((m) => !p.has(m.label));
+  }, [A]);
+  if (Te)
+    return /* @__PURE__ */ n.jsx(T.Suspense, { fallback: /* @__PURE__ */ n.jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-[var(--panel)] text-[var(--dim)] text-[11px]", children: "Loading fallback depth..." }), children: /* @__PURE__ */ n.jsx(ps, { symbol: t, sourceProvider: se, onToggleKind: s }) });
+  const Ye = We.filter((m) => E.has(m.label)), Tt = We.filter((m) => !E.has(m.label));
   return /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col bg-[#1c1c1c] text-[#e8e8e8] select-none", children: [
     /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] text-[11px] flex-wrap shrink-0 bg-[#2a2a2a]", children: [
-      /* @__PURE__ */ n.jsx("span", { className: "font-bold opacity-80 tracking-wider", children: "EDGEDEPTH HEATMAP" }),
+      /* @__PURE__ */ n.jsx("span", { className: "font-bold opacity-80 tracking-wider", children: y ? "HEATMAP" : "EDGEDEPTH HEATMAP" }),
       /* @__PURE__ */ n.jsx("span", { className: "font-mono font-semibold ml-1", children: t }),
-      /* @__PURE__ */ n.jsx("span", { className: "text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] truncate max-w-[240px]", children: H }),
-      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: ["binance", "coinbase", "hyperliquid"].map((m) => /* @__PURE__ */ n.jsxs(
-        "button",
-        {
-          onClick: () => Ie(m),
-          className: `px-2 py-0.5 text-[10px] font-medium transition-colors ${G === m ? "bg-[#d0d0d0] text-[#1c1c1c]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`,
-          title: `${m} ${m === "hyperliquid" ? "15ms ⚡ ultra-fast" : m === "binance" ? "20ms" : "50ms"}`,
-          children: [
-            m.toUpperCase(),
-            " ",
-            m === "hyperliquid" ? "⚡15ms" : m === "binance" ? "20ms" : "50ms"
-          ]
-        },
-        m
-      )) }),
-      /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: [
-        Xe.map((m) => /* @__PURE__ */ n.jsxs(
-          "button",
-          {
-            onClick: () => _(m),
-            onContextMenu: (B) => {
-              B.preventDefault(), Ye(m.label, B);
-            },
-            className: `px-1.5 py-0.5 text-[10px] ${x.label === m.label ? "bg-[#414141] text-[#e8e8e8]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"} `,
-            title: m.pro ? "SECONDS PRO — locked" : `Right-click to unpin (fav ${Xe.length}/6)`,
-            children: [
-              m.label,
-              m.pro ? " PRO" : ""
-            ]
-          },
-          m.label
-        )),
-        /* @__PURE__ */ n.jsxs("span", { className: "text-[8px] px-1 text-[#b9b9b9] border-l border-[#3a3a3a]", children: [
-          "FAV ",
-          Xe.length,
-          "/6"
-        ] })
+      /* @__PURE__ */ n.jsx("span", { className: "text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] truncate max-w-[240px]", children: Ce }),
+      !y && /* @__PURE__ */ n.jsxs(n.Fragment, { children: [
+        /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: ["binance", "coinbase", "hyperliquid"].map((m) => /* @__PURE__ */ n.jsxs("button", { onClick: () => Ie(m), className: `px-2 py-0.5 text-[10px] font-medium ${se === m ? "bg-[#d0d0d0] text-[#1c1c1c]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434]"}`, title: `${m} ${m === "hyperliquid" ? "15ms" : m === "binance" ? "20ms" : "50ms"}`, children: [
+          m.toUpperCase(),
+          " ",
+          m === "hyperliquid" ? "⚡15ms" : m === "binance" ? "20ms" : "50ms"
+        ] }, m)) }),
+        /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: [
+          Ye.map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => p(m), onContextMenu: (O) => {
+            O.preventDefault(), Ve(m.label, O);
+          }, className: `px-1.5 py-0.5 text-[10px] ${M.label === m.label ? "bg-[#414141] text-[#e8e8e8]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434]"}`, children: m.label }, m.label)),
+          /* @__PURE__ */ n.jsxs("span", { className: "text-[8px] px-1 text-[#b9b9b9] border-l border-[#3a3a3a]", children: [
+            "FAV ",
+            Ye.length,
+            "/6"
+          ] })
+        ] }),
+        /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: Tt.slice(0, 8).map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => p(m), onContextMenu: (O) => {
+          O.preventDefault(), Ve(m.label, O);
+        }, className: "px-1.5 py-0.5 text-[10px] opacity-60 hover:bg-[#343434] text-[#b9b9b9]", children: m.label }, m.label)) })
       ] }),
-      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: yt.slice(0, 8).map((m) => /* @__PURE__ */ n.jsx(
-        "button",
-        {
-          onClick: () => _(m),
-          onContextMenu: (B) => {
-            B.preventDefault(), Ye(m.label, B);
-          },
-          className: "px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100 hover:bg-[#343434] ",
-          title: m.pro ? "PRO — right-click to pin" : "Click sets, right-click pins max 6",
-          children: m.label
-        },
-        m.label
-      )) }),
-      /* @__PURE__ */ n.jsx("select", { value: d, onChange: (m) => k(m.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: bs.map((m) => /* @__PURE__ */ n.jsx("option", { value: m.id, children: m.label }, m.id)) }),
+      /* @__PURE__ */ n.jsx("select", { value: k, onChange: (m) => P(m.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: bs.map((m) => /* @__PURE__ */ n.jsx("option", { value: m.id, children: m.label }, m.id)) }),
       /* @__PURE__ */ n.jsxs("div", { className: "ml-auto flex items-center gap-1", children: [
-        /* @__PURE__ */ n.jsx("button", { onClick: () => Ce((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${Re ? "bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]" : "border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: Re ? "FOLLOW" : "FREE" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => A((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${R ? "bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]" : "border-[#3a3a3a] text-[#b9b9b9]"}`, children: "Bubbles" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => ve(!0), className: "px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[10px] text-[#b9b9b9] hover:bg-[#343434]", title: "Switch to legacy Canvas2D renderer", children: "Legacy" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => Me((m) => !m), className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]", children: "⚙" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => qe((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${ke ? "bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]" : "border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: ke ? "FOLLOW" : "FREE" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => W((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${j ? "bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]" : "border-[#3a3a3a] text-[#b9b9b9]"}`, children: "Bubbles" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => Re(!0), className: "px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[10px] text-[#b9b9b9] hover:bg-[#343434]", children: "Legacy" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => me((m) => !m), className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]", children: "⚙" }),
         s && /* @__PURE__ */ n.jsx("button", { onClick: s, className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#b9b9b9]", children: "chart ⇄" })
       ] })
     ] }),
-    /* @__PURE__ */ n.jsxs("div", { ref: f, className: "relative flex-1 min-h-0 w-full h-full bg-[#2a2a2a]", onWheel: ft, onMouseDown: mt, onMouseMove: pt, onMouseUp: bt, onMouseLeave: gt, onDoubleClick: xt, children: [
-      /* @__PURE__ */ n.jsx("canvas", { ref: T, className: "absolute inset-0 w-full h-full block", style: { width: "100%", height: "100%" } }),
-      /* @__PURE__ */ n.jsx("canvas", { ref: v, className: "absolute inset-0 w-full h-full block pointer-events-none", style: { width: "100%", height: "100%" } }),
-      oe[0] === 0 && oe[1] === 0 && !F.bid && /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center pointer-events-none", children: [
+    /* @__PURE__ */ n.jsxs("div", { ref: x, className: "relative flex-1 min-h-0 w-full h-full bg-[#2a2a2a]", onWheel: ft, onMouseDown: mt, onMouseMove: pt, onMouseUp: bt, onMouseLeave: gt, onDoubleClick: xt, children: [
+      /* @__PURE__ */ n.jsx("canvas", { ref: _, className: "absolute inset-0 w-full h-full block", style: { width: "100%", height: "100%" } }),
+      /* @__PURE__ */ n.jsx("canvas", { ref: d, className: "absolute inset-0 w-full h-full block pointer-events-none", style: { width: "100%", height: "100%" } }),
+      K[0] === 0 && K[1] === 0 && !A.bid && /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center pointer-events-none", children: [
         /* @__PURE__ */ n.jsxs("div", { className: "text-[12px] font-mono text-[#e8e8e8] opacity-70", children: [
           "Waiting for ",
           t,
           " depth — ",
-          H
+          Ce
         ] }),
         /* @__PURE__ */ n.jsxs("div", { className: "text-[10px] text-[#b9b9b9] opacity-50 mt-1", children: [
           "Provider: ",
-          G,
+          se,
           " • TF: ",
-          x.label,
+          M.label,
           " • Flush: ",
-          je,
+          Pe,
           "ms"
         ] }),
-        /* @__PURE__ */ n.jsx("div", { className: "text-[10px] text-[#b9b9b9] opacity-40 mt-2", children: "If live_only, WS will fill after 1-2s. Click Legacy if WebGL2 fails." })
+        /* @__PURE__ */ n.jsx("div", { className: "text-[10px] text-[#b9b9b9] opacity-40 mt-2", children: "WS will fill after 1-2s. Click Legacy if WebGL2 fails." })
       ] })
     ] }),
-    fe && /* @__PURE__ */ n.jsxs("div", { className: "absolute top-10 right-2 z-20 w-[340px] bg-[#262626] border border-[#3a3a3a] rounded shadow-xl p-3 text-[11px] space-y-3 max-h-[80vh] overflow-auto", children: [
+    Se && /* @__PURE__ */ n.jsxs("div", { className: "absolute top-10 right-2 z-20 w-[340px] bg-[#262626] border border-[#3a3a3a] rounded shadow-xl p-3 text-[11px] space-y-3 max-h-[80vh] overflow-auto", children: [
       /* @__PURE__ */ n.jsxs("div", { className: "flex justify-between items-center", children: [
         /* @__PURE__ */ n.jsx("span", { className: "font-bold tracking-wider text-[10px] text-[#b9b9b9]", children: "HEATMAP TWEAKS — ADVANCED" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => Me(!1), className: "text-[14px] text-[#b9b9b9] hover:text-[#e8e8e8]", children: "×" })
+        /* @__PURE__ */ n.jsx("button", { onClick: () => me(!1), className: "text-[14px] text-[#b9b9b9] hover:text-[#e8e8e8]", children: "×" })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "space-y-2", children: [
         /* @__PURE__ */ n.jsx("div", { className: "text-[10px] text-[#b9b9b9] uppercase", children: "Colormap — data colors exact EdgeDepth, chrome zinc" }),
-        d === "liquidation" ? /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["inferno", "ember", "viridis", "magma"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => O(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${C === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: m }, m)) }) : /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["orderbook", "deepdom", "bookmap", "realtime", "realtime_warm"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => q(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${L === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: m }, m)) })
+        k === "liquidation" ? /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["inferno", "ember", "viridis", "magma"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => F(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${z === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: m }, m)) }) : /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["orderbook", "deepdom", "bookmap", "realtime", "realtime_warm"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => L(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${q === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: m }, m)) })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
         /* @__PURE__ */ n.jsxs("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ n.jsxs("span", { className: "text-[10px] text-[#b9b9b9]", children: [
             "Sensitivity ",
-            N.toFixed(2)
+            U.toFixed(2)
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 3, step: 0.1, value: N, onChange: (m) => I(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 3, step: 0.1, value: U, onChange: (m) => H(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
         ] }),
         /* @__PURE__ */ n.jsxs("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ n.jsxs("span", { className: "text-[10px] text-[#b9b9b9]", children: [
@@ -3341,31 +3291,31 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             Math.round($ * 100),
             "%"
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 1, step: 0.05, value: $, onChange: (m) => W(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 1, step: 0.05, value: $, onChange: (m) => J(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
         ] })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
         /* @__PURE__ */ n.jsxs("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ n.jsxs("span", { className: "text-[10px] text-[#b9b9b9]", children: [
             "Bucket ×",
-            J
+            ce
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 1, max: 8, step: 1, value: J, onChange: (m) => ye(parseInt(m.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 1, max: 8, step: 1, value: ce, onChange: (m) => ge(parseInt(m.target.value)), className: "accent-[#d0d0d0]" })
         ] }),
         /* @__PURE__ */ n.jsxs("label", { className: "flex items-center gap-2 mt-4", children: [
-          /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: ce, onChange: (m) => de(m.target.checked) }),
-          /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Linear filter (smooth cloud)" })
+          /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: ne, onChange: (m) => C(m.target.checked) }),
+          /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Linear filter" })
         ] })
       ] }),
-      d === "liquidation" && /* @__PURE__ */ n.jsxs("label", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: pe, onChange: (m) => be(m.target.checked) }),
-        /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Reach modulation (cone around mark)" })
+      k === "liquidation" && /* @__PURE__ */ n.jsxs("label", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: ae, onChange: (m) => fe(m.target.checked) }),
+        /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Reach modulation" })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "pt-2 border-t border-[#3a3a3a] space-y-1 text-[10px] text-[#b9b9b9]", children: [
         /* @__PURE__ */ n.jsx("div", { children: "• GPU ring buffer 8192×1024 R32F + meta + reach — exact EdgeDepth" }),
-        /* @__PURE__ */ n.jsx("div", { children: "• Ultra-fast: Hyperliquid 15ms ⚡, Binance 20ms, Coinbase 50ms — Binance faster than Coinbase" }),
-        /* @__PURE__ */ n.jsx("div", { children: "• Rolling 4h buffer (14400 cols @1s) — never blank, live_only served from grid viewport" }),
-        /* @__PURE__ */ n.jsx("div", { children: "• Chrome: #1c1c1c/#2a2a2a/#3a3a3a #e8e8e8/#b9b9b9 #21b3a4/#f0426c zinc, data: Ember/Viridis/Magma/Inferno exact" }),
+        /* @__PURE__ */ n.jsx("div", { children: "• Ultra-fast: Hyperliquid 15ms ⚡, Binance 20ms, Coinbase 50ms" }),
+        /* @__PURE__ */ n.jsx("div", { children: "• Rolling 4h buffer — never blank, live_only from grid viewport" }),
+        /* @__PURE__ */ n.jsx("div", { children: "• Chrome zinc, data Ember/Viridis/Magma/Inferno exact" }),
         /* @__PURE__ */ n.jsx("div", { children: "• Shift+wheel = price zoom, wheel = time zoom, drag = pan, dblclick = recenter" })
       ] })
     ] })
