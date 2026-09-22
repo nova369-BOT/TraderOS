@@ -10,7 +10,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspens
 import { createRoot, type Root } from 'react-dom/client';
 import ProChart from '@/components/chart/ProChart';
 import { ChartDrawingOverlay, type Drawing, type DrawingTool } from '@/components/chart/ChartDrawingOverlay';
-import DrawingToolsPanel from '@/components/chart/sidebar/DrawingToolsPanel';
 import { EdgeDepthDrawingRail, type Tool as EDTool } from '@/components/chart/edgedepth/EdgeDepthDrawingRail';
 import { EdgeDepthChartTypePicker, type ChartTypeED } from '@/components/chart/edgedepth/EdgeDepthChartTypePicker';
 import { EdgeDepthTimeframeBar, type TF as EDTF, ALL_TF as ED_ALL_TF } from '@/components/chart/edgedepth/EdgeDepthTimeframeBar';
@@ -33,17 +32,9 @@ import { api, invalidateSection } from '@/lib/api';
 import { toCustomIndicators, type EngineIndicatorPayload } from '@/lib/engineIndicators';
 import './index.css';
 
-// Heavy islands -> lazy chunks. Each becomes a separate file loaded on demand.
+// Heavy islands -> lazy chunks — consolidated to EdgeDepth-only for clean professional UI
 const DepthHeatPane = lazy(() => import('@/components/chart/depth/DepthHeatPane'));
 const EdgeDepthHeatmapPane = lazy(() => import('@/components/chart/depth/EdgeDepthHeatmapPane'));
-const OrderflowPanel = lazy(() => import('@/components/chart/orderflow/OrderflowPanel'));
-const DOMPanel = lazy(() => import('@/components/chart/orderflow/DOMPanel'));
-const TapePanel = lazy(() => import('@/components/chart/orderflow/TapePanel'));
-const FootprintPanel = lazy(() => import('@/components/chart/orderflow/FootprintPanel'));
-const VolumeProfilePanel = lazy(() => import('@/components/chart/orderflow/VolumeProfilePanel'));
-const TPOPanel = lazy(() => import('@/components/chart/orderflow/TPOPanel'));
-const CVDPanel = lazy(() => import('@/components/chart/orderflow/CVDPanel'));
-const LiquidationPanel = lazy(() => import('@/components/chart/orderflow/LiquidationPanel'));
 const EdgeDepthDOMPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthDOMPanel'));
 const EdgeDepthTapePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTapePanel'));
 const EdgeDepthWatchlist = lazy(() => import('@/components/chart/edgedepth/EdgeDepthWatchlist'));
@@ -705,18 +696,12 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           <option value="chart">Chart</option>
           <option value="edgedepth">EdgeDepth Heatmap</option>
           <option value="depth">Depth Heat</option>
-          <option value="orderflow">Orderflow</option>
           <option value="dom">DOM</option>
           <option value="tape">Tape</option>
           <option value="footprint">Footprint</option>
           <option value="vpvr">VPVR</option>
           <option value="tpo">TPO</option>
-          <option value="cvd">CVD</option>
           <option value="liquidations">Liquidations</option>
-          <option value="ed_liquidations">Edge Liqs Heatmap</option>
-          <option value="ed_vpvr">Edge VPVR POC/VAH/VAL</option>
-          <option value="ed_footprint">Edge Footprint</option>
-          <option value="ed_tpo">Edge TPO 30m</option>
           <option value="watchlist">Watchlist 1503</option>
           <option value="indicators">Indicators</option>
         </select>
@@ -745,24 +730,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           collapsed={edCollapsed}
           onToggleCollapsed={() => setEdCollapsed(v => !v)}
         />
-        <div className="hidden">
-          <DrawingToolsPanel
-            activeTool={activeTool}
-            onToolSelect={setActiveTool}
-            drawings={drawings}
-            onClearAllDrawings={clearAllDrawings}
-            selectedDrawingId={selectedDrawingId}
-            onDeleteSelectedDrawing={deleteDrawing}
-            drawingsLocked={drawingsLocked}
-            onToggleLock={() => setDrawingsLocked((v) => !v)}
-            drawingsHidden={drawingsHidden}
-            onToggleHide={() => setDrawingsHidden((v) => !v)}
-            indicatorCount={indicatorCount}
-            onClearIndicators={() => handleIndicatorsChange(DEFAULT_INDICATOR_CONFIG)}
-            onOpenSettings={openIndicatorBrowser}
-          />
-        </div>
-
       <div
         ref={chartAreaRef}
         className="relative flex-1 min-w-0"
@@ -825,21 +792,15 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           <Suspense fallback={<Fallback />}>
             {(() => {
               const kind = layoutState.panelKinds[0] as string;
-              if (kind === 'orderflow') return <OrderflowPanel symbol={symbol} provider={provider} colors={colors} />;
               if (kind === 'dom') return <EdgeDepthDOMPanel symbol={symbol} provider={provider} />;
               if (kind === 'tape') return <EdgeDepthTapePanel symbol={symbol} provider={provider} />;
-              if (kind === 'footprint') return <FootprintPanel symbol={symbol} provider={provider} />;
-              if (kind === 'vpvr') return <VolumeProfilePanel symbol={symbol} provider={provider} />;
-              if (kind === 'tpo') return <TPOPanel symbol={symbol} provider={provider} />;
-              if (kind === 'cvd') return <CVDPanel symbol={symbol} provider={provider} />;
-              if (kind === 'liquidations') return <LiquidationPanel symbol={symbol} provider={provider} />;
-              if (kind === 'ed_liquidations') return <EdgeDepthLiquidationPanel symbol={symbol} provider={provider} colormap={edAppearance.liqColormap as any} intensity={edAppearance.intensity} opacity={edAppearance.opacity} gamma={edAppearance.gamma} noiseFloor={edAppearance.noiseFloor} tickPerRow={edAppearance.tickPerRow} halfLife={edAppearance.halfLife} lowPeak={edAppearance.lowPeak} />;
-              if (kind === 'ed_vpvr') return <EdgeDepthVolumeProfilePanel symbol={symbol} provider={provider} />;
-              if (kind === 'ed_footprint') return <EdgeDepthFootprintPanel symbol={symbol} provider={provider} />;
-              if (kind === 'ed_tpo') return <EdgeDepthTPOPanel symbol={symbol} provider={provider} />;
+              if (kind === 'footprint') return <EdgeDepthFootprintPanel symbol={symbol} provider={provider} />;
+              if (kind === 'vpvr') return <EdgeDepthVolumeProfilePanel symbol={symbol} provider={provider} />;
+              if (kind === 'tpo') return <EdgeDepthTPOPanel symbol={symbol} provider={provider} />;
+              if (kind === 'liquidations') return <EdgeDepthLiquidationPanel symbol={symbol} provider={provider} colormap={edAppearance.liqColormap as any} intensity={edAppearance.intensity} opacity={edAppearance.opacity} gamma={edAppearance.gamma} noiseFloor={edAppearance.noiseFloor} tickPerRow={edAppearance.tickPerRow} halfLife={edAppearance.halfLife} lowPeak={edAppearance.lowPeak} />;
               if (kind === 'watchlist') return <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />;
               if (kind === 'indicators') return <EdgeDepthIndicatorsPanel symbol={symbol} provider={provider} />;
-              return <OrderflowPanel symbol={symbol} provider={provider} colors={colors} />;
+              return <EdgeDepthDOMPanel symbol={symbol} provider={provider} />;
             })()}
           </Suspense>
         ) : (<>
@@ -905,21 +866,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               currentPrice={livePrice ?? undefined}
               candles={candles}
             />
-            {((layoutState.panelKinds as (string | undefined)[])[0] !== 'depth') && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  layoutStore.setPanelKind(0, 'depth');
-                }}
-                title="Open the Depth Heat pane"
-                style={{
-                  position: 'absolute', top: 4, right: 4, zIndex: 5,
-                  background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
-                  border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
-                  fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
-                }}
-              >🔥 depth</button>
-            )}
+
           </>
         )}
         </>))))}

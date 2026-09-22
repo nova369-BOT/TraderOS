@@ -1,6 +1,6 @@
 import { r as u, j as e } from "./react-vendor-C0yw3i6b.js";
 import { i as he } from "./echarts-CX0oZ33U.js";
-import { g as le } from "./backtest-BOI-AqD2.js";
+import { g as le } from "./backtest-CeqYlV1v.js";
 const X = (o, r) => typeof document < "u" && getComputedStyle(document.documentElement).getPropertyValue(o).trim() || r, t = {
   bg: X("--bg", "#0d0e10"),
   panel: X("--panel", "#151619"),

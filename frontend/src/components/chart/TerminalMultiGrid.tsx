@@ -1,33 +1,17 @@
-// TerminalMultiGrid - the site's MultiPanelChartGrid, terminal edition.
-//
-// Same behavior contract as the website's multi-chart layout:
-// grid presets from MultiTimeframeLayoutSelector (2x1 .. 4x2),
-// per-panel timeframe (staggered sensible defaults), per-panel symbol when
-// symbol-sync is off, active-panel highlight, and the four sync modes:
-//   syncSymbol   - every panel follows the shell's charted pair
-//   syncInterval - panels share the primary timeframe
-//   syncCrosshair- crosshair time mirrors across panels (ProChart's
-//                  syncedCrosshairTime prop, same as the site)
-//   syncTime     - viewport scroll position mirrors (syncedViewportTime)
-//
-// Data: the site's panels fetch through ProCandlestickChart; here each panel
-// fetches through the terminal's local engine (fetchLocalCandles) and
-// refreshes its tail on a short timer, so panes stay live without the shell
-// having to fan ticks into React.
+// TerminalMultiGrid - clean professional unique interface
+// Consolidates to EdgeDepth-only panels for MARKET — no irrelevant legacy duplicates
+// 10 widgets: chart/dom/tape/depth/edgedepth/footprint/vpvr/tpo/liquidations/watchlist + indicators tab
+
 import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import ProChart from '@/components/chart/ProChart';
 import DepthHeatPane from '@/components/chart/depth/DepthHeatPane';
 const EdgeDepthHeatmapPane = lazy(() => import('@/components/chart/depth/EdgeDepthHeatmapPane'));
-const OrderflowPanel = lazy(() => import('@/components/chart/orderflow/OrderflowPanel'));
-const DOMPanel = lazy(() => import('@/components/chart/orderflow/DOMPanel'));
-const TapePanel = lazy(() => import('@/components/chart/orderflow/TapePanel'));
-const FootprintPanel = lazy(() => import('@/components/chart/orderflow/FootprintPanel'));
-const VolumeProfilePanel = lazy(() => import('@/components/chart/orderflow/VolumeProfilePanel'));
-const TPOPanel = lazy(() => import('@/components/chart/orderflow/TPOPanel'));
-const CVDPanel = lazy(() => import('@/components/chart/orderflow/CVDPanel'));
-const LiquidationPanel = lazy(() => import('@/components/chart/orderflow/LiquidationPanel'));
 const EdgeDepthDOMPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthDOMPanel'));
 const EdgeDepthTapePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTapePanel'));
+const EdgeDepthFootprintPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthFootprintPanel'));
+const EdgeDepthVolumeProfilePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthVolumeProfilePanel'));
+const EdgeDepthTPOPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTPOPanel'));
+const EdgeDepthLiquidationPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthLiquidationPanel'));
 const EdgeDepthWatchlist = lazy(() => import('@/components/chart/edgedepth/EdgeDepthWatchlist'));
 const EdgeDepthIndicators = lazy(() => import('@/components/chart/edgedepth/EdgeDepthIndicators'));
 const Fallback = () => <div className="h-full w-full flex items-center justify-center text-[11px] text-[var(--dim)]">Loading…</div>;
@@ -52,8 +36,6 @@ const LAYOUTS: Record<LayoutType, { count: number; cols: number; rows: number }>
   '4x2': { count: 8, cols: 4, rows: 2 },
 };
 
-// The site staggers panel timeframes so a fresh multi-layout is instantly
-// useful (same idea as createInitialPanelStates upstream).
 const STAGGER = ['1h', '4h', '1d', '15m', '5m', '1w', '30m', '1m'];
 
 function Panel({
@@ -72,24 +54,14 @@ function Panel({
   quote?: { bid: number; ask: number } | null;
 }) {
   const [candles, setCandles] = useState<Candle[]>([]);
-  // Timezone must be forwarded to ProChart: its prop default is 'UTC', which
-  // ignores the user's Timezone setting (data.timezone, default "local").
   const chartSettings = useChartSettings();
-  const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
-
   useEffect(() => {
-    if (kind !== 'chart') return;   // the depth pane owns its own feed
+    if (kind !== 'chart') return;
     let cancelled = false;
     setCandles([]);
     const load = async () => {
       try {
-        // fetchLocalCandles(tableName, options): the explicit symbol/timeframe
-        // overrides bypass table-name resolution entirely; rows arrive as
-        // {timestamp: ISO, o,h,l,c,v} and ProChart wants {time: ms, ...}.
-        const rows = await fetchLocalCandles('multi_panel', {
-          symbol, timeframe, limit: 500,
-        });
+        const rows = await fetchLocalCandles('multi_panel', { symbol, timeframe, limit: 500 });
         if (!cancelled && rows?.length) {
           setCandles(rows.map((r: any) => ({
             time: Date.parse(r.timestamp),
@@ -97,51 +69,32 @@ function Panel({
             volume: r.volume,
           })));
         }
-      } catch { /* panel stays empty; next timer retries */ }
+      } catch {}
     };
     load();
-    const t = setInterval(load, 10_000);   // live-ish tail refresh
+    const t = setInterval(load, 10_000);
     return () => { cancelled = true; clearInterval(t); };
   }, [symbol, timeframe, kind]);
 
-  const renderOrderflow = () => {
+  const renderContent = () => {
     const k = kind as string;
     if (k === 'depth') {
-      return (
-        <DepthHeatPane
-          symbol={symbol}
-          sourceProvider={sourceProvider}
-          colors={colors}
-          syncedCrosshairTime={syncedCrosshairTime}
-          onCrosshairMove={onCrosshairMove}
-          onToggleKind={onToggleKind}
-        />
-      );
+      return <DepthHeatPane symbol={symbol} sourceProvider={sourceProvider} colors={colors} syncedCrosshairTime={syncedCrosshairTime} onCrosshairMove={onCrosshairMove} onToggleKind={onToggleKind} />;
     }
     if (k === 'edgedepth') {
-      return (
-        <Suspense fallback={<Fallback />}>
-          <EdgeDepthHeatmapPane
-            symbol={symbol}
-            provider={sourceProvider || 'binance'}
-            onToggleKind={onToggleKind}
-          />
-        </Suspense>
-      );
+      return <Suspense fallback={<Fallback />}><EdgeDepthHeatmapPane symbol={symbol} provider={sourceProvider || 'binance'} onToggleKind={onToggleKind} /></Suspense>;
     }
-    if (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'].includes(k)) {
+    if (['dom','tape','footprint','vpvr','tpo','liquidations','watchlist','indicators','ed_liquidations','ed_vpvr','ed_footprint','ed_tpo'].includes(k)) {
       return (
         <Suspense fallback={<Fallback />}>
-          {k === 'orderflow' && <OrderflowPanel symbol={symbol} provider={sourceProvider || 'binance'} colors={colors} />}
-          {k === 'dom' && <EdgeDepthDOMPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'tape' && <EdgeDepthTapePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'footprint' && <FootprintPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'vpvr' && <VolumeProfilePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'tpo' && <TPOPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'cvd' && <CVDPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'liquidations' && <LiquidationPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
-          {k === 'watchlist' && <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />}
-          {k === 'indicators' && <EdgeDepthIndicators symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'dom') && <EdgeDepthDOMPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'tape') && <EdgeDepthTapePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'footprint' || k === 'ed_footprint') && <EdgeDepthFootprintPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'vpvr' || k === 'ed_vpvr') && <EdgeDepthVolumeProfilePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'tpo' || k === 'ed_tpo') && <EdgeDepthTPOPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'liquidations' || k === 'ed_liquidations') && <EdgeDepthLiquidationPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {(k === 'watchlist') && <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />}
+          {(k === 'indicators') && <EdgeDepthIndicators symbol={symbol} provider={sourceProvider || 'binance'} />}
         </Suspense>
       );
     }
@@ -175,19 +128,7 @@ function Panel({
         border: active ? '1px solid var(--accent-bar, #888)' : '1px solid var(--edge, #2a2e39)',
       }}
     >
-      {renderOrderflow()}
-      {kind === 'chart' && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onToggleKind(); }}
-          title="Open the Depth Heat (order-flow liquidity heatmap) pane"
-          style={{
-            position: 'absolute', top: 4, right: 4, zIndex: 5,
-            background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
-            border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
-            fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
-          }}
-        >🔥 depth</button>
-      )}
+      {renderContent()}
     </div>
   );
 }
@@ -201,14 +142,9 @@ export default function TerminalMultiGrid({
   timeframe: string;
   colors: any;
   quote?: { bid: number; ask: number } | null;
-  // The shell's active data source: each panel's Depth Heat pins its order-
-  // flow calls to it (a panel on BTCUSDT wants the binance book, not some
-  // other source that happens to carry the same pair).
   sourceProvider?: string;
 }) {
   const cfg = LAYOUTS[layout] || LAYOUTS['2x2'];
-  // Selection and per-panel symbols live in layoutStore, not local state: the
-  // shell reads them to name the window title and to retarget symbol picks.
   const { activePanel, panelSymbols, panelKinds } = useLayoutState();
   const active = Math.min(activePanel, cfg.count - 1);
   const [panelTfs, setPanelTfs] = useState<string[]>([]);
@@ -226,12 +162,8 @@ export default function TerminalMultiGrid({
     });
   }, [cfg.count, timeframe]);
 
-  const onCross = useCallback((t: number | null) => {
-    if (syncSettings.syncCrosshair) setCrossT(t);
-  }, [syncSettings.syncCrosshair]);
-  const onView = useCallback((t: number | null) => {
-    if (syncSettings.syncTime) setViewT(t);
-  }, [syncSettings.syncTime]);
+  const onCross = useCallback((t: number | null) => { if (syncSettings.syncCrosshair) setCrossT(t); }, [syncSettings.syncCrosshair]);
+  const onView = useCallback((t: number | null) => { if (syncSettings.syncTime) setViewT(t); }, [syncSettings.syncTime]);
 
   return (
     <div style={{
@@ -251,9 +183,9 @@ export default function TerminalMultiGrid({
           kind={panelKinds[i] || 'chart'}
           onToggleKind={() => {
             const cur = panelKinds[i] || 'chart';
-            const order: PanelKind[] = ['chart','depth','edgedepth','orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'];
+            const order: PanelKind[] = ['chart','edgedepth','depth','dom','tape','footprint','vpvr','tpo','liquidations','watchlist','indicators'] as PanelKind[];
             const idx = order.indexOf(cur as PanelKind);
-            const next = order[(idx+1) % order.length];
+            const next = order[(idx + 1) % order.length];
             layoutStore.setPanelKind(i, next);
           }}
           syncedCrosshairTime={syncSettings.syncCrosshair ? crossT : null}

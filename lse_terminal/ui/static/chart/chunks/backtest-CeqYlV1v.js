@@ -1,6 +1,6 @@
 import { r as f, j as e, a as ga, i as Bf, g as la } from "./react-vendor-C0yw3i6b.js";
 import { u as vo, a as vd, L as Di, b as Of, c as Ff } from "./router-query-iQy8iLKR.js";
-import { P as Wf, C as Nd, R as $f, T as _f, a as Uf, b as kd, c as Vf, d as Hf, e as zf, f as wd, V as Xf, g as Kf, S as Sd, h as Yf, t as Gf, i as qf, j as Vo, k as vl, l as Cd, X as tr, m as oo, n as jd, o as or, D as ba, p as Md, q as ya, r as Td, s as va, u as Na, v as Pd, w as Zf, x as Ld, y as Jf, z as Ho, A as Ad, B as Qf, E as Rd, F as ka, G as Ed, H as em, I as Id, J as tm, K as Dd, L as Bd, M as sm, N as nm, O as Od, Q as rm, U as om, W as Fd, Y as Wd, Z as $d, _ as lm, $ as _d, a0 as pl, a1 as Ud, a2 as am, a3 as Vd, a4 as Hd, a5 as zd, a6 as Xd, a7 as Kd, a8 as xl, a9 as Yd, aa as Gd, ab as im, ac as cm, ad as aa, ae as pi, af as gl, ag as xi, ah as gi, ai as dm, aj as um, ak as qd, al as hm, am as Zd, an as Jd, ao as ei, ap as kc, aq as wa, ar as bi, as as Qd, at as fm, au as ia, av as mm, aw as pm, ax as xm, ay as yi, az as eu, aA as ca, aB as Bi, aC as bl, aD as tu, aE as Oi, aF as gm, aG as Yl, aH as bm, aI as lo, aJ as ym, aK as vm, aL as Nm, aM as su, aN as Sa, aO as nu, aP as km, aQ as ru, aR as Fi, aS as wc, aT as wm, aU as da, aV as ou, aW as vi, aX as Sm, aY as Cm, aZ as Wi, a_ as $i, a$ as jm, b0 as Mm, b1 as Tm, b2 as Pm, b3 as Lm, b4 as Am, b5 as Rm, b6 as Em, b7 as Im, b8 as ti, b9 as Dm, ba as Bm, bb as Nl, bc as Om, bd as Fm, be as ua, bf as Wm, bg as $m, bh as _m, bi as Sc, bj as Cc, bk as jc, bl as Um, bm as Vm, bn as Hm, bo as zm, bp as Xm, bq as Km, br as Ym, bs as Mc, bt as Gm } from "./ui-D7POjNks.js";
+import { P as Wf, C as Nd, R as $f, T as _f, a as Uf, b as kd, c as Vf, d as Hf, e as zf, f as wd, V as Xf, g as Kf, S as Sd, h as Yf, t as Gf, i as qf, j as Vo, k as vl, l as Cd, X as tr, m as oo, n as jd, o as or, D as ba, p as Md, q as ya, r as Td, s as va, u as Na, v as Pd, w as Zf, x as Ld, y as Jf, z as Ho, A as Ad, B as Qf, E as Rd, F as ka, G as Ed, H as em, I as Id, J as tm, K as Dd, L as Bd, M as sm, N as nm, O as Od, Q as rm, U as om, W as Fd, Y as Wd, Z as $d, _ as lm, $ as _d, a0 as pl, a1 as Ud, a2 as am, a3 as Vd, a4 as Hd, a5 as zd, a6 as Xd, a7 as Kd, a8 as xl, a9 as Yd, aa as Gd, ab as im, ac as cm, ad as aa, ae as pi, af as gl, ag as xi, ah as gi, ai as dm, aj as um, ak as qd, al as hm, am as Zd, an as Jd, ao as ei, ap as kc, aq as wa, ar as bi, as as Qd, at as fm, au as yi, av as ia, aw as wc, ax as mm, ay as ca, az as eu, aA as vi, aB as pm, aC as xm, aD as Bi, aE as Oi, aF as gm, aG as lo, aH as bm, aI as Sa, aJ as ym, aK as da, aL as vm, aM as Nm, aN as km, aO as wm, aP as Sm, aQ as Cm, aR as ti, aS as jm, aT as bl, aU as Mm, aV as Nl, aW as Tm, aX as Pm, aY as ua, aZ as Lm, a_ as Fi, a$ as tu, b0 as Wi, b1 as su, b2 as Yl, b3 as nu, b4 as ru, b5 as ou, b6 as $i, b7 as Am, b8 as Rm, b9 as Em, ba as Im, bb as Dm, bc as Bm, bd as Om, be as Fm, bf as Wm, bg as $m, bh as _m, bi as Sc, bj as Cc, bk as jc, bl as Um, bm as Vm, bn as Hm, bo as zm, bp as Xm, bq as Km, br as Ym, bs as Mc, bt as Gm } from "./ui-DZwdMnFY.js";
 import { u as hs, f as Jn, a as lu, s as Tc, d as qm, p as Po, D as Zm, b as Jm, c as Qm, e as Fo } from "./ui-heavy-BL_8guwx.js";
 const au = "local", Pc = {
   currentUser: { uid: au }
@@ -10736,7 +10736,134 @@ const p0 = ["brush", "highlighter", "arrow"], Lo = (t) => p0.includes(t), Xc = (
       ]
     }
   );
-}, g0 = f.memo(x0), pr = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
+}, g0 = f.memo(x0), lh = {
+  // Core indicators — EdgeDepth exact: candles with up/down wicks (columns), volume up/down columns, no straight line consuming space
+  rsi: { enabled: !1, period: 14, overbought: 70, oversold: 30 },
+  macd: { enabled: !1, fast: 12, slow: 26, signal: 9 },
+  ema: { enabled: !1, periods: [20, 50] },
+  bollinger: { enabled: !1, period: 20, stdDev: 2 },
+  // No EMA line by default — user complained straight line consuming space, should have up/down columns (volume) instead
+  // Volume enabled by default with zinc teal/rose up/down columns exact EdgeDepth
+  movingAverages: { enabled: !1, lines: [] },
+  atr: { enabled: !1, period: 14 },
+  stochastic: { enabled: !1, kPeriod: 14, dPeriod: 3, smooth: 3, overbought: 80, oversold: 20 },
+  volume: { enabled: !0, upColor: "#21b3a4", downColor: "#f0426c" },
+  williamsR: { enabled: !1, period: 14, overbought: -20, oversold: -80 },
+  cci: { enabled: !1, period: 20, overbought: 100, oversold: -100 },
+  adx: { enabled: !1, period: 14 },
+  roc: { enabled: !1, period: 12 },
+  vwap: { enabled: !1 },
+  ichimoku: { enabled: !1, tenkanPeriod: 9, kijunPeriod: 26, senkouBPeriod: 52, displacement: 26 },
+  parabolicSAR: { enabled: !1, afStart: 0.02, afStep: 0.02, afMax: 0.2 },
+  keltner: { enabled: !1, emaPeriod: 20, atrPeriod: 10, multiplier: 2 },
+  pivotPoints: { enabled: !1 },
+  volumeProfile: { enabled: !1, numberOfRows: 48, rowWidth: 15, opacity: 60 },
+  optionsPdf: { enabled: !1, color: "#00C8C8", endSpread: 7, opacity: 80 },
+  // Phase 1 trend
+  supertrend: { enabled: !1, period: 10, multiplier: 3 },
+  donchian: { enabled: !1, period: 20 },
+  aroon: { enabled: !1, period: 14 },
+  envelopes: { enabled: !1, period: 20, percent: 2.5 },
+  dema: { enabled: !1, period: 21 },
+  tema: { enabled: !1, period: 21 },
+  hma: { enabled: !1, period: 9 },
+  // Phase 1 oscillators
+  momentum: { enabled: !1, period: 10 },
+  ao: { enabled: !1 },
+  mfi: { enabled: !1, period: 14, overbought: 80, oversold: 20 },
+  tsi: { enabled: !1, longPeriod: 25, shortPeriod: 13, signalPeriod: 13 },
+  trix: { enabled: !1, period: 15, signalPeriod: 9 },
+  ultimateOsc: { enabled: !1, fast: 7, med: 14, slow: 28 },
+  dpo: { enabled: !1, period: 20 },
+  kst: { enabled: !1, signalPeriod: 9 },
+  stochRsi: { enabled: !1, rsiPeriod: 14, kPeriod: 14, dPeriod: 3, overbought: 80, oversold: 20 },
+  // Phase 1 volatility
+  bbPercent: { enabled: !1, period: 20, stdDev: 2 },
+  bbWidth: { enabled: !1, period: 20, stdDev: 2 },
+  histVol: { enabled: !1, period: 20 },
+  chaikinVol: { enabled: !1, emaPeriod: 10, rocPeriod: 10 },
+  stdDev: { enabled: !1, period: 20 },
+  // Phase 1 volume
+  obv: { enabled: !1 },
+  cmf: { enabled: !1, period: 20 },
+  adl: { enabled: !1 },
+  forceIndex: { enabled: !1, period: 13 },
+  eom: { enabled: !1, period: 14 },
+  volumeSma: { enabled: !1, period: 20 },
+  // Phase 1 support/resistance
+  fibRetracement: { enabled: !1, lookback: 100 },
+  camarillaPivots: { enabled: !1 },
+  woodiePivots: { enabled: !1 },
+  // Phase 1 statistics
+  correlation: { enabled: !1, period: 20 },
+  linearReg: { enabled: !1, period: 14, deviations: 2 },
+  coppock: { enabled: !1, longROC: 14, shortROC: 11, wmaPeriod: 10 },
+  // Phase 2 trend
+  alma: { enabled: !1, period: 9, offset: 0.85, sigma: 6 },
+  kama: { enabled: !1, period: 10, fastPeriod: 2, slowPeriod: 30 },
+  zlema: { enabled: !1, period: 21 },
+  t3: { enabled: !1, period: 5, vFactor: 0.7 },
+  lsma: { enabled: !1, period: 25 },
+  mcginley: { enabled: !1, period: 14 },
+  wma: { enabled: !1, period: 20 },
+  smmaOverlay: { enabled: !1, period: 21 },
+  alligator: { enabled: !1 },
+  vortex: { enabled: !1, period: 14 },
+  choppiness: { enabled: !1, period: 14 },
+  elderRay: { enabled: !1, period: 13 },
+  massIndex: { enabled: !1, period: 25 },
+  chandeKroll: { enabled: !1, p: 10, q: 9, x: 1 },
+  linRegSlope: { enabled: !1, period: 14 },
+  priceChannel: { enabled: !1, period: 20 },
+  // Phase 2 oscillators
+  ppo: { enabled: !1, fast: 12, slow: 26, signal: 9 },
+  pvo: { enabled: !1, fast: 12, slow: 26, signal: 9 },
+  cmo: { enabled: !1, period: 9 },
+  fisher: { enabled: !1, period: 10 },
+  stc: { enabled: !1, fast: 23, slow: 50, cycle: 10 },
+  rviOsc: { enabled: !1, period: 10 },
+  klinger: { enabled: !1, fast: 34, slow: 55, signal: 13 },
+  connorsRsi: { enabled: !1, rsiPeriod: 3, streakPeriod: 2, rankPeriod: 100 },
+  apo: { enabled: !1, fast: 12, slow: 26 },
+  qstick: { enabled: !1, period: 8 },
+  bop: { enabled: !1, period: 14 },
+  psychLine: { enabled: !1, period: 12 },
+  pfe: { enabled: !1, period: 10, smoothing: 5 },
+  smi: { enabled: !1, period: 13, smoothK: 25, smoothD: 2 },
+  // Phase 2 volatility
+  ulcerIndex: { enabled: !1, period: 14 },
+  natr: { enabled: !1, period: 14 },
+  trueRange: { enabled: !1 },
+  squeeze: { enabled: !1, bbPeriod: 20, bbMult: 2, kcPeriod: 20, kcMult: 1.5 },
+  chandelierExit: { enabled: !1, period: 22, multiplier: 3 },
+  relVolIndex: { enabled: !1, period: 10, smoothing: 14 },
+  vhf: { enabled: !1, period: 28 },
+  accBands: { enabled: !1, period: 20 },
+  // Phase 2 volume
+  vwma: { enabled: !1, period: 20 },
+  volumeOsc: { enabled: !1, fast: 5, slow: 10 },
+  nvi: { enabled: !1 },
+  pvi: { enabled: !1 },
+  pvt: { enabled: !1 },
+  vroc: { enabled: !1, period: 14 },
+  netVolume: { enabled: !1, period: 14 },
+  twiggsMF: { enabled: !1, period: 14 },
+  // Phase 2 support/resistance
+  demarkPivots: { enabled: !1 },
+  zigzag: { enabled: !1, deviation: 5 },
+  fractals: { enabled: !1 },
+  // Phase 2 statistics
+  linRegRSquared: { enabled: !1, period: 14 },
+  medianPrice: { enabled: !1 },
+  typicalPrice: { enabled: !1 },
+  weightedClose: { enabled: !1 },
+  gator: { enabled: !1 },
+  customBrueScripts: {}
+};
+({
+  ...lh
+});
+const pr = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
   qd,
   {
     className: He(
@@ -11070,7 +11197,7 @@ function w0() {
     refreshLayouts: a
   };
 }
-const lh = [
+const ah = [
   {
     count: 1,
     layouts: [
@@ -11112,7 +11239,7 @@ const lh = [
     ]
   }
 ];
-lh.flatMap((t) => t.layouts);
+ah.flatMap((t) => t.layouts);
 const S0 = ({ cols: t, rows: n, isSelected: s }) => {
   const o = Array.from({ length: t * n });
   return /* @__PURE__ */ e.jsx(
@@ -11209,7 +11336,7 @@ const S0 = ({ cols: t, rows: n, isSelected: s }) => {
           align: "end",
           sideOffset: 8,
           children: [
-            /* @__PURE__ */ e.jsx("div", { className: "p-4 pb-3", children: /* @__PURE__ */ e.jsx("div", { className: "space-y-2", children: lh.map((d) => /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1", children: [
+            /* @__PURE__ */ e.jsx("div", { className: "p-4 pb-3", children: /* @__PURE__ */ e.jsx("div", { className: "space-y-2", children: ah.map((d) => /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1", children: [
               /* @__PURE__ */ e.jsx("span", { className: "text-xs text-muted-foreground w-5 shrink-0", children: d.count }),
               /* @__PURE__ */ e.jsx("div", { className: "flex items-center gap-1", children: d.layouts.map((l) => /* @__PURE__ */ e.jsx(
                 "button",
@@ -11291,7 +11418,7 @@ const S0 = ({ cols: t, rows: n, isSelected: s }) => {
       }
     )
   ] });
-}, ah = ({
+}, ih = ({
   selectedLayout: t,
   onLayoutChange: n,
   syncSettings: s,
@@ -11449,744 +11576,7 @@ const S0 = ({ cols: t, rows: n, isSelected: s }) => {
       }
     )
   ] }) });
-}, ih = ({ className: t = "h-4 w-4" }) => /* @__PURE__ */ e.jsxs("svg", { className: t, viewBox: "0 0 24 24", fill: "none", strokeLinecap: "round", strokeLinejoin: "round", children: [
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "4", x2: "21", y2: "4", stroke: "#22c55e", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "13", x2: "21", y2: "13", stroke: "currentColor", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "21", y2: "20", stroke: "#ef4444", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("path", { d: "M3 16 L3 7", stroke: "#22c55e", strokeWidth: "2" }),
-  /* @__PURE__ */ e.jsx("path", { d: "M1 10 L3 6 L5 10", stroke: "#22c55e", strokeWidth: "1.5", fill: "none" }),
-  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "4", width: "15", height: "9", fill: "#22c55e", opacity: "0.08" }),
-  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "13", width: "15", height: "7", fill: "#ef4444", opacity: "0.08" })
-] }), ch = ({ className: t = "h-4 w-4" }) => /* @__PURE__ */ e.jsxs("svg", { className: t, viewBox: "0 0 24 24", fill: "none", strokeLinecap: "round", strokeLinejoin: "round", children: [
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "4", x2: "21", y2: "4", stroke: "#ef4444", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "11", x2: "21", y2: "11", stroke: "currentColor", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "21", y2: "20", stroke: "#22c55e", strokeWidth: "1.5" }),
-  /* @__PURE__ */ e.jsx("path", { d: "M3 8 L3 17", stroke: "#ef4444", strokeWidth: "2" }),
-  /* @__PURE__ */ e.jsx("path", { d: "M1 14 L3 18 L5 14", stroke: "#ef4444", strokeWidth: "1.5", fill: "none" }),
-  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "4", width: "15", height: "7", fill: "#ef4444", opacity: "0.08" }),
-  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "11", width: "15", height: "9", fill: "#22c55e", opacity: "0.08" })
-] }), dh = "lse-drawing-favorites";
-function ma() {
-  try {
-    const t = localStorage.getItem(dh);
-    return t ? JSON.parse(t) : [];
-  } catch {
-    return [];
-  }
-}
-function C0(t) {
-  localStorage.setItem(dh, JSON.stringify(t)), window.dispatchEvent(new Event("drawingFavoritesChanged"));
-}
-function uh(t) {
-  const n = ma();
-  let s;
-  return n.includes(t) ? s = n.filter((o) => o !== t) : s = [...n, t], C0(s), s;
-}
-const j0 = 1, M0 = 3e3;
-let li = 0;
-function T0() {
-  return li = (li + 1) % Number.MAX_SAFE_INTEGER, li.toString();
-}
-const ai = /* @__PURE__ */ new Map(), Jc = (t) => {
-  if (ai.has(t))
-    return;
-  const n = setTimeout(() => {
-    ai.delete(t), fl({
-      type: "REMOVE_TOAST",
-      toastId: t
-    });
-  }, M0);
-  ai.set(t, n);
-}, P0 = (t, n) => {
-  switch (n.type) {
-    case "ADD_TOAST":
-      return {
-        ...t,
-        toasts: [n.toast, ...t.toasts].slice(0, j0)
-      };
-    case "UPDATE_TOAST":
-      return {
-        ...t,
-        toasts: t.toasts.map((s) => s.id === n.toast.id ? { ...s, ...n.toast } : s)
-      };
-    case "DISMISS_TOAST": {
-      const { toastId: s } = n;
-      return s ? Jc(s) : t.toasts.forEach((o) => {
-        Jc(o.id);
-      }), {
-        ...t,
-        toasts: t.toasts.map(
-          (o) => o.id === s || s === void 0 ? {
-            ...o,
-            open: !1
-          } : o
-        )
-      };
-    }
-    case "REMOVE_TOAST":
-      return n.toastId === void 0 ? {
-        ...t,
-        toasts: []
-      } : {
-        ...t,
-        toasts: t.toasts.filter((s) => s.id !== n.toastId)
-      };
-  }
-}, Ql = [];
-let ea = { toasts: [] };
-function fl(t) {
-  ea = P0(ea, t), Ql.forEach((n) => {
-    n(ea);
-  });
-}
-function L0({ ...t }) {
-  const n = T0(), s = (r) => fl({
-    type: "UPDATE_TOAST",
-    toast: { ...r, id: n }
-  }), o = () => fl({ type: "DISMISS_TOAST", toastId: n });
-  return fl({
-    type: "ADD_TOAST",
-    toast: {
-      ...t,
-      id: n,
-      open: !0,
-      onOpenChange: (r) => {
-        r || o();
-      }
-    }
-  }), {
-    id: n,
-    dismiss: o,
-    update: s
-  };
-}
-function A0() {
-  const [t, n] = f.useState(ea);
-  return f.useEffect(() => (Ql.push(n), () => {
-    const s = Ql.indexOf(n);
-    s > -1 && Ql.splice(s, 1);
-  }), [t]), {
-    ...t,
-    toast: L0,
-    dismiss: (s) => fl({ type: "DISMISS_TOAST", toastId: s })
-  };
-}
-function Yi({ open: t, onOpenChange: n, title: s, message: o }) {
-  const { signInWithGoogle: r } = gr(), { toast: a } = A0(), c = vo(), d = vd(), [l, u] = f.useState(!1), h = encodeURIComponent(d.pathname + d.search), m = async () => {
-    try {
-      u(!0), await r();
-    } catch (v) {
-      a({
-        title: "Sign in failed",
-        description: v.message || "Failed to sign in with Google",
-        variant: "destructive"
-      });
-    } finally {
-      u(!1);
-    }
-  };
-  return /* @__PURE__ */ e.jsx(ao, { open: t, onOpenChange: n, children: /* @__PURE__ */ e.jsxs(zr, { className: "sm:max-w-md border-border bg-card dark:bg-black shadow-2xl", children: [
-    /* @__PURE__ */ e.jsxs(zo, { children: [
-      /* @__PURE__ */ e.jsx("div", { className: "flex flex-col items-center gap-2 mb-3", children: /* @__PURE__ */ e.jsxs("svg", { className: "w-14 h-14", viewBox: "0 0 64 64", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: [
-        /* @__PURE__ */ e.jsx("rect", { x: "12", y: "28", width: "40", height: "30", rx: "4", className: "fill-neutral-200 dark:fill-[#222]", stroke: "currentColor", strokeOpacity: "0.2", strokeWidth: "2" }),
-        /* @__PURE__ */ e.jsx("path", { d: "M20 28V20C20 13.4 25.4 8 32 8C38.6 8 44 13.4 44 20V22", className: "stroke-neutral-400 dark:stroke-[#666]", strokeWidth: "3", strokeLinecap: "round" }),
-        /* @__PURE__ */ e.jsx("path", { d: "M32 38C29.8 36 26 38.5 26 41.5C26 44 28.5 46 32 49C35.5 46 38 44 38 41.5C38 38.5 34.2 36 32 38Z", fill: "#d4a030" })
-      ] }) }),
-      /* @__PURE__ */ e.jsx(ko, { className: "text-center text-2xl font-display text-foreground", children: s || "Welcome to London Strategic Edge" })
-    ] }),
-    /* @__PURE__ */ e.jsxs("div", { className: "space-y-4 py-3", children: [
-      /* @__PURE__ */ e.jsx("p", { className: "text-sm text-muted-foreground text-center leading-relaxed", children: o || "Your layouts, drawings and settings are saved locally on this machine and survive reinstalls — no account needed." }),
-      /* @__PURE__ */ e.jsxs(
-        "button",
-        {
-          onClick: m,
-          disabled: l,
-          className: "w-full h-12 flex items-center justify-center gap-3 rounded-lg text-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed",
-          style: {
-            background: "#ffffff",
-            color: "#3c4043",
-            border: "1px solid #dadce0",
-            boxShadow: "0 1px 3px 0 rgba(60,64,67,0.08), 0 1px 2px -1px rgba(60,64,67,0.06)",
-            transition: "all 0.2s ease",
-            fontFamily: "'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-            letterSpacing: "0.01em"
-          },
-          onMouseEnter: (v) => {
-            v.currentTarget.style.boxShadow = "0 4px 12px 0 rgba(60,64,67,0.15), 0 2px 4px -1px rgba(60,64,67,0.10)", v.currentTarget.style.transform = "translateY(-1px)";
-          },
-          onMouseLeave: (v) => {
-            v.currentTarget.style.boxShadow = "0 1px 3px 0 rgba(60,64,67,0.08), 0 1px 2px -1px rgba(60,64,67,0.06)", v.currentTarget.style.transform = "translateY(0)";
-          },
-          children: [
-            /* @__PURE__ */ e.jsxs("svg", { className: "w-[18px] h-[18px]", viewBox: "0 0 24 24", children: [
-              /* @__PURE__ */ e.jsx(
-                "path",
-                {
-                  fill: "#4285F4",
-                  d: "M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                }
-              ),
-              /* @__PURE__ */ e.jsx(
-                "path",
-                {
-                  fill: "#34A853",
-                  d: "M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                }
-              ),
-              /* @__PURE__ */ e.jsx(
-                "path",
-                {
-                  fill: "#FBBC05",
-                  d: "M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-                }
-              ),
-              /* @__PURE__ */ e.jsx(
-                "path",
-                {
-                  fill: "#EA4335",
-                  d: "M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                }
-              )
-            ] }),
-            l ? "Signing in..." : "Continue with Google"
-          ]
-        }
-      ),
-      /* @__PURE__ */ e.jsx(
-        tt,
-        {
-          onClick: () => {
-            n(!1), c(`/auth?mode=signup&returnTo=${h}`);
-          },
-          className: "w-full h-12 text-base font-semibold bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200",
-          size: "lg",
-          children: "Create an Account"
-        }
-      ),
-      /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground text-center px-8", children: "By continuing, you agree to our Terms of Service and Privacy Policy" }),
-      /* @__PURE__ */ e.jsxs("p", { className: "text-xs text-center", children: [
-        /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground", children: "Already have an account? " }),
-        /* @__PURE__ */ e.jsx(
-          "button",
-          {
-            onClick: () => {
-              n(!1), c(`/auth?mode=signin&returnTo=${h}`);
-            },
-            className: "font-semibold text-foreground hover:underline",
-            children: "Sign in"
-          }
-        )
-      ] })
-    ] })
-  ] }) });
-}
-function Ao({
-  toolId: t,
-  label: n,
-  icon: s,
-  isActive: o,
-  drawingFavorites: r,
-  onSelect: a,
-  onToggleFavorite: c
-}) {
-  return /* @__PURE__ */ e.jsxs(
-    tt,
-    {
-      variant: "ghost",
-      size: "sm",
-      className: `w-full group justify-start gap-2.5 h-8 px-3 rounded-none text-popover-foreground hover:bg-muted hover:text-foreground ${o ? "active-tool bg-foreground/10 text-foreground" : ""}`,
-      onPointerDown: (d) => {
-        d.preventDefault(), a();
-      },
-      onClick: a,
-      children: [
-        s,
-        /* @__PURE__ */ e.jsx("span", { className: "text-base font-normal flex-1 text-left", children: n }),
-        /* @__PURE__ */ e.jsx(
-          "button",
-          {
-            className: `ml-auto p-0.5 rounded transition-all ${r.includes(t) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`,
-            onPointerDown: (d) => {
-              d.stopPropagation(), d.preventDefault();
-            },
-            onClick: (d) => {
-              d.stopPropagation(), c(t);
-            },
-            title: r.includes(t) ? "Remove from Favorites" : "Add to Favorites",
-            children: /* @__PURE__ */ e.jsx(lo, { className: `h-3 w-3 ${r.includes(t) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}` })
-          }
-        )
-      ]
-    }
-  );
-}
-function R0({
-  activeTool: t,
-  onToolSelect: n,
-  drawings: s = [],
-  onClearAllDrawings: o,
-  selectedDrawingId: r,
-  onDeleteSelectedDrawing: a,
-  drawingsLocked: c = !1,
-  onToggleLock: d,
-  drawingsHidden: l = !1,
-  onToggleHide: u,
-  indicatorCount: h = 0,
-  onClearIndicators: m,
-  onOpenShortcutsDialog: v,
-  mobileTradingOpen: N,
-  onToggleMobileTrading: y,
-  bottomPanelHidden: g = !1,
-  onToggleBottomPanel: L,
-  onOpenSettings: B,
-  multiTimeframeLayout: S,
-  onLayoutChange: Z,
-  syncSettings: _,
-  onSyncSettingsChange: k,
-  layoutSymbol: O,
-  layoutTimeframe: z,
-  layoutDrawings: F,
-  layoutIndicators: I,
-  onLoadLayout: U,
-  onOpenSaveDialog: se,
-  onToggleCalendar: be,
-  calendarPanelActive: ze = !1,
-  onShowAlertDialog: Ie,
-  alertCount: Oe = 0
-}) {
-  const { user: Ke } = gr(), [We, rt] = f.useState(!1), [Q, Xe] = f.useState(ma), [q, pt] = f.useState("trend"), [V, $e] = f.useState("horizontal"), [ie, st] = f.useState("fibonacci"), [ft, Me] = f.useState("rectangle"), [ce, H] = f.useState("brush"), [Ee, Mt] = f.useState(!1), [Vt, rs] = f.useState(!1), [St, de] = f.useState(!1), [ke, ot] = f.useState(!1), [Pt, mt] = f.useState(!1), ls = f.useCallback((Ge) => {
-    if (!Ke) {
-      rt(!0);
-      return;
-    }
-    Xe(uh(Ge));
-  }, [Ke]);
-  if (!n) return null;
-  const Is = (Ge, kt, pe, Je, Et, Wt) => /* @__PURE__ */ e.jsxs(on, { open: Ge, onOpenChange: kt, children: [
-    /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
-      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(
-          tt,
-          {
-            variant: "ghost",
-            size: "icon",
-            className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${Je.includes(t) ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`,
-            onClick: () => {
-              n(t === pe ? null : pe);
-            },
-            children: Et
-          }
-        ) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: pe })
-      ] }) }),
-      /* @__PURE__ */ e.jsx(ln, { asChild: !0, children: /* @__PURE__ */ e.jsx(
-        "button",
-        {
-          className: "absolute -right-1 top-1/2 -translate-y-1/2 w-5 h-10 flex items-center justify-center text-muted-foreground/30 hover:text-muted-foreground transition-colors",
-          onClick: (_e) => {
-            _e.stopPropagation(), kt(!Ge);
-          },
-          children: /* @__PURE__ */ e.jsx(pl, { className: "h-3 w-3" })
-        }
-      ) })
-    ] }),
-    /* @__PURE__ */ e.jsx(nn, { side: "right", align: "start", className: "drawing-tool-menu w-auto min-w-[180px] p-0 bg-card border border-border shadow-xl rounded-lg z-50 overflow-hidden", sideOffset: 8, children: Wt })
-  ] }), jt = {
-    trend: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
-      /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }),
-      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "20", r: "1.5", fill: "currentColor" }),
-      /* @__PURE__ */ e.jsx("circle", { cx: "20", cy: "4", r: "1.5", fill: "currentColor" })
-    ] }),
-    trendRay: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
-      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "12", r: "1.5", fill: "currentColor" }),
-      /* @__PURE__ */ e.jsx("line", { x1: "5.5", y1: "12", x2: "20", y2: "4" })
-    ] }),
-    parallelChannel: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
-      /* @__PURE__ */ e.jsx("line", { x1: "2", y1: "18", x2: "22", y2: "10" }),
-      /* @__PURE__ */ e.jsx("line", { x1: "2", y1: "10", x2: "22", y2: "2" })
-    ] }),
-    straightArrow: /* @__PURE__ */ e.jsx(bl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
-  }, Ft = {
-    horizontal: /* @__PURE__ */ e.jsx(Oi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    horizontalRay: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
-      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "12", r: "1.5", fill: "currentColor" }),
-      /* @__PURE__ */ e.jsx("line", { x1: "5.5", y1: "12", x2: "20", y2: "12" }),
-      /* @__PURE__ */ e.jsx("polyline", { points: "17,9 20,12 17,15" })
-    ] }),
-    vertical: /* @__PURE__ */ e.jsx(tu, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    line: /* @__PURE__ */ e.jsx("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }) })
-  }, zt = {
-    rectangle: /* @__PURE__ */ e.jsx(nu, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    square: /* @__PURE__ */ e.jsx(Sa, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    circle: /* @__PURE__ */ e.jsx(xl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    oval: /* @__PURE__ */ e.jsx(xl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { transform: "scaleX(1.3)" } }),
-    triangle: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    freeTriangle: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { opacity: 0.7 } }),
-    parallelogram: /* @__PURE__ */ e.jsx("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ e.jsx("polygon", { points: "6,4 22,4 18,20 2,20" }) }),
-    octagon: /* @__PURE__ */ e.jsx(su, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    diamond: /* @__PURE__ */ e.jsx(Nm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    pentagon: /* @__PURE__ */ e.jsx(vm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    hexagon: /* @__PURE__ */ e.jsx(ym, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    star: /* @__PURE__ */ e.jsx(lo, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    cross: /* @__PURE__ */ e.jsx(wa, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    arrowBlock: /* @__PURE__ */ e.jsx(bm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    wedge: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { transform: "rotate(-90deg)" } }),
-    heart: /* @__PURE__ */ e.jsx(gm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
-  }, ae = {
-    brush: /* @__PURE__ */ e.jsx(Fi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    highlighter: /* @__PURE__ */ e.jsx(ru, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
-    arrow: /* @__PURE__ */ e.jsx(km, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
-  }, Ze = (Ge, kt, pe) => () => {
-    Ge(pe), n(pe), kt(!1);
-  };
-  return /* @__PURE__ */ e.jsxs(e.Fragment, { children: [
-    /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-0", children: [
-      Is(
-        Ee,
-        Mt,
-        q,
-        ["trend", "trendRay", "parallelChannel", "straightArrow"],
-        jt[q],
-        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Trend Lines" }),
-          [
-            { id: "trend", label: "Trend Line" },
-            { id: "trendRay", label: "Trend Line Ray" },
-            { id: "parallelChannel", label: "Parallel Channel" },
-            { id: "straightArrow", label: "Arrow" }
-          ].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge.id, label: Ge.label, icon: jt[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(pt, Mt, Ge.id), onToggleFavorite: ls }, Ge.id))
-        ] })
-      ),
-      Is(
-        Vt,
-        rs,
-        V,
-        ["horizontal", "horizontalRay", "vertical", "line"],
-        Ft[V],
-        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Lines" }),
-          [
-            { id: "horizontal", label: "Horizontal Line" },
-            { id: "horizontalRay", label: "Horizontal Ray" },
-            { id: "vertical", label: "Vertical Line" },
-            { id: "line", label: "Straight Line" }
-          ].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge.id, label: Ge.label, icon: Ft[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze($e, rs, Ge.id), onToggleFavorite: ls }, Ge.id))
-        ] })
-      ),
-      Is(
-        St,
-        de,
-        ie,
-        ["fibonacci", "fibExtension"],
-        /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
-          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "4", x2: "21", y2: "4" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "9", x2: "17", y2: "9", opacity: "0.7" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "13", y2: "14", opacity: "0.5" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "19", x2: "21", y2: "19" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "18", y1: "4", x2: "6", y2: "19", strokeWidth: "1.5", strokeDasharray: "3 2" })
-        ] }),
-        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Fibonacci" }),
-          [
-            { id: "fibonacci", label: "Fib Retracement", icon: /* @__PURE__ */ e.jsxs("svg", { className: "h-4 w-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "4", x2: "21", y2: "4" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "9", x2: "17", y2: "9", opacity: "0.7" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "13", y2: "14", opacity: "0.5" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "19", x2: "21", y2: "19" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "18", y1: "4", x2: "6", y2: "19", strokeWidth: "1.5", strokeDasharray: "3 2" })
-            ] }) },
-            { id: "fibExtension", label: "Fib Extension", icon: /* @__PURE__ */ e.jsxs("svg", { className: "h-4 w-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "20", x2: "21", y2: "20" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "17", y2: "14", opacity: "0.7" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "8", x2: "13", y2: "8", opacity: "0.5" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "3", x2: "21", y2: "3" }),
-              /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "18", y2: "3", strokeWidth: "1.5", strokeDasharray: "3 2" }),
-              /* @__PURE__ */ e.jsx("polyline", { points: "15,3 18,3 18,6", strokeWidth: "1.5" })
-            ] }) }
-          ].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge.id, label: Ge.label, icon: Ge.icon, isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(st, de, Ge.id), onToggleFavorite: ls }, Ge.id))
-        ] })
-      ),
-      Is(
-        ke,
-        ot,
-        ft,
-        Object.keys(zt),
-        zt[ft],
-        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Shapes" }),
-          ["rectangle", "square", "circle", "triangle", "oval", "freeTriangle", "parallelogram", "octagon"].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge, label: Ge.charAt(0).toUpperCase() + Ge.slice(1).replace(/([A-Z])/g, " $1"), icon: zt[Ge], isActive: t === Ge, drawingFavorites: Q, onSelect: Ze(Me, ot, Ge), onToggleFavorite: ls }, Ge)),
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-2.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "More Shapes" }),
-          ["diamond", "pentagon", "hexagon", "star", "cross", "arrowBlock", "wedge", "heart"].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge, label: Ge === "arrowBlock" ? "Arrow Block" : Ge.charAt(0).toUpperCase() + Ge.slice(1), icon: zt[Ge], isActive: t === Ge, drawingFavorites: Q, onSelect: Ze(Me, ot, Ge), onToggleFavorite: ls }, Ge))
-        ] })
-      ),
-      Is(
-        Pt,
-        mt,
-        ce,
-        ["brush", "highlighter", "arrow"],
-        ae[ce],
-        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Brushes" }),
-          [
-            { id: "brush", label: "Brush" },
-            { id: "highlighter", label: "Highlighter" },
-            { id: "arrow", label: "Arrow" }
-          ].map((Ge) => /* @__PURE__ */ e.jsx(Ao, { toolId: Ge.id, label: Ge.label, icon: ae[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(H, mt, Ge.id), onToggleFavorite: ls }, Ge.id))
-        ] })
-      ),
-      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "text" ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: () => n(t === "text" ? null : "text"), children: /* @__PURE__ */ e.jsx(ia, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Text" })
-      ] }) }),
-      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "long" ? "text-neon-green before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-neon-green before:rounded-r" : "text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-neon-green"}`, onClick: () => n(t === "long" ? null : "long"), children: /* @__PURE__ */ e.jsx(ih, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Long Position" })
-      ] }) }),
-      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "short" ? "text-neon-pink before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-neon-pink before:rounded-r" : "text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-neon-pink"}`, onClick: () => n(t === "short" ? null : "short"), children: /* @__PURE__ */ e.jsx(ch, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Short Position" })
-      ] }) }),
-      d && /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${c ? "text-yellow-400 before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-yellow-400 before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: d, children: c ? /* @__PURE__ */ e.jsx(mm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) : /* @__PURE__ */ e.jsx(pm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: c ? "Unlock Drawings" : "Lock Drawings" })
-      ] }) }),
-      u && /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${l ? "text-muted-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-muted-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: u, children: l ? /* @__PURE__ */ e.jsx(xm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) : /* @__PURE__ */ e.jsx(yi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: l ? "Show Drawings" : "Hide Drawings" })
-      ] }) }),
-      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "measure" ? "text-electric-blue before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-electric-blue before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: () => n(t === "measure" ? null : "measure"), children: /* @__PURE__ */ e.jsx(eu, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Measure Tool" })
-      ] }) }),
-      /* @__PURE__ */ e.jsx("div", { className: "w-7 lg:w-9 h-px bg-border mx-auto my-0.5" }),
-      Z && S && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(
-        ah,
-        {
-          selectedLayout: S,
-          onLayoutChange: Z,
-          syncSettings: _,
-          onSyncSettingsChange: k || (() => {
-          }),
-          isMultiPanelActive: S !== "1x1",
-          onExitMultiPanel: () => Z("1x1"),
-          symbol: O || "",
-          timeframe: z || "",
-          drawings: F || [],
-          indicators: I,
-          onLoadLayout: U || (() => {
-          }),
-          onOpenSaveDialog: se || (() => {
-          }),
-          hideExitButton: !0,
-          className: "h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground p-0 border-0 bg-transparent shadow-none flex items-center justify-center"
-        }
-      ) }),
-      be && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 rounded-none transition-all ${ze ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: be, children: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
-          /* @__PURE__ */ e.jsx("rect", { x: "3", y: "4", width: "18", height: "18", rx: "2" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "10", x2: "21", y2: "10" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "8", y1: "2", x2: "8", y2: "6" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "16", y1: "2", x2: "16", y2: "6" }),
-          /* @__PURE__ */ e.jsx("circle", { cx: "17.5", cy: "17.5", r: "4", fill: "var(--background, white)", stroke: "currentColor", strokeWidth: "1.75" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "17.5", y1: "15.5", x2: "17.5", y2: "17.5" }),
-          /* @__PURE__ */ e.jsx("line", { x1: "17.5", y1: "17.5", x2: "19", y2: "18.5" })
-        ] }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Calendar" })
-      ] }) }) }),
-      Ie && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "icon", className: "relative h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: Ie, children: [
-          /* @__PURE__ */ e.jsx(gl, { className: "h-5 w-5" }),
-          Oe > 0 && /* @__PURE__ */ e.jsx("span", { className: "absolute -top-1 -right-1 h-3 min-w-[12px] px-0.5 text-[8px] bg-electric-blue text-white rounded-full flex items-center justify-center", children: Oe })
-        ] }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Alerts" })
-      ] }) }) }),
-      B && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: () => B?.(), children: /* @__PURE__ */ e.jsx(ca, { className: "h-5 w-5" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Settings" })
-      ] }) }) }),
-      v && /* @__PURE__ */ e.jsx("div", { className: "hidden md:block", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground", onClick: v, children: /* @__PURE__ */ e.jsx(Bi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
-        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Drawing Shortcuts" })
-      ] }) }) }),
-      (s.length > 0 || h > 0) && /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-          /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(
-            tt,
-            {
-              variant: "ghost",
-              size: "icon",
-              className: `h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive ${r ? "text-destructive/70" : ""}`,
-              onClick: () => {
-                r && a && a(r);
-              },
-              children: /* @__PURE__ */ e.jsx(oo, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
-            }
-          ) }),
-          /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: r ? "Delete Selected Drawing" : "Delete (select a drawing first)" })
-        ] }) }),
-        /* @__PURE__ */ e.jsxs(on, { children: [
-          /* @__PURE__ */ e.jsx(ln, { asChild: !0, children: /* @__PURE__ */ e.jsx("button", { className: "absolute -right-1 top-1/2 -translate-y-1/2 w-5 h-10 flex items-center justify-center text-muted-foreground/30 hover:text-muted-foreground transition-colors", children: /* @__PURE__ */ e.jsx(pl, { className: "h-3 w-3" }) }) }),
-          /* @__PURE__ */ e.jsx(nn, { side: "right", align: "start", className: "w-auto p-1 bg-card border border-border shadow-lg", children: /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col", children: [
-            r && a && /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-destructive/10 hover:text-destructive", onClick: () => a(r), children: "Remove selected drawing" }),
-            o && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => o(), children: [
-              "Remove ",
-              s.length,
-              " drawing",
-              s.length !== 1 ? "s" : ""
-            ] }),
-            m && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => m(), children: [
-              "Remove ",
-              h,
-              " indicator",
-              h !== 1 ? "s" : ""
-            ] }),
-            o && m && (s.length > 0 || h > 0) && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => {
-              o && o(), m && m();
-            }, children: [
-              "Remove ",
-              s.length,
-              " drawing",
-              s.length !== 1 ? "s" : "",
-              " & ",
-              h,
-              " indicator",
-              h !== 1 ? "s" : ""
-            ] })
-          ] }) })
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ e.jsx(Yi, { open: We, onOpenChange: rt, message: "Sign in to save your favorite drawing tools and sync them across devices." })
-  ] });
-}
-const hh = {
-  // Core indicators — EdgeDepth exact: candles with up/down wicks (columns), volume up/down columns, no straight line consuming space
-  rsi: { enabled: !1, period: 14, overbought: 70, oversold: 30 },
-  macd: { enabled: !1, fast: 12, slow: 26, signal: 9 },
-  ema: { enabled: !1, periods: [20, 50] },
-  bollinger: { enabled: !1, period: 20, stdDev: 2 },
-  // No EMA line by default — user complained straight line consuming space, should have up/down columns (volume) instead
-  // Volume enabled by default with zinc teal/rose up/down columns exact EdgeDepth
-  movingAverages: { enabled: !1, lines: [] },
-  atr: { enabled: !1, period: 14 },
-  stochastic: { enabled: !1, kPeriod: 14, dPeriod: 3, smooth: 3, overbought: 80, oversold: 20 },
-  volume: { enabled: !0, upColor: "#21b3a4", downColor: "#f0426c" },
-  williamsR: { enabled: !1, period: 14, overbought: -20, oversold: -80 },
-  cci: { enabled: !1, period: 20, overbought: 100, oversold: -100 },
-  adx: { enabled: !1, period: 14 },
-  roc: { enabled: !1, period: 12 },
-  vwap: { enabled: !1 },
-  ichimoku: { enabled: !1, tenkanPeriod: 9, kijunPeriod: 26, senkouBPeriod: 52, displacement: 26 },
-  parabolicSAR: { enabled: !1, afStart: 0.02, afStep: 0.02, afMax: 0.2 },
-  keltner: { enabled: !1, emaPeriod: 20, atrPeriod: 10, multiplier: 2 },
-  pivotPoints: { enabled: !1 },
-  volumeProfile: { enabled: !1, numberOfRows: 48, rowWidth: 15, opacity: 60 },
-  optionsPdf: { enabled: !1, color: "#00C8C8", endSpread: 7, opacity: 80 },
-  // Phase 1 trend
-  supertrend: { enabled: !1, period: 10, multiplier: 3 },
-  donchian: { enabled: !1, period: 20 },
-  aroon: { enabled: !1, period: 14 },
-  envelopes: { enabled: !1, period: 20, percent: 2.5 },
-  dema: { enabled: !1, period: 21 },
-  tema: { enabled: !1, period: 21 },
-  hma: { enabled: !1, period: 9 },
-  // Phase 1 oscillators
-  momentum: { enabled: !1, period: 10 },
-  ao: { enabled: !1 },
-  mfi: { enabled: !1, period: 14, overbought: 80, oversold: 20 },
-  tsi: { enabled: !1, longPeriod: 25, shortPeriod: 13, signalPeriod: 13 },
-  trix: { enabled: !1, period: 15, signalPeriod: 9 },
-  ultimateOsc: { enabled: !1, fast: 7, med: 14, slow: 28 },
-  dpo: { enabled: !1, period: 20 },
-  kst: { enabled: !1, signalPeriod: 9 },
-  stochRsi: { enabled: !1, rsiPeriod: 14, kPeriod: 14, dPeriod: 3, overbought: 80, oversold: 20 },
-  // Phase 1 volatility
-  bbPercent: { enabled: !1, period: 20, stdDev: 2 },
-  bbWidth: { enabled: !1, period: 20, stdDev: 2 },
-  histVol: { enabled: !1, period: 20 },
-  chaikinVol: { enabled: !1, emaPeriod: 10, rocPeriod: 10 },
-  stdDev: { enabled: !1, period: 20 },
-  // Phase 1 volume
-  obv: { enabled: !1 },
-  cmf: { enabled: !1, period: 20 },
-  adl: { enabled: !1 },
-  forceIndex: { enabled: !1, period: 13 },
-  eom: { enabled: !1, period: 14 },
-  volumeSma: { enabled: !1, period: 20 },
-  // Phase 1 support/resistance
-  fibRetracement: { enabled: !1, lookback: 100 },
-  camarillaPivots: { enabled: !1 },
-  woodiePivots: { enabled: !1 },
-  // Phase 1 statistics
-  correlation: { enabled: !1, period: 20 },
-  linearReg: { enabled: !1, period: 14, deviations: 2 },
-  coppock: { enabled: !1, longROC: 14, shortROC: 11, wmaPeriod: 10 },
-  // Phase 2 trend
-  alma: { enabled: !1, period: 9, offset: 0.85, sigma: 6 },
-  kama: { enabled: !1, period: 10, fastPeriod: 2, slowPeriod: 30 },
-  zlema: { enabled: !1, period: 21 },
-  t3: { enabled: !1, period: 5, vFactor: 0.7 },
-  lsma: { enabled: !1, period: 25 },
-  mcginley: { enabled: !1, period: 14 },
-  wma: { enabled: !1, period: 20 },
-  smmaOverlay: { enabled: !1, period: 21 },
-  alligator: { enabled: !1 },
-  vortex: { enabled: !1, period: 14 },
-  choppiness: { enabled: !1, period: 14 },
-  elderRay: { enabled: !1, period: 13 },
-  massIndex: { enabled: !1, period: 25 },
-  chandeKroll: { enabled: !1, p: 10, q: 9, x: 1 },
-  linRegSlope: { enabled: !1, period: 14 },
-  priceChannel: { enabled: !1, period: 20 },
-  // Phase 2 oscillators
-  ppo: { enabled: !1, fast: 12, slow: 26, signal: 9 },
-  pvo: { enabled: !1, fast: 12, slow: 26, signal: 9 },
-  cmo: { enabled: !1, period: 9 },
-  fisher: { enabled: !1, period: 10 },
-  stc: { enabled: !1, fast: 23, slow: 50, cycle: 10 },
-  rviOsc: { enabled: !1, period: 10 },
-  klinger: { enabled: !1, fast: 34, slow: 55, signal: 13 },
-  connorsRsi: { enabled: !1, rsiPeriod: 3, streakPeriod: 2, rankPeriod: 100 },
-  apo: { enabled: !1, fast: 12, slow: 26 },
-  qstick: { enabled: !1, period: 8 },
-  bop: { enabled: !1, period: 14 },
-  psychLine: { enabled: !1, period: 12 },
-  pfe: { enabled: !1, period: 10, smoothing: 5 },
-  smi: { enabled: !1, period: 13, smoothK: 25, smoothD: 2 },
-  // Phase 2 volatility
-  ulcerIndex: { enabled: !1, period: 14 },
-  natr: { enabled: !1, period: 14 },
-  trueRange: { enabled: !1 },
-  squeeze: { enabled: !1, bbPeriod: 20, bbMult: 2, kcPeriod: 20, kcMult: 1.5 },
-  chandelierExit: { enabled: !1, period: 22, multiplier: 3 },
-  relVolIndex: { enabled: !1, period: 10, smoothing: 14 },
-  vhf: { enabled: !1, period: 28 },
-  accBands: { enabled: !1, period: 20 },
-  // Phase 2 volume
-  vwma: { enabled: !1, period: 20 },
-  volumeOsc: { enabled: !1, fast: 5, slow: 10 },
-  nvi: { enabled: !1 },
-  pvi: { enabled: !1 },
-  pvt: { enabled: !1 },
-  vroc: { enabled: !1, period: 14 },
-  netVolume: { enabled: !1, period: 14 },
-  twiggsMF: { enabled: !1, period: 14 },
-  // Phase 2 support/resistance
-  demarkPivots: { enabled: !1 },
-  zigzag: { enabled: !1, deviation: 5 },
-  fractals: { enabled: !1 },
-  // Phase 2 statistics
-  linRegRSquared: { enabled: !1, period: 14 },
-  medianPrice: { enabled: !1 },
-  typicalPrice: { enabled: !1 },
-  weightedClose: { enabled: !1 },
-  gator: { enabled: !1 },
-  customBrueScripts: {}
-};
-({
-  ...hh
-});
-const E0 = ({
+}, C0 = ({
   candles: t,
   livePrice: n,
   symbol: s = "",
@@ -15791,7 +15181,7 @@ const E0 = ({
                           },
                           className: "w-[22px] h-[18px] flex items-center justify-center rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors",
                           title: `${i.title} Settings`,
-                          children: /* @__PURE__ */ e.jsx(ca, { className: "w-[15px] h-[15px]" })
+                          children: /* @__PURE__ */ e.jsx(ia, { className: "w-[15px] h-[15px]" })
                         }
                       ),
                       /* @__PURE__ */ e.jsx(
@@ -15897,7 +15287,7 @@ const E0 = ({
                       },
                       className: "w-[22px] h-[18px] flex items-center justify-center rounded hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors",
                       title: `${$} Settings`,
-                      children: /* @__PURE__ */ e.jsx(ca, { className: "w-[15px] h-[15px]" })
+                      children: /* @__PURE__ */ e.jsx(ia, { className: "w-[15px] h-[15px]" })
                     }
                   ),
                   /* @__PURE__ */ e.jsx(
@@ -16169,20 +15559,20 @@ const E0 = ({
       ]
     }
   );
-}, ta = /* @__PURE__ */ new Map(), I0 = 2 * 60 * 1e3;
+}, Ql = /* @__PURE__ */ new Map(), j0 = 2 * 60 * 1e3;
 let Fl = null;
 function Ri(t) {
   if (t) {
     const n = t.toLowerCase();
-    for (const s of ta.keys())
-      s.startsWith(n) && ta.delete(s);
+    for (const s of Ql.keys())
+      s.startsWith(n) && Ql.delete(s);
   } else
-    ta.clear();
+    Ql.clear();
 }
-function D0() {
-  const t = f.useRef(ta), n = f.useCallback((d, l) => `${d.toLowerCase()}-${l}`, []), s = f.useCallback((d, l) => {
+function M0() {
+  const t = f.useRef(Ql), n = f.useCallback((d, l) => `${d.toLowerCase()}-${l}`, []), s = f.useCallback((d, l) => {
     const u = n(d, l), h = t.current.get(u);
-    return h ? Date.now() - h.fetchedAt > I0 ? (t.current.delete(u), null) : h.data : null;
+    return h ? Date.now() - h.fetchedAt > j0 ? (t.current.delete(u), null) : h.data : null;
   }, [n]), o = f.useCallback((d, l, u) => {
     const h = n(d, l);
     if (t.current.set(h, {
@@ -16223,22 +15613,22 @@ function D0() {
     handlePairChange: c
   };
 }
-const B0 = (t, n = !0) => ({ tick: null, isConnected: !1 }), Uo = /* @__PURE__ */ new Map(), ii = /* @__PURE__ */ new Map();
-async function O0(t) {
+const T0 = (t, n = !0) => ({ tick: null, isConnected: !1 }), Uo = /* @__PURE__ */ new Map(), li = /* @__PURE__ */ new Map();
+async function P0(t) {
   const n = Uo.get(t);
   if (n) return n;
-  const s = ii.get(t);
+  const s = li.get(t);
   if (s) return s;
   const o = new URL("/api/instruments", window.location.origin);
   o.searchParams.set("provider", t), o.searchParams.set("limit", "200");
-  const r = fetch(o.toString()).then((a) => a.ok ? a.json() : []).then((a) => (Uo.set(t, a), a)).catch(() => (Uo.set(t, []), [])).finally(() => ii.delete(t));
-  return ii.set(t, r), r;
+  const r = fetch(o.toString()).then((a) => a.ok ? a.json() : []).then((a) => (Uo.set(t, a), a)).catch(() => (Uo.set(t, []), [])).finally(() => li.delete(t));
+  return li.set(t, r), r;
 }
-function Gi() {
+function Yi() {
   const t = _i().provider, [n, s] = f.useState(() => Uo.get(t) || []), [o, r] = f.useState(!Uo.has(t));
   f.useEffect(() => {
     let h = !0;
-    return r(!Uo.has(t)), O0(t).then((m) => {
+    return r(!Uo.has(t)), P0(t).then((m) => {
       h && (s(m), r(!1));
     }), () => {
       h = !1;
@@ -16261,7 +15651,7 @@ function Gi() {
     isLoading: o
   };
 }
-const Qc = {
+const Jc = {
   tick: 0,
   // 0 signals tick mode (raw trade-by-trade data)
   "1s": 1 / 60,
@@ -16278,13 +15668,13 @@ const Qc = {
   "1D": 1440,
   "1W": 10080,
   "1M": 43200
-}, ed = ["USD", "USDT", "USDC", "BUSD", "BTC", "ETH"], td = ["EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "NOK", "SEK", "DKK", "SGD", "HKD", "CNH", "ZAR", "MXN", "BRL", "TRY", "PLN", "CZK", "HUF", "ILS", "INR", "THB", "PHP", "KRW", "TWD", "CLP", "COP", "PEN"];
+}, Qc = ["USD", "USDT", "USDC", "BUSD", "BTC", "ETH"], ed = ["EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "NOK", "SEK", "DKK", "SGD", "HKD", "CNH", "ZAR", "MXN", "BRL", "TRY", "PLN", "CZK", "HUF", "ILS", "INR", "THB", "PHP", "KRW", "TWD", "CLP", "COP", "PEN"];
 function al(t) {
   if (t === "tick") return 1;
   const n = t.match(/^(\d+)tick$/i);
   return n ? parseInt(n[1], 10) : 0;
 }
-function F0(t) {
+function L0(t) {
   return al(t) > 0;
 }
 function Ei(t) {
@@ -16292,8 +15682,8 @@ function Ei(t) {
   return n ? parseInt(n[1], 10) : 0;
 }
 function fo(t) {
-  if (Qc[t] !== void 0) return Qc[t];
-  if (F0(t)) return 0;
+  if (Jc[t] !== void 0) return Jc[t];
+  if (L0(t)) return 0;
   const n = Ei(t);
   if (n > 0) return n / 60;
   const s = t.match(/^(\d+)([mHDW])$/i);
@@ -16312,15 +15702,15 @@ function fo(t) {
   }
   return 1;
 }
-function fh(t) {
+function ch(t) {
   const n = ["USDT", "USDC", "BUSD", "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "BTC", "NOK", "SEK", "DKK", "SGD", "HKD", "CNH", "ZAR", "MXN", "BRL", "TRY", "PLN", "CZK", "HUF", "ILS", "INR", "THB", "PHP", "KRW", "TWD", "CLP", "COP", "PEN"], s = t.toUpperCase();
   for (const o of n)
     if (s.endsWith(o) && s.length > o.length) return !1;
   return !0;
 }
-function W0(t, n, s) {
+function A0(t, n, s) {
   if (n === "oanda") {
-    const a = ["USD", ...td.filter((c) => c !== "USD"), ...ed.filter((c) => c !== "USD")];
+    const a = ["USD", ...ed.filter((c) => c !== "USD"), ...Qc.filter((c) => c !== "USD")];
     for (const c of a)
       if (t.toUpperCase().endsWith(c))
         return `oanda_${t.slice(0, -c.length).toLowerCase()}_${c.toLowerCase()}`;
@@ -16329,23 +15719,23 @@ function W0(t, n, s) {
   const o = s(t);
   if (o && o !== `candles_${t.toLowerCase()}`)
     return o;
-  if (fh(t))
+  if (ch(t))
     return s(t) || `candles_${t.toLowerCase().replace(/\./g, "_")}`;
-  const r = ["USD", ...td.filter((a) => a !== "USD"), ...ed.filter((a) => a !== "USD")];
+  const r = ["USD", ...ed.filter((a) => a !== "USD"), ...Qc.filter((a) => a !== "USD")];
   for (const a of r)
     if (t.toUpperCase().endsWith(a))
       return `candles_${t.slice(0, -a.length).toLowerCase()}_${a.toLowerCase()}`;
   return s(t) || `candles_${t.toLowerCase().replace(/\./g, "_")}`;
 }
-function $0(t) {
-  if (fh(t)) return t.toUpperCase();
+function R0(t) {
+  if (ch(t)) return t.toUpperCase();
   const n = ["USDT", "USDC", "BUSD", "USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "BTC", "NOK", "SEK", "DKK", "SGD", "HKD", "CNH", "ZAR", "MXN", "BRL", "TRY", "PLN", "CZK", "HUF", "ILS", "INR", "THB", "PHP", "KRW", "TWD", "CLP", "COP", "PEN"];
   for (const s of n)
     if (t.toUpperCase().endsWith(s))
       return `${t.slice(0, -s.length).toUpperCase()}/${s}`;
   return t.toUpperCase();
 }
-function sa(t) {
+function ea(t) {
   const n = ["NAS100", "SPX500", "US30", "US2000", "JP225", "DE30", "UK100", "UK250", "EU50", "FR40", "CN50", "AU200", "HK33", "HSI", "NIKKEI", "DAX", "CAC", "VIX"], s = ["USD", "USDT", "USDC", "BUSD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "NZD", "BTC"];
   let o = t.toUpperCase().replace(/[^A-Z0-9]/g, "");
   for (const a of n)
@@ -16395,7 +15785,7 @@ function nl(t, n) {
   }
   return Array.from(o.entries()).sort((r, a) => r[0] - a[0]).map(([r, a]) => a);
 }
-function _0(t) {
+function E0(t) {
   if (t.length === 0) return [];
   const n = /* @__PURE__ */ new Map();
   for (const s of t) {
@@ -16411,7 +15801,7 @@ function _0(t) {
   }
   return Array.from(n.entries()).sort((s, o) => s[0].localeCompare(o[0])).map(([s, o]) => o);
 }
-function U0(t, n, s, o = 1) {
+function I0(t, n, s, o = 1) {
   if (t.length === 0) return [];
   const r = new Date(s).getTime();
   let a = 0, c = t.length - 1, d = -1;
@@ -16435,7 +15825,7 @@ function U0(t, n, s, o = 1) {
   }
   return Array.from(h.entries()).sort((m, v) => m[0] - v[0]).map(([m, v]) => v);
 }
-function V0(t, n) {
+function D0(t, n) {
   if (n <= 1 || t.length === 0) return t;
   const s = [], o = t.length % n;
   let r = 0;
@@ -16460,7 +15850,7 @@ function V0(t, n) {
   return s;
 }
 const rl = 5e3;
-async function ci(t, n) {
+async function ai(t, n) {
   const s = n.gte ?? n.gt, o = n.limit ?? rl;
   if (!s && o <= rl)
     return Un(t, {
@@ -16497,8 +15887,8 @@ async function ci(t, n) {
   const a = r.length > o ? s ? r.slice(0, o) : r.slice(-o) : r;
   return n.order === "desc" ? [...a].reverse() : a;
 }
-async function di(t, n, s) {
-  const o = sa(n);
+async function ii(t, n, s) {
+  const o = ea(n);
   for (const r of o)
     try {
       const a = await ha(t, {
@@ -16510,16 +15900,16 @@ async function di(t, n, s) {
     }
   return [];
 }
-function sd(t) {
+function td(t) {
   const n = t.replace("#", ""), s = parseInt(n.substring(0, 2), 16), o = parseInt(n.substring(2, 4), 16), r = parseInt(n.substring(4, 6), 16);
   return 0.299 * s + 0.587 * o + 0.114 * r > 128;
 }
-function H0(t = "default") {
-  const { getTableName: n, isLoaded: s } = Gi(), o = f.useCallback(
-    (a) => W0(a, t, n),
+function B0(t = "default") {
+  const { getTableName: n, isLoaded: s } = Yi(), o = f.useCallback(
+    (a) => A0(a, t, n),
     [t, n]
   ), r = f.useCallback(
-    (a) => $0(a),
+    (a) => R0(a),
     []
   );
   return {
@@ -16529,14 +15919,14 @@ function H0(t = "default") {
     getTableNameFromMap: n
   };
 }
-function ui(t, n) {
+function ci(t, n) {
   const s = n * 60 * 1e3;
   return Math.floor(t / s) * s;
 }
-function mh(t, n) {
+function dh(t, n) {
   return `lse-tick-candles-${t}-${n}`;
 }
-function pa(t) {
+function ma(t) {
   try {
     if (t) {
       const n = `lse-tick-candles-${t}-`, s = [];
@@ -16556,9 +15946,9 @@ function pa(t) {
   } catch {
   }
 }
-function z0(t, n) {
+function O0(t, n) {
   try {
-    const s = mh(t, n), o = sessionStorage.getItem(s);
+    const s = dh(t, n), o = sessionStorage.getItem(s);
     if (!o) return /* @__PURE__ */ new Map();
     const r = JSON.parse(o), a = Date.now() - 5 * 60 * 1e3, c = r.filter(([d]) => d > a);
     return new Map(c);
@@ -16566,22 +15956,22 @@ function z0(t, n) {
     return /* @__PURE__ */ new Map();
   }
 }
-function nd(t, n, s) {
+function sd(t, n, s) {
   try {
-    const o = mh(t, n), r = Array.from(s.entries()).slice(-5);
+    const o = dh(t, n), r = Array.from(s.entries()).slice(-5);
     sessionStorage.setItem(o, JSON.stringify(r));
   } catch {
   }
 }
-function X0({
+function F0({
   timeframeMinutes: t,
   enabled: n = !0,
   onCandleComplete: s,
   pair: o = "default"
 }) {
-  const [r, a] = f.useState(null), c = f.useRef(null), d = f.useRef(null), l = f.useRef(null), u = f.useRef(z0(o, t)), [h, m] = f.useState(0), [v, N] = f.useState([]), y = f.useRef(null), g = f.useRef(null), L = 50, B = f.useCallback((z) => {
+  const [r, a] = f.useState(null), c = f.useRef(null), d = f.useRef(null), l = f.useRef(null), u = f.useRef(O0(o, t)), [h, m] = f.useState(0), [v, N] = f.useState([]), y = f.useRef(null), g = f.useRef(null), L = 50, B = f.useCallback((z) => {
     if (!n) return;
-    const F = Date.now(), I = ui(F, t), U = z.price, se = d.current, be = l.current, ze = (Ie) => {
+    const F = Date.now(), I = ci(F, t), U = z.price, se = d.current, be = l.current, ze = (Ie) => {
       g.current = Ie, y.current || (y.current = setTimeout(() => {
         y.current = null, g.current && (a(g.current), g.current = null);
       }, L));
@@ -16600,7 +15990,7 @@ function X0({
     }
     if (I > se) {
       const Ie = { ...be };
-      u.current.set(Ie.time, Ie), nd(o, t, u.current), N((We) => [...We, Ie]), m((We) => We + 1), c.current = Ie.close, d.current = I, s && s(Ie);
+      u.current.set(Ie.time, Ie), sd(o, t, u.current), N((We) => [...We, Ie]), m((We) => We + 1), c.current = Ie.close, d.current = I, s && s(Ie);
       const Oe = Ie.close, Ke = {
         time: I,
         open: Oe,
@@ -16623,20 +16013,20 @@ function X0({
     }
   }, [n, t, s, o]), S = f.useCallback((z, F) => {
     if (c.current = z, F) {
-      const I = ui(F, t), U = ui(Date.now(), t);
+      const I = ci(F, t), U = ci(Date.now(), t);
       d.current = U > I ? U : null;
       let se = !1;
       for (const be of u.current.keys())
         be <= I && (u.current.delete(be), se = !0);
-      se && (nd(o, t, u.current), m((be) => be + 1));
+      se && (sd(o, t, u.current), m((be) => be + 1));
     }
   }, [t, o]), Z = f.useCallback(() => {
     const z = [...v];
     return N([]), z;
   }, [v]), _ = f.useCallback(() => {
-    a(null), N([]), u.current = /* @__PURE__ */ new Map(), m((z) => z + 1), d.current = null, l.current = null, c.current = null, y.current && (clearTimeout(y.current), y.current = null), g.current = null, pa(o);
+    a(null), N([]), u.current = /* @__PURE__ */ new Map(), m((z) => z + 1), d.current = null, l.current = null, c.current = null, y.current && (clearTimeout(y.current), y.current = null), g.current = null, ma(o);
   }, [o]), k = f.useCallback(() => {
-    _(), pa();
+    _(), ma();
   }, [_]);
   f.useEffect(() => {
     _();
@@ -16658,7 +16048,7 @@ function X0({
     lastCompletedClose: c.current
   };
 }
-function K0(t, n, s = []) {
+function W0(t, n, s = []) {
   if (!n && s.length === 0) return t;
   const o = [...t];
   for (const r of s) {
@@ -16686,7 +16076,7 @@ function K0(t, n, s = []) {
   }
   return o;
 }
-const Y0 = ({
+const $0 = ({
   pair: t,
   timeframe: n,
   customColors: s,
@@ -16734,20 +16124,20 @@ const Y0 = ({
 }) => {
   const [Me, ce] = f.useState([]), [H, Ee] = f.useState([]), [Mt, Vt] = f.useState(null), [rs, St] = f.useState(!0), [de, ke] = f.useState(""), [ot, Pt] = f.useState(""), [mt, ls] = f.useState(null), [Is, jt] = f.useState(!1), Ft = f.useRef(0);
   f.useRef(null);
-  const zt = f.useRef(r), ae = f.useRef(!1), Ze = f.useRef(null), Ge = f.useRef(!0), kt = Xo(), { setCachedData: pe, handlePairChange: Je } = D0(), Et = f.useRef(t);
+  const zt = f.useRef(r), ae = f.useRef(!1), Ze = f.useRef(null), Ge = f.useRef(!0), kt = Xo(), { setCachedData: pe, handlePairChange: Je } = M0(), Et = f.useRef(t);
   f.useEffect(() => {
-    Et.current !== t && (console.log("[Chart] Pair changed from", Et.current, "to", t, "- clearing all state"), Ri(Et.current), pa(Et.current), Ee([]), ce([]), Vt(null), Je(t), Et.current = t);
+    Et.current !== t && (console.log("[Chart] Pair changed from", Et.current, "to", t, "- clearing all state"), Ri(Et.current), ma(Et.current), Ee([]), ce([]), Vt(null), Je(t), Et.current = t);
   }, [t, Je]), f.useEffect(() => () => {
-    console.log("[Chart] Unmounting - clearing all caches for", t), Ri(t), pa(t);
+    console.log("[Chart] Unmounting - clearing all caches for", t), Ri(t), ma(t);
   }, [t]);
-  const { formatPairForTable: Wt, formatPairForSymbol: _e, tableMapLoaded: es } = H0(q), [ms, Ws] = f.useState(!1), [Os, Js] = f.useState(!0), Gt = 5e4, [Qs, ys] = f.useState(!1), Gs = f.useRef(n);
+  const { formatPairForTable: Wt, formatPairForSymbol: _e, tableMapLoaded: es } = B0(q), [ms, Ws] = f.useState(!1), [Os, Js] = f.useState(!0), Gt = 5e4, [Qs, ys] = f.useState(!1), Gs = f.useRef(n);
   Gs.current = n;
   const [dn, ws] = f.useState(!0), [ps, qt] = f.useState(0), Kt = 1e5, ts = f.useRef(null), Ls = f.useRef(0), Us = f.useRef(0), Tn = f.useCallback(async () => {
     if (ms || !Os || !h || Me.length === 0) return;
     Ws(!0);
     const At = Me[Me.length - 1]?.timestamp;
     try {
-      const wt = Wt(t), p = (await ci(wt, {
+      const wt = Wt(t), p = (await ai(wt, {
         gt: At,
         limit: 3e4,
         order: "asc"
@@ -16791,7 +16181,7 @@ const Y0 = ({
       const p = Me[0].timestamp;
       ys(!0);
       try {
-        const j = Wt(t), T = (await ci(j, {
+        const j = Wt(t), T = (await ai(j, {
           lte: p,
           limit: 5001,
           order: "asc"
@@ -16932,7 +16322,7 @@ const Y0 = ({
               low: Number(A.price),
               close: Number(A.price),
               volume: A.volume != null ? Number(A.volume) : void 0
-            })), C = j > 1 ? V0(re, j) : re;
+            })), C = j > 1 ? D0(re, j) : re;
             Ee(C), Vt(re[re.length - 1]?.close || null);
           } else
             Ee([]);
@@ -16949,7 +16339,7 @@ const Y0 = ({
       if (h) {
         const re = /* @__PURE__ */ new Date(`${h}T${m}:00Z`);
         console.log("[Backtest] Fetching", Gt, "bars ending", re.toISOString(), "from", T);
-        const A = (await ci(T, {
+        const A = (await ai(T, {
           lte: re.toISOString(),
           limit: Gt,
           order: "asc"
@@ -16967,8 +16357,8 @@ const Y0 = ({
       } else {
         const re = async (b, R) => {
           const D = new URLSearchParams(window.location.search).get("largeCandleTest") === "1", E = D ? R === 15 ? 1e6 : Math.min(R / 15 * 1e6, 5e6) : R === 15 ? 1e4 : Math.min(R / 15 * 1e4, 4e4);
-          if (console.log(`[Chart] 15m fetch target: ${E.toLocaleString()} (test mode: ${D})`), q === "oanda") return di("oanda_candles_15m", b, E);
-          const x = sa(b);
+          if (console.log(`[Chart] 15m fetch target: ${E.toLocaleString()} (test mode: ${D})`), q === "oanda") return ii("oanda_candles_15m", b, E);
+          const x = ea(b);
           console.log("[Chart] 15m query symbols to try (parallel):", x, "from pair:", b);
           const w = await Promise.allSettled(
             x.map(
@@ -16981,8 +16371,8 @@ const Y0 = ({
           return console.warn("[Chart] No 15m data found for any symbol variant"), [];
         }, C = async (b, R) => {
           const D = new URLSearchParams(window.location.search).get("largeCandleTest") === "1", E = D ? R === 60 ? 1e6 : Math.min(R / 60 * 1e6, 5e6) : R === 60 ? 1e4 : Math.min(R / 60 * 1e4, 5e4);
-          if (console.log(`[Chart] 1H fetch target: ${E.toLocaleString()} (test mode: ${D})`), q === "oanda") return di("oanda_candles_1h", b, E);
-          const x = sa(b);
+          if (console.log(`[Chart] 1H fetch target: ${E.toLocaleString()} (test mode: ${D})`), q === "oanda") return ii("oanda_candles_1h", b, E);
+          const x = ea(b);
           console.log("[Chart] 1H query symbols to try (parallel):", x, "from pair:", b);
           const w = await Promise.allSettled(
             x.map(
@@ -17014,8 +16404,8 @@ const Y0 = ({
         if (X >= 1440) {
           const b = async () => {
             const R = Math.min(X / 1440 * 5e3, 1e4);
-            if (q === "oanda") return di("oanda_candles_1d", t, R);
-            const D = sa(t);
+            if (q === "oanda") return ii("oanda_candles_1d", t, R);
+            const D = ea(t);
             console.log("[Chart] 1D query symbols to try (parallel):", D, "from pair:", t);
             const E = await Promise.allSettled(
               D.map(
@@ -17043,7 +16433,7 @@ const Y0 = ({
             if (X === 1440)
               Ee(R), pe(t, n, R);
             else if (n === "1M") {
-              const E = _0(R);
+              const E = E0(R);
               Ee(E), pe(t, n, E);
             } else {
               const E = nl(R, X / 1440);
@@ -17234,14 +16624,14 @@ const Y0 = ({
     } finally {
       St(!1), Pt(n), Ge.current = !1;
     }
-  }, Ks = _e(t), { tick: As, isConnected: as } = B0(Ks, !h && !O), un = f.useMemo(() => fo(n), [n]), {
+  }, Ks = _e(t), { tick: As, isConnected: as } = T0(Ks, !h && !O), un = f.useMemo(() => fo(n), [n]), {
     liveCandle: en,
     completedCandlesVersion: lr,
     getCompletedCandlesMap: ar,
     processTick: Xr,
     initializeFromHistory: qs,
     reset: Rs
-  } = X0({
+  } = F0({
     timeframeMinutes: un,
     enabled: !h && !O,
     pair: t
@@ -17319,7 +16709,7 @@ const Y0 = ({
         }
         return C < 0 ? [] : Me.slice(0, C + 1);
       }
-      return U0(Me, p, wt, Bt);
+      return I0(Me, p, wt, Bt);
     }
     const At = fo(n);
     return At === 0 ? H : nl(H, At);
@@ -17374,7 +16764,7 @@ const Y0 = ({
     if (Pn)
       return wt;
     const Bt = ar(), p = Array.from(Bt.values());
-    return K0(wt, en, p);
+    return W0(wt, en, p);
   }, [rn, en, h, m, xn, v, lr, ar]);
   f.useEffect(() => {
     F && Fs.length > 0 && F(Fs);
@@ -17458,7 +16848,7 @@ const Y0 = ({
   if (H.length === 0 && Me.length === 0) return /* @__PURE__ */ e.jsx("div", { className: "flex items-center justify-center h-full bg-background", children: /* @__PURE__ */ e.jsx("div", { className: "text-muted-foreground", children: "No data available" }) });
   const An = typeof document < "u" ? document.documentElement.classList.contains("dark") : !0, Hn = (() => {
     if (s) {
-      const At = s.backgroundColor || (An ? "#000000" : "#ffffff"), wt = sd(At);
+      const At = s.backgroundColor || (An ? "#000000" : "#ffffff"), wt = td(At);
       return {
         background: At,
         backgroundOpacity: s.backgroundOpacity ?? 100,
@@ -17484,7 +16874,7 @@ const Y0 = ({
       };
     }
     if (kt) {
-      const At = kt.candles || {}, wt = kt.chart || {}, Bt = wt.backgroundColor || (An ? "#000000" : "#ffffff"), p = sd(Bt);
+      const At = kt.candles || {}, wt = kt.chart || {}, Bt = wt.backgroundColor || (An ? "#000000" : "#ffffff"), p = td(Bt);
       return {
         background: Bt,
         backgroundOpacity: wt.backgroundOpacity ?? 100,
@@ -17533,7 +16923,7 @@ const Y0 = ({
         ` })
     ] }),
     /* @__PURE__ */ e.jsx(
-      E0,
+      C0,
       {
         candles: Fs,
         livePrice: Br,
@@ -17578,7 +16968,7 @@ const Y0 = ({
       }
     )
   ] });
-}, rd = la.memo(Y0), Ro = {
+}, nd = la.memo($0), Ao = {
   g10Majors: ["EUR/USD", "GBP/USD", "USD/JPY", "USD/CHF", "AUD/USD", "NZD/USD", "USD/CAD"],
   g10Crosses: [
     "EUR/GBP",
@@ -17634,12 +17024,12 @@ const Y0 = ({
   ]
 };
 [.../* @__PURE__ */ new Set([
-  ...Ro.g10Majors,
-  ...Ro.g10Crosses,
-  ...Ro.scandinavian,
-  ...Ro.emAmericas,
-  ...Ro.emEMEA,
-  ...Ro.emAsia
+  ...Ao.g10Majors,
+  ...Ao.g10Crosses,
+  ...Ao.scandinavian,
+  ...Ao.emAmericas,
+  ...Ao.emEMEA,
+  ...Ao.emAsia
 ])];
 const Wl = {
   major: ["BTC/USD", "ETH/USD", "BNB/USD", "XRP/USD", "SOL/USD", "ADA/USD", "DOGE/USD", "DOT/USD", "AVAX/USD", "LTC/USD"],
@@ -17670,12 +17060,12 @@ const Wl = {
     "LDO/USD"
   ],
   stablecoins: ["USDC/USD"]
-}, G0 = [.../* @__PURE__ */ new Set([
+}, _0 = [.../* @__PURE__ */ new Set([
   ...Wl.major,
   ...Wl.layer1,
   ...Wl.defiGaming,
   ...Wl.stablecoins
-])], Eo = {
+])], Ro = {
   preciousMetals: [
     { symbol: "XAU/USD", name: "Gold" },
     { symbol: "XAG/USD", name: "Silver" },
@@ -17714,12 +17104,12 @@ const Wl = {
   ]
 };
 [
-  ...Eo.preciousMetals.map((t) => t.symbol),
-  ...Eo.industrialMetals.map((t) => t.symbol),
-  ...Eo.energy.map((t) => t.symbol),
-  ...Eo.grains.map((t) => t.symbol),
-  ...Eo.softs.map((t) => t.symbol),
-  ...Eo.livestock.map((t) => t.symbol)
+  ...Ro.preciousMetals.map((t) => t.symbol),
+  ...Ro.industrialMetals.map((t) => t.symbol),
+  ...Ro.energy.map((t) => t.symbol),
+  ...Ro.grains.map((t) => t.symbol),
+  ...Ro.softs.map((t) => t.symbol),
+  ...Ro.livestock.map((t) => t.symbol)
 ];
 const $l = {
   us: [
@@ -17745,7 +17135,7 @@ const $l = {
     { symbol: "VIX", name: "VIX", aliases: ["vix", "volatility", "fear index"] },
     { symbol: "VSTOXX", name: "EU VIX (VSTOXX)", aliases: ["vstoxx", "euro volatility", "eu vix"] }
   ]
-}, q0 = [
+}, U0 = [
   ...$l.us.map((t) => t.symbol),
   ...$l.europe.map((t) => t.symbol),
   ...$l.asia.map((t) => t.symbol),
@@ -18473,7 +17863,7 @@ const $l = {
     "ROR",
     "SMWH"
   ]
-}, Z0 = [.../* @__PURE__ */ new Set([
+}, V0 = [.../* @__PURE__ */ new Set([
   ...Cr.ukBanks,
   ...Cr.ukEnergy,
   ...Cr.ukMining,
@@ -18633,7 +18023,7 @@ const $l = {
     "SAMPO",
     "UPM"
   ]
-}, J0 = [.../* @__PURE__ */ new Set([
+}, H0 = [.../* @__PURE__ */ new Set([
   ...eo.swiss,
   ...eo.germany,
   ...eo.france,
@@ -18642,7 +18032,7 @@ const $l = {
   ...eo.italy,
   ...eo.belgium,
   ...eo.nordic
-])], Io = {
+])], Eo = {
   // Japan - Nikkei (symbols without exchange suffix to match database)
   japan: [
     "7203",
@@ -18803,14 +18193,14 @@ const $l = {
     "TITAN",
     "ULTRACEMCO"
   ]
-}, Q0 = [.../* @__PURE__ */ new Set([
-  ...Io.japan,
-  ...Io.hongKong,
-  ...Io.korea,
-  ...Io.taiwan,
-  ...Io.australia,
-  ...Io.india
-])], eb = {
+}, z0 = [.../* @__PURE__ */ new Set([
+  ...Eo.japan,
+  ...Eo.hongKong,
+  ...Eo.korea,
+  ...Eo.taiwan,
+  ...Eo.australia,
+  ...Eo.india
+])], X0 = {
   // Canada - TSX (symbols without exchange suffix to match database)
   canada: [
     "RY",
@@ -18854,7 +18244,7 @@ const $l = {
     "H",
     "T"
   ]
-}, tb = [...eb.canada], od = [.../* @__PURE__ */ new Set([
+}, K0 = [...X0.canada], rd = [.../* @__PURE__ */ new Set([
   ...Dn.mag7Tech,
   ...Dn.semiconductors,
   ...Dn.software,
@@ -18873,10 +18263,10 @@ const $l = {
   ...Dn.materials,
   ...Dn.misc,
   // International stocks
-  ...Z0,
-  ...J0,
-  ...Q0,
-  ...tb
+  ...V0,
+  ...H0,
+  ...z0,
+  ...K0
 ])], to = {
   broadMarket: ["SPY", "QQQ", "IWM", "DIA", "VTI", "VOO", "IVV", "VT"],
   sector: ["XLF", "XLK", "XLE", "XLV", "XLI", "XLP", "XLY", "XLU", "XLB", "XLRE"],
@@ -18886,7 +18276,7 @@ const $l = {
   commodities: ["GLD", "SLV", "USO", "UNG", "DBA", "DBC", "PDBC", "CPER"],
   volatility: ["VXX", "UVXY", "SVXY", "TQQQ", "SQQQ", "SPXU"],
   innovation: ["ARKK", "ARKW", "ARKG", "ARKF"]
-}, ld = [.../* @__PURE__ */ new Set([
+}, od = [.../* @__PURE__ */ new Set([
   ...to.broadMarket,
   ...to.sector,
   ...to.thematic,
@@ -18896,7 +18286,7 @@ const $l = {
   ...to.volatility,
   ...to.innovation
 ])];
-function ph(t, n) {
+function uh(t, n) {
   const s = (t || "").toUpperCase(), o = s.includes("JPY"), r = s.includes("XAU"), a = s.includes("XAG"), c = (n || "").toLowerCase();
   if (c && c !== "other") {
     if (c.startsWith("stock") || c.startsWith("etf")) return { pipValue: 0.01, decimals: 2, step: 0.01 };
@@ -18965,7 +18355,7 @@ function La(t) {
     tickSize: 0.01,
     tickValue: 10,
     description: "1 lot = 1,000 units"
-  } : q0.some((o) => s.includes(o.replace("/", "")) || o.includes(s.replace("/", ""))) ? {
+  } : U0.some((o) => s.includes(o.replace("/", "")) || o.includes(s.replace("/", ""))) ? {
     type: "index",
     lotSize: 1,
     // 1 contract
@@ -18973,14 +18363,14 @@ function La(t) {
     tickValue: 0.1,
     // $1 per point per lot for most CFD indices
     description: "1 lot = 1 contract ($1/point)"
-  } : G0.some((o) => s.includes(o.replace("/", ""))) ? {
+  } : _0.some((o) => s.includes(o.replace("/", ""))) ? {
     type: "crypto",
     lotSize: 1,
     // 1 BTC, 1 ETH, etc.
     tickSize: 0.01,
     tickValue: 0.01,
     description: "1 lot = 1 coin/token"
-  } : od.includes(s) || ld.includes(s) || od.includes(t) || ld.includes(t) ? {
+  } : rd.includes(s) || od.includes(s) || rd.includes(t) || od.includes(t) ? {
     type: "stock",
     lotSize: 1,
     // 1 share per lot
@@ -18998,7 +18388,7 @@ function La(t) {
     description: "1 lot = 100,000 units"
   };
 }
-function sb(t, n, s) {
+function Y0(t, n, s) {
   const o = La(t);
   switch (o.type) {
     case "forex":
@@ -19016,7 +18406,7 @@ function sb(t, n, s) {
       return n * o.lotSize * s;
   }
 }
-function na(t, n, s, o, r) {
+function ta(t, n, s, o, r) {
   const a = La(r), c = t === "buy" ? s - n : n - s;
   switch (a.type) {
     case "forex": {
@@ -19036,12 +18426,12 @@ function na(t, n, s, o, r) {
       return c * o * a.lotSize;
   }
 }
-function nb(t) {
+function G0(t) {
   return La(t).description;
 }
-function rb(t, n, s) {
+function q0(t, n, s) {
   La(t);
-  const o = sb(t, n, s);
+  const o = Y0(t, n, s);
   return o >= 1e6 ? `$${(o / 1e6).toFixed(2)}M` : o >= 1e3 ? `$${(o / 1e3).toFixed(1)}K` : `$${o.toFixed(2)}`;
 }
 const Zn = {
@@ -19049,7 +18439,7 @@ const Zn = {
   sell: "#ef5350",
   sl: "#ef5350",
   tp: "#26a69a"
-}, Do = ({
+}, Io = ({
   y: t,
   text: n,
   color: s
@@ -19070,7 +18460,7 @@ const Zn = {
     },
     children: n
   }
-) }), ad = ({
+) }), ld = ({
   y: t,
   color: n,
   onMouseDown: s
@@ -19088,7 +18478,7 @@ const Zn = {
       style: { cursor: "ns-resize", pointerEvents: "none", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.3))" }
     }
   )
-] }), xh = f.memo(({
+] }), hh = f.memo(({
   trades: t,
   converter: n,
   pair: s,
@@ -19121,7 +18511,7 @@ const Zn = {
     [t]
   );
   if (!l || !n) return null;
-  const _ = (k, O) => na(k.type, k.entryPrice, O, k.lotSize, s);
+  const _ = (k, O) => ta(k.type, k.entryPrice, O, k.lotSize, s);
   return /* @__PURE__ */ e.jsx(
     "div",
     {
@@ -19140,9 +18530,9 @@ const Zn = {
                 !We && Xe !== null && /* @__PURE__ */ e.jsx("line", { x1: "0", y1: Xe, x2: "100%", y2: Xe, stroke: Zn.sl, strokeWidth: "1", strokeDasharray: "6 4", opacity: "0.8" }),
                 /* @__PURE__ */ e.jsx("line", { x1: "0", y1: Ie, x2: "100%", y2: Ie, stroke: Ke, strokeWidth: "1", strokeDasharray: "3 3", opacity: "0.7" })
               ] }),
-              !We && q !== null && /* @__PURE__ */ e.jsx(Do, { y: q, text: `TP${be} ${V >= 0 ? "+" : ""}${V.toFixed(2)}`, color: Zn.tp }),
-              !We && Xe !== null && /* @__PURE__ */ e.jsx(Do, { y: Xe, text: `SL${be} ${pt >= 0 ? "+" : ""}${pt.toFixed(2)}`, color: Zn.sl }),
-              /* @__PURE__ */ e.jsx(Do, { y: Ie, text: $e, color: Ke })
+              !We && q !== null && /* @__PURE__ */ e.jsx(Io, { y: q, text: `TP${be} ${V >= 0 ? "+" : ""}${V.toFixed(2)}`, color: Zn.tp }),
+              !We && Xe !== null && /* @__PURE__ */ e.jsx(Io, { y: Xe, text: `SL${be} ${pt >= 0 ? "+" : ""}${pt.toFixed(2)}`, color: Zn.sl }),
+              /* @__PURE__ */ e.jsx(Io, { y: Ie, text: $e, color: Ke })
             ] }, I.id);
           });
         })(),
@@ -19150,14 +18540,14 @@ const Zn = {
           const k = r === "buy" || r === "buy_stop", O = Math.round(n.priceToY(o)), z = k ? Zn.buy : Zn.sell, F = r.includes("stop"), I = `${k ? "BUY" : "SELL"} ${F ? "STOP" : "LMT"}`;
           return /* @__PURE__ */ e.jsxs(e.Fragment, { children: [
             /* @__PURE__ */ e.jsx("g", { clipPath: S !== null ? `url(#${g})` : void 0, children: /* @__PURE__ */ e.jsx("line", { x1: "0", y1: O, x2: "100%", y2: O, stroke: z, strokeWidth: "1.5", strokeDasharray: "6 3" }) }),
-            /* @__PURE__ */ e.jsx(Do, { y: O, text: I, color: z })
+            /* @__PURE__ */ e.jsx(Io, { y: O, text: I, color: z })
           ] });
         })(),
         a && c != null && (() => {
           const k = t.find((F) => F.id === a);
           if (!k) return null;
           k.status === "pending" && k.limitPrice || k.entryPrice;
-          const O = na(k.type, k.entryPrice, c, k.lotSize, s), z = Math.round(n.priceToY(c));
+          const O = ta(k.type, k.entryPrice, c, k.lotSize, s), z = Math.round(n.priceToY(c));
           return /* @__PURE__ */ e.jsxs("g", { style: { pointerEvents: "all" }, children: [
             /* @__PURE__ */ e.jsxs("g", { clipPath: S !== null ? `url(#${g})` : void 0, children: [
               /* @__PURE__ */ e.jsx(
@@ -19176,18 +18566,18 @@ const Zn = {
                 }
               ),
               /* @__PURE__ */ e.jsx("line", { x1: "0", y1: z, x2: "100%", y2: z, stroke: Zn.sl, strokeWidth: "1", strokeDasharray: "6 4", opacity: "0.9", style: { pointerEvents: "none" } }),
-              /* @__PURE__ */ e.jsx(ad, { y: z, color: Zn.sl, onMouseDown: (F) => {
+              /* @__PURE__ */ e.jsx(ld, { y: z, color: Zn.sl, onMouseDown: (F) => {
                 F.preventDefault(), F.stopPropagation(), u?.();
               } })
             ] }),
-            /* @__PURE__ */ e.jsx(Do, { y: z, text: `SL ${O >= 0 ? "+" : ""}${O.toFixed(2)}`, color: Zn.sl })
+            /* @__PURE__ */ e.jsx(Io, { y: z, text: `SL ${O >= 0 ? "+" : ""}${O.toFixed(2)}`, color: Zn.sl })
           ] });
         })(),
         a && d != null && (() => {
           const k = t.find((F) => F.id === a);
           if (!k) return null;
           k.status === "pending" && k.limitPrice || k.entryPrice;
-          const O = na(k.type, k.entryPrice, d, k.lotSize, s), z = Math.round(n.priceToY(d));
+          const O = ta(k.type, k.entryPrice, d, k.lotSize, s), z = Math.round(n.priceToY(d));
           return /* @__PURE__ */ e.jsxs("g", { style: { pointerEvents: "all" }, children: [
             /* @__PURE__ */ e.jsxs("g", { clipPath: S !== null ? `url(#${g})` : void 0, children: [
               /* @__PURE__ */ e.jsx(
@@ -19206,24 +18596,24 @@ const Zn = {
                 }
               ),
               /* @__PURE__ */ e.jsx("line", { x1: "0", y1: z, x2: "100%", y2: z, stroke: Zn.tp, strokeWidth: "1", strokeDasharray: "6 4", opacity: "0.9", style: { pointerEvents: "none" } }),
-              /* @__PURE__ */ e.jsx(ad, { y: z, color: Zn.tp, onMouseDown: (F) => {
+              /* @__PURE__ */ e.jsx(ld, { y: z, color: Zn.tp, onMouseDown: (F) => {
                 F.preventDefault(), F.stopPropagation(), h?.();
               } })
             ] }),
-            /* @__PURE__ */ e.jsx(Do, { y: z, text: `TP ${O >= 0 ? "+" : ""}${O.toFixed(2)}`, color: Zn.tp })
+            /* @__PURE__ */ e.jsx(Io, { y: z, text: `TP ${O >= 0 ? "+" : ""}${O.toFixed(2)}`, color: Zn.tp })
           ] });
         })()
       ] })
     }
   );
 });
-xh.displayName = "TradeOverlay";
-const ob = {
+hh.displayName = "TradeOverlay";
+const Z0 = {
   "1x1": { cols: "grid-cols-1", rows: "", count: 1 },
   "2x1": { cols: "grid-cols-2", rows: "", count: 2 },
   "1x2": { cols: "grid-cols-1", rows: "grid-rows-2", count: 2 },
   "2x2": { cols: "grid-cols-2", rows: "grid-rows-2", count: 4 }
-}, id = ["1H", "15m", "4H", "1D"], lb = ({
+}, ad = ["1H", "15m", "4H", "1D"], J0 = ({
   pair: t,
   layout: n,
   mainTimeframe: s,
@@ -19258,9 +18648,9 @@ const ob = {
   tradeScrollSyncRef: Oe,
   drawings: Ke = []
 }) => {
-  const We = ob[n], [rt, Q] = f.useState(
+  const We = Z0[n], [rt, Q] = f.useState(
     () => Array.from({ length: 4 }, (ce, H) => ({
-      timeframe: H === 0 ? s : id[H]
+      timeframe: H === 0 ? s : ad[H]
     }))
   ), [Xe, q] = f.useState(null), pt = f.useRef(null), [V, $e] = f.useState({});
   f.useEffect(() => {
@@ -19278,12 +18668,12 @@ const ob = {
   }, [y, v]), Me = f.useMemo(
     () => Array.from({ length: We.count }, (ce, H) => ({
       id: H,
-      timeframe: rt[H]?.timeframe || id[H]
+      timeframe: rt[H]?.timeframe || ad[H]
     })),
     [We.count, rt]
   );
   return n === "1x1" ? /* @__PURE__ */ e.jsx(
-    rd,
+    nd,
     {
       pair: t,
       timeframe: s,
@@ -19334,7 +18724,7 @@ const ob = {
               onMouseLeave: Ie ? () => be?.() : void 0,
               children: [
                 /* @__PURE__ */ e.jsx(
-                  rd,
+                  nd,
                   {
                     pair: t,
                     timeframe: ce.timeframe,
@@ -19356,7 +18746,7 @@ const ob = {
                   }
                 ),
                 Ee && /* @__PURE__ */ e.jsx(
-                  xh,
+                  hh,
                   {
                     trades: S,
                     converter: Mt,
@@ -19380,17 +18770,17 @@ const ob = {
       ce.id
     );
   }) });
-}, hi = 768;
-function ab() {
+}, di = 768;
+function Q0() {
   const [t, n] = f.useState(void 0);
   return f.useEffect(() => {
-    const s = window.matchMedia(`(max-width: ${hi - 1}px)`), o = () => {
-      n(window.innerWidth < hi);
+    const s = window.matchMedia(`(max-width: ${di - 1}px)`), o = () => {
+      n(window.innerWidth < di);
     };
-    return s.addEventListener("change", o), n(window.innerWidth < hi), () => s.removeEventListener("change", o);
+    return s.addEventListener("change", o), n(window.innerWidth < di), () => s.removeEventListener("change", o);
   }, []), !!t;
 }
-const ib = Pd, cb = Md, gh = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
+const eb = Pd, tb = Md, fh = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
   ba,
   {
     className: He(
@@ -19401,8 +18791,8 @@ const ib = Pd, cb = Md, gh = f.forwardRef(({ className: t, ...n }, s) => /* @__P
     ref: s
   }
 ));
-gh.displayName = ba.displayName;
-const db = vl(
+fh.displayName = ba.displayName;
+const sb = vl(
   "fixed z-50 gap-4 bg-background p-6 shadow-lg transition ease-in-out overscroll-contain overflow-y-auto data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
   {
     variants: {
@@ -19417,10 +18807,10 @@ const db = vl(
       side: "right"
     }
   }
-), bh = f.forwardRef(
-  ({ side: t = "right", className: n, children: s, ...o }, r) => /* @__PURE__ */ e.jsxs(cb, { children: [
-    /* @__PURE__ */ e.jsx(gh, {}),
-    /* @__PURE__ */ e.jsxs(ya, { ref: r, className: He(db({ side: t }), n), ...o, children: [
+), mh = f.forwardRef(
+  ({ side: t = "right", className: n, children: s, ...o }, r) => /* @__PURE__ */ e.jsxs(tb, { children: [
+    /* @__PURE__ */ e.jsx(fh, {}),
+    /* @__PURE__ */ e.jsxs(ya, { ref: r, className: He(sb({ side: t }), n), ...o, children: [
       s,
       /* @__PURE__ */ e.jsxs(Td, { className: "absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-secondary hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none", children: [
         /* @__PURE__ */ e.jsx(tr, { className: "h-4 w-4" }),
@@ -19429,32 +18819,32 @@ const db = vl(
     ] })
   ] })
 );
-bh.displayName = ya.displayName;
-const ub = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(va, { ref: s, className: He("text-lg font-semibold text-foreground", t), ...n }));
-ub.displayName = va.displayName;
-const hb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(Na, { ref: s, className: He("text-sm text-muted-foreground", t), ...n }));
-hb.displayName = Na.displayName;
+mh.displayName = ya.displayName;
+const nb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(va, { ref: s, className: He("text-lg font-semibold text-foreground", t), ...n }));
+nb.displayName = va.displayName;
+const rb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(Na, { ref: s, className: He("text-sm text-muted-foreground", t), ...n }));
+rb.displayName = Na.displayName;
 function ro({ className: t, ...n }) {
   return /* @__PURE__ */ e.jsx("div", { className: He("animate-pulse rounded-md bg-muted", t), ...n });
 }
-const fb = "sidebar:state", mb = 60 * 60 * 24 * 7, pb = "16rem", xb = "18rem", gb = "3rem", bb = "b", yh = f.createContext(null);
+const ob = "sidebar:state", lb = 60 * 60 * 24 * 7, ab = "16rem", ib = "18rem", cb = "3rem", db = "b", ph = f.createContext(null);
 function Aa() {
-  const t = f.useContext(yh);
+  const t = f.useContext(ph);
   if (!t)
     throw new Error("useSidebar must be used within a SidebarProvider.");
   return t;
 }
-const vh = f.forwardRef(({ defaultOpen: t = !0, open: n, onOpenChange: s, className: o, style: r, children: a, ...c }, d) => {
-  const l = ab(), [u, h] = f.useState(!1), [m, v] = f.useState(t), N = n ?? m, y = f.useCallback(
+const xh = f.forwardRef(({ defaultOpen: t = !0, open: n, onOpenChange: s, className: o, style: r, children: a, ...c }, d) => {
+  const l = Q0(), [u, h] = f.useState(!1), [m, v] = f.useState(t), N = n ?? m, y = f.useCallback(
     (S) => {
       const Z = typeof S == "function" ? S(N) : S;
-      s ? s(Z) : v(Z), document.cookie = `${fb}=${Z}; path=/; max-age=${mb}`;
+      s ? s(Z) : v(Z), document.cookie = `${ob}=${Z}; path=/; max-age=${lb}`;
     },
     [s, N]
   ), g = f.useCallback(() => l ? h((S) => !S) : y((S) => !S), [l, y, h]);
   f.useEffect(() => {
     const S = (Z) => {
-      Z.key === bb && (Z.metaKey || Z.ctrlKey) && (Z.preventDefault(), g());
+      Z.key === db && (Z.metaKey || Z.ctrlKey) && (Z.preventDefault(), g());
     };
     return window.addEventListener("keydown", S), () => window.removeEventListener("keydown", S);
   }, [g]);
@@ -19470,12 +18860,12 @@ const vh = f.forwardRef(({ defaultOpen: t = !0, open: n, onOpenChange: s, classN
     }),
     [L, N, y, l, u, h, g]
   );
-  return /* @__PURE__ */ e.jsx(yh.Provider, { value: B, children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 0, children: /* @__PURE__ */ e.jsx(
+  return /* @__PURE__ */ e.jsx(ph.Provider, { value: B, children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 0, children: /* @__PURE__ */ e.jsx(
     "div",
     {
       style: {
-        "--sidebar-width": pb,
-        "--sidebar-width-icon": gb,
+        "--sidebar-width": ab,
+        "--sidebar-width-icon": cb,
         ...r
       },
       className: He("group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar", o),
@@ -19485,8 +18875,8 @@ const vh = f.forwardRef(({ defaultOpen: t = !0, open: n, onOpenChange: s, classN
     }
   ) }) });
 });
-vh.displayName = "SidebarProvider";
-const yb = f.forwardRef(({ side: t = "left", variant: n = "sidebar", collapsible: s = "offcanvas", className: o, children: r, ...a }, c) => {
+xh.displayName = "SidebarProvider";
+const ub = f.forwardRef(({ side: t = "left", variant: n = "sidebar", collapsible: s = "offcanvas", className: o, children: r, ...a }, c) => {
   const { isMobile: d, state: l, openMobile: u, setOpenMobile: h } = Aa();
   return s === "none" ? /* @__PURE__ */ e.jsx(
     "div",
@@ -19496,14 +18886,14 @@ const yb = f.forwardRef(({ side: t = "left", variant: n = "sidebar", collapsible
       ...a,
       children: r
     }
-  ) : d ? /* @__PURE__ */ e.jsx(ib, { open: u, onOpenChange: h, ...a, children: /* @__PURE__ */ e.jsx(
-    bh,
+  ) : d ? /* @__PURE__ */ e.jsx(eb, { open: u, onOpenChange: h, ...a, children: /* @__PURE__ */ e.jsx(
+    mh,
     {
       "data-sidebar": "sidebar",
       "data-mobile": "true",
       className: "w-[--sidebar-width] bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden",
       style: {
-        "--sidebar-width": xb
+        "--sidebar-width": ib
       },
       side: t,
       children: /* @__PURE__ */ e.jsx("div", { className: "flex h-full w-full flex-col", children: r })
@@ -19554,8 +18944,8 @@ const yb = f.forwardRef(({ side: t = "left", variant: n = "sidebar", collapsible
     }
   );
 });
-yb.displayName = "Sidebar";
-const vb = f.forwardRef(
+ub.displayName = "Sidebar";
+const hb = f.forwardRef(
   ({ className: t, onClick: n, ...s }, o) => {
     const { toggleSidebar: r } = Aa();
     return /* @__PURE__ */ e.jsxs(
@@ -19571,15 +18961,15 @@ const vb = f.forwardRef(
         },
         ...s,
         children: [
-          /* @__PURE__ */ e.jsx(wm, {}),
+          /* @__PURE__ */ e.jsx(mm, {}),
           /* @__PURE__ */ e.jsx("span", { className: "sr-only", children: "Toggle Sidebar" })
         ]
       }
     );
   }
 );
-vb.displayName = "SidebarTrigger";
-const Nb = f.forwardRef(
+hb.displayName = "SidebarTrigger";
+const fb = f.forwardRef(
   ({ className: t, ...n }, s) => {
     const { toggleSidebar: o } = Aa();
     return /* @__PURE__ */ e.jsx(
@@ -19605,8 +18995,8 @@ const Nb = f.forwardRef(
     );
   }
 );
-Nb.displayName = "SidebarRail";
-const kb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
+fb.displayName = "SidebarRail";
+const mb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
   "main",
   {
     ref: s,
@@ -19618,8 +19008,8 @@ const kb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     ...n
   }
 ));
-kb.displayName = "SidebarInset";
-const wb = f.forwardRef(
+mb.displayName = "SidebarInset";
+const pb = f.forwardRef(
   ({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     jn,
     {
@@ -19633,12 +19023,12 @@ const wb = f.forwardRef(
     }
   )
 );
-wb.displayName = "SidebarInput";
-const Sb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("div", { ref: s, "data-sidebar": "header", className: He("flex flex-col gap-2 p-2", t), ...n }));
-Sb.displayName = "SidebarHeader";
-const Cb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("div", { ref: s, "data-sidebar": "footer", className: He("flex flex-col gap-2 p-2", t), ...n }));
-Cb.displayName = "SidebarFooter";
-const jb = f.forwardRef(
+pb.displayName = "SidebarInput";
+const xb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("div", { ref: s, "data-sidebar": "header", className: He("flex flex-col gap-2 p-2", t), ...n }));
+xb.displayName = "SidebarHeader";
+const gb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("div", { ref: s, "data-sidebar": "footer", className: He("flex flex-col gap-2 p-2", t), ...n }));
+gb.displayName = "SidebarFooter";
+const bb = f.forwardRef(
   ({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     Pa,
     {
@@ -19649,8 +19039,8 @@ const jb = f.forwardRef(
     }
   )
 );
-jb.displayName = "SidebarSeparator";
-const Mb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
+bb.displayName = "SidebarSeparator";
+const yb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
   "div",
   {
     ref: s,
@@ -19662,8 +19052,8 @@ const Mb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     ...n
   }
 ));
-Mb.displayName = "SidebarContent";
-const Tb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
+yb.displayName = "SidebarContent";
+const vb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
   "div",
   {
     ref: s,
@@ -19672,8 +19062,8 @@ const Tb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     ...n
   }
 ));
-Tb.displayName = "SidebarGroup";
-const Pb = f.forwardRef(
+vb.displayName = "SidebarGroup";
+const Nb = f.forwardRef(
   ({ className: t, asChild: n = !1, ...s }, o) => {
     const r = n ? Vo : "div";
     return /* @__PURE__ */ e.jsx(
@@ -19691,8 +19081,8 @@ const Pb = f.forwardRef(
     );
   }
 );
-Pb.displayName = "SidebarGroupLabel";
-const Lb = f.forwardRef(
+Nb.displayName = "SidebarGroupLabel";
+const kb = f.forwardRef(
   ({ className: t, asChild: n = !1, ...s }, o) => {
     const r = n ? Vo : "button";
     return /* @__PURE__ */ e.jsx(
@@ -19712,16 +19102,16 @@ const Lb = f.forwardRef(
     );
   }
 );
-Lb.displayName = "SidebarGroupAction";
-const Ab = f.forwardRef(
+kb.displayName = "SidebarGroupAction";
+const wb = f.forwardRef(
   ({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("div", { ref: s, "data-sidebar": "group-content", className: He("w-full text-sm", t), ...n })
 );
-Ab.displayName = "SidebarGroupContent";
-const Rb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("ul", { ref: s, "data-sidebar": "menu", className: He("flex w-full min-w-0 flex-col gap-1", t), ...n }));
-Rb.displayName = "SidebarMenu";
-const Eb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("li", { ref: s, "data-sidebar": "menu-item", className: He("group/menu-item relative", t), ...n }));
-Eb.displayName = "SidebarMenuItem";
-const Ib = vl(
+wb.displayName = "SidebarGroupContent";
+const Sb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("ul", { ref: s, "data-sidebar": "menu", className: He("flex w-full min-w-0 flex-col gap-1", t), ...n }));
+Sb.displayName = "SidebarMenu";
+const Cb = f.forwardRef(({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx("li", { ref: s, "data-sidebar": "menu-item", className: He("group/menu-item relative", t), ...n }));
+Cb.displayName = "SidebarMenuItem";
+const jb = vl(
   "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50 group-has-[[data-sidebar=menu-action]]/menu-item:pr-8 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-accent data-[active=true]:font-medium data-[active=true]:text-sidebar-accent-foreground data-[state=open]:hover:bg-sidebar-accent data-[state=open]:hover:text-sidebar-accent-foreground group-data-[collapsible=icon]:!size-8 group-data-[collapsible=icon]:!p-2 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
@@ -19740,7 +19130,7 @@ const Ib = vl(
       size: "default"
     }
   }
-), Db = f.forwardRef(({ asChild: t = !1, isActive: n = !1, variant: s = "default", size: o = "default", tooltip: r, className: a, ...c }, d) => {
+), Mb = f.forwardRef(({ asChild: t = !1, isActive: n = !1, variant: s = "default", size: o = "default", tooltip: r, className: a, ...c }, d) => {
   const l = t ? Vo : "button", { isMobile: u, state: h } = Aa(), m = /* @__PURE__ */ e.jsx(
     l,
     {
@@ -19748,7 +19138,7 @@ const Ib = vl(
       "data-sidebar": "menu-button",
       "data-size": o,
       "data-active": n,
-      className: He(Ib({ variant: s, size: o }), a),
+      className: He(jb({ variant: s, size: o }), a),
       ...c
     }
   );
@@ -19759,8 +19149,8 @@ const Ib = vl(
     /* @__PURE__ */ e.jsx(cn, { side: "right", align: "center", hidden: h !== "collapsed" || u, ...r })
   ] })) : m;
 });
-Db.displayName = "SidebarMenuButton";
-const Bb = f.forwardRef(({ className: t, asChild: n = !1, showOnHover: s = !1, ...o }, r) => {
+Mb.displayName = "SidebarMenuButton";
+const Tb = f.forwardRef(({ className: t, asChild: n = !1, showOnHover: s = !1, ...o }, r) => {
   const a = n ? Vo : "button";
   return /* @__PURE__ */ e.jsx(
     a,
@@ -19782,8 +19172,8 @@ const Bb = f.forwardRef(({ className: t, asChild: n = !1, showOnHover: s = !1, .
     }
   );
 });
-Bb.displayName = "SidebarMenuAction";
-const Ob = f.forwardRef(
+Tb.displayName = "SidebarMenuAction";
+const Pb = f.forwardRef(
   ({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     "div",
     {
@@ -19802,8 +19192,8 @@ const Ob = f.forwardRef(
     }
   )
 );
-Ob.displayName = "SidebarMenuBadge";
-const Fb = f.forwardRef(({ className: t, showIcon: n = !1, ...s }, o) => {
+Pb.displayName = "SidebarMenuBadge";
+const Lb = f.forwardRef(({ className: t, showIcon: n = !1, ...s }, o) => {
   const r = f.useMemo(() => `${Math.floor(Math.random() * 40) + 50}%`, []);
   return /* @__PURE__ */ e.jsxs(
     "div",
@@ -19828,8 +19218,8 @@ const Fb = f.forwardRef(({ className: t, showIcon: n = !1, ...s }, o) => {
     }
   );
 });
-Fb.displayName = "SidebarMenuSkeleton";
-const Wb = f.forwardRef(
+Lb.displayName = "SidebarMenuSkeleton";
+const Ab = f.forwardRef(
   ({ className: t, ...n }, s) => /* @__PURE__ */ e.jsx(
     "ul",
     {
@@ -19844,10 +19234,10 @@ const Wb = f.forwardRef(
     }
   )
 );
-Wb.displayName = "SidebarMenuSub";
-const $b = f.forwardRef(({ ...t }, n) => /* @__PURE__ */ e.jsx("li", { ref: n, ...t }));
-$b.displayName = "SidebarMenuSubItem";
-const _b = f.forwardRef(({ asChild: t = !1, size: n = "md", isActive: s, className: o, ...r }, a) => {
+Ab.displayName = "SidebarMenuSub";
+const Rb = f.forwardRef(({ ...t }, n) => /* @__PURE__ */ e.jsx("li", { ref: n, ...t }));
+Rb.displayName = "SidebarMenuSubItem";
+const Eb = f.forwardRef(({ asChild: t = !1, size: n = "md", isActive: s, className: o, ...r }, a) => {
   const c = t ? Vo : "a";
   return /* @__PURE__ */ e.jsx(
     c,
@@ -19868,11 +19258,209 @@ const _b = f.forwardRef(({ asChild: t = !1, size: n = "md", isActive: s, classNa
     }
   );
 });
-_b.displayName = "SidebarMenuSubButton";
-function Ub(t) {
+Eb.displayName = "SidebarMenuSubButton";
+const Ib = 1, Db = 3e3;
+let ui = 0;
+function Bb() {
+  return ui = (ui + 1) % Number.MAX_SAFE_INTEGER, ui.toString();
+}
+const hi = /* @__PURE__ */ new Map(), id = (t) => {
+  if (hi.has(t))
+    return;
+  const n = setTimeout(() => {
+    hi.delete(t), fl({
+      type: "REMOVE_TOAST",
+      toastId: t
+    });
+  }, Db);
+  hi.set(t, n);
+}, Ob = (t, n) => {
+  switch (n.type) {
+    case "ADD_TOAST":
+      return {
+        ...t,
+        toasts: [n.toast, ...t.toasts].slice(0, Ib)
+      };
+    case "UPDATE_TOAST":
+      return {
+        ...t,
+        toasts: t.toasts.map((s) => s.id === n.toast.id ? { ...s, ...n.toast } : s)
+      };
+    case "DISMISS_TOAST": {
+      const { toastId: s } = n;
+      return s ? id(s) : t.toasts.forEach((o) => {
+        id(o.id);
+      }), {
+        ...t,
+        toasts: t.toasts.map(
+          (o) => o.id === s || s === void 0 ? {
+            ...o,
+            open: !1
+          } : o
+        )
+      };
+    }
+    case "REMOVE_TOAST":
+      return n.toastId === void 0 ? {
+        ...t,
+        toasts: []
+      } : {
+        ...t,
+        toasts: t.toasts.filter((s) => s.id !== n.toastId)
+      };
+  }
+}, sa = [];
+let na = { toasts: [] };
+function fl(t) {
+  na = Ob(na, t), sa.forEach((n) => {
+    n(na);
+  });
+}
+function Fb({ ...t }) {
+  const n = Bb(), s = (r) => fl({
+    type: "UPDATE_TOAST",
+    toast: { ...r, id: n }
+  }), o = () => fl({ type: "DISMISS_TOAST", toastId: n });
+  return fl({
+    type: "ADD_TOAST",
+    toast: {
+      ...t,
+      id: n,
+      open: !0,
+      onOpenChange: (r) => {
+        r || o();
+      }
+    }
+  }), {
+    id: n,
+    dismiss: o,
+    update: s
+  };
+}
+function Wb() {
+  const [t, n] = f.useState(na);
+  return f.useEffect(() => (sa.push(n), () => {
+    const s = sa.indexOf(n);
+    s > -1 && sa.splice(s, 1);
+  }), [t]), {
+    ...t,
+    toast: Fb,
+    dismiss: (s) => fl({ type: "DISMISS_TOAST", toastId: s })
+  };
+}
+function Gi({ open: t, onOpenChange: n, title: s, message: o }) {
+  const { signInWithGoogle: r } = gr(), { toast: a } = Wb(), c = vo(), d = vd(), [l, u] = f.useState(!1), h = encodeURIComponent(d.pathname + d.search), m = async () => {
+    try {
+      u(!0), await r();
+    } catch (v) {
+      a({
+        title: "Sign in failed",
+        description: v.message || "Failed to sign in with Google",
+        variant: "destructive"
+      });
+    } finally {
+      u(!1);
+    }
+  };
+  return /* @__PURE__ */ e.jsx(ao, { open: t, onOpenChange: n, children: /* @__PURE__ */ e.jsxs(zr, { className: "sm:max-w-md border-border bg-card dark:bg-black shadow-2xl", children: [
+    /* @__PURE__ */ e.jsxs(zo, { children: [
+      /* @__PURE__ */ e.jsx("div", { className: "flex flex-col items-center gap-2 mb-3", children: /* @__PURE__ */ e.jsxs("svg", { className: "w-14 h-14", viewBox: "0 0 64 64", fill: "none", xmlns: "http://www.w3.org/2000/svg", children: [
+        /* @__PURE__ */ e.jsx("rect", { x: "12", y: "28", width: "40", height: "30", rx: "4", className: "fill-neutral-200 dark:fill-[#222]", stroke: "currentColor", strokeOpacity: "0.2", strokeWidth: "2" }),
+        /* @__PURE__ */ e.jsx("path", { d: "M20 28V20C20 13.4 25.4 8 32 8C38.6 8 44 13.4 44 20V22", className: "stroke-neutral-400 dark:stroke-[#666]", strokeWidth: "3", strokeLinecap: "round" }),
+        /* @__PURE__ */ e.jsx("path", { d: "M32 38C29.8 36 26 38.5 26 41.5C26 44 28.5 46 32 49C35.5 46 38 44 38 41.5C38 38.5 34.2 36 32 38Z", fill: "#d4a030" })
+      ] }) }),
+      /* @__PURE__ */ e.jsx(ko, { className: "text-center text-2xl font-display text-foreground", children: s || "Welcome to London Strategic Edge" })
+    ] }),
+    /* @__PURE__ */ e.jsxs("div", { className: "space-y-4 py-3", children: [
+      /* @__PURE__ */ e.jsx("p", { className: "text-sm text-muted-foreground text-center leading-relaxed", children: o || "Your layouts, drawings and settings are saved locally on this machine and survive reinstalls — no account needed." }),
+      /* @__PURE__ */ e.jsxs(
+        "button",
+        {
+          onClick: m,
+          disabled: l,
+          className: "w-full h-12 flex items-center justify-center gap-3 rounded-lg text-xl font-semibold disabled:opacity-60 disabled:cursor-not-allowed",
+          style: {
+            background: "#ffffff",
+            color: "#3c4043",
+            border: "1px solid #dadce0",
+            boxShadow: "0 1px 3px 0 rgba(60,64,67,0.08), 0 1px 2px -1px rgba(60,64,67,0.06)",
+            transition: "all 0.2s ease",
+            fontFamily: "'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+            letterSpacing: "0.01em"
+          },
+          onMouseEnter: (v) => {
+            v.currentTarget.style.boxShadow = "0 4px 12px 0 rgba(60,64,67,0.15), 0 2px 4px -1px rgba(60,64,67,0.10)", v.currentTarget.style.transform = "translateY(-1px)";
+          },
+          onMouseLeave: (v) => {
+            v.currentTarget.style.boxShadow = "0 1px 3px 0 rgba(60,64,67,0.08), 0 1px 2px -1px rgba(60,64,67,0.06)", v.currentTarget.style.transform = "translateY(0)";
+          },
+          children: [
+            /* @__PURE__ */ e.jsxs("svg", { className: "w-[18px] h-[18px]", viewBox: "0 0 24 24", children: [
+              /* @__PURE__ */ e.jsx(
+                "path",
+                {
+                  fill: "#4285F4",
+                  d: "M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                }
+              ),
+              /* @__PURE__ */ e.jsx(
+                "path",
+                {
+                  fill: "#34A853",
+                  d: "M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                }
+              ),
+              /* @__PURE__ */ e.jsx(
+                "path",
+                {
+                  fill: "#FBBC05",
+                  d: "M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                }
+              ),
+              /* @__PURE__ */ e.jsx(
+                "path",
+                {
+                  fill: "#EA4335",
+                  d: "M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                }
+              )
+            ] }),
+            l ? "Signing in..." : "Continue with Google"
+          ]
+        }
+      ),
+      /* @__PURE__ */ e.jsx(
+        tt,
+        {
+          onClick: () => {
+            n(!1), c(`/auth?mode=signup&returnTo=${h}`);
+          },
+          className: "w-full h-12 text-base font-semibold bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200",
+          size: "lg",
+          children: "Create an Account"
+        }
+      ),
+      /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground text-center px-8", children: "By continuing, you agree to our Terms of Service and Privacy Policy" }),
+      /* @__PURE__ */ e.jsxs("p", { className: "text-xs text-center", children: [
+        /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground", children: "Already have an account? " }),
+        /* @__PURE__ */ e.jsx(
+          "button",
+          {
+            onClick: () => {
+              n(!1), c(`/auth?mode=signin&returnTo=${h}`);
+            },
+            className: "font-semibold text-foreground hover:underline",
+            children: "Sign in"
+          }
+        )
+      ] })
+    ] })
+  ] }) });
+}
+function $b(t) {
   return null;
 }
-const Vb = [
+const _b = [
   // Trend (11 + 16 new = 27)
   { key: "movingAverages", name: "Moving Averages", shortName: "MA", category: "trend", description: "SMA, EMA, SMMA overlays" },
   { key: "vwap", name: "VWAP", shortName: "VWAP", category: "trend", description: "Volume Weighted Average Price" },
@@ -19991,13 +19579,13 @@ const Vb = [
   { key: "gator", name: "Gator Oscillator", shortName: "Gator", category: "statistics", description: "Alligator jaw histogram" }
 ], cd = {
   favorites: { label: "Favorites", icon: lo, color: "text-yellow-500", bgColor: "bg-yellow-500" },
-  my_scripts: { label: "My Scripts", icon: jm, color: "text-indigo-500", bgColor: "bg-indigo-500" },
-  trend: { label: "Trend", icon: $i, color: "text-emerald-500", bgColor: "bg-emerald-500" },
-  oscillators: { label: "Oscillators", icon: Wi, color: "text-blue-500", bgColor: "bg-blue-500" },
-  volatility: { label: "Volatility", icon: Cm, color: "text-purple-500", bgColor: "bg-purple-500" },
-  volume: { label: "Volume", icon: Sm, color: "text-orange-500", bgColor: "bg-orange-500" },
+  my_scripts: { label: "My Scripts", icon: gm, color: "text-indigo-500", bgColor: "bg-indigo-500" },
+  trend: { label: "Trend", icon: Oi, color: "text-emerald-500", bgColor: "bg-emerald-500" },
+  oscillators: { label: "Oscillators", icon: Bi, color: "text-blue-500", bgColor: "bg-blue-500" },
+  volatility: { label: "Volatility", icon: xm, color: "text-purple-500", bgColor: "bg-purple-500" },
+  volume: { label: "Volume", icon: pm, color: "text-orange-500", bgColor: "bg-orange-500" },
   support: { label: "Support/R...", icon: vi, color: "text-cyan-400", bgColor: "bg-cyan-400" },
-  statistics: { label: "Statistics", icon: ou, color: "text-rose-400", bgColor: "bg-rose-400" }
+  statistics: { label: "Statistics", icon: eu, color: "text-rose-400", bgColor: "bg-rose-400" }
 };
 function Nt({ label: t, value: n, onChange: s, min: o, max: r, step: a = 1 }) {
   const [c, d] = la.useState(String(n)), l = la.useRef(n);
@@ -20043,7 +19631,7 @@ function Nt({ label: t, value: n, onChange: s, min: o, max: r, step: a = 1 }) {
     )
   ] });
 }
-function Hb({
+function Ub({
   open: t,
   onOpenChange: n,
   config: s,
@@ -20144,7 +19732,7 @@ function Hb({
     shortName: Xe.name.substring(0, 4),
     category: "my_scripts",
     description: "Custom Brue Script"
-  })), ...Vb], [k]), Ie = f.useMemo(() => {
+  })), ..._b], [k]), Ie = f.useMemo(() => {
     let Q = ze;
     if (c) {
       const Xe = c.toLowerCase();
@@ -20420,7 +20008,7 @@ function Hb({
         ) })
       ] }),
       /* @__PURE__ */ e.jsx("div", { className: "px-3 py-2 sm:px-5 sm:py-3 border-b border-gray-200", children: /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ e.jsx(da, { className: "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" }),
+        /* @__PURE__ */ e.jsx(ca, { className: "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" }),
         /* @__PURE__ */ e.jsx(
           jn,
           {
@@ -20474,7 +20062,7 @@ function Hb({
             children: [
               /* @__PURE__ */ e.jsx("div", { className: "hidden sm:block px-5 py-2 border-b border-gray-100 sticky top-0 bg-white z-10", children: /* @__PURE__ */ e.jsx("span", { className: "text-xs font-semibold text-gray-400 uppercase tracking-wider", children: "Script Name" }) }),
               /* @__PURE__ */ e.jsx("div", { className: "px-1.5 sm:px-3 pb-4 sm:pb-6", children: Ie.length === 0 ? /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col items-center justify-center h-[300px] text-gray-400", children: [
-                /* @__PURE__ */ e.jsx(da, { className: "h-10 w-10 mb-3 opacity-30" }),
+                /* @__PURE__ */ e.jsx(ca, { className: "h-10 w-10 mb-3 opacity-30" }),
                 /* @__PURE__ */ e.jsx("p", { className: "text-sm", children: "No indicators found" }),
                 c && /* @__PURE__ */ e.jsx("p", { className: "text-xs mt-1 text-gray-400", children: "Try a different search term" })
               ] }) : Ie.map((Q) => {
@@ -20580,7 +20168,7 @@ function Hb({
       ) })
     ] }) }),
     /* @__PURE__ */ e.jsx(
-      Yi,
+      Gi,
       {
         open: L,
         onOpenChange: B,
@@ -20588,7 +20176,7 @@ function Hb({
       }
     ),
     /* @__PURE__ */ e.jsx(
-      Ub,
+      $b,
       {
         open: S,
         onOpenChange: Z,
@@ -20600,7 +20188,7 @@ function Hb({
     )
   ] });
 }
-const Nh = f.memo(({
+const gh = f.memo(({
   converter: t,
   trades: n,
   activeSlTpTradeId: s,
@@ -20762,12 +20350,12 @@ const Nh = f.memo(({
     })
   ] });
 });
-Nh.displayName = "PlacedOrderLines";
-function zb(t) {
+gh.displayName = "PlacedOrderLines";
+function Vb(t) {
   const n = t?.includes("JPY") ?? !1, s = !!(t?.includes("BTC") || t?.includes("ETH") || t?.includes("XRP")), o = !!(t?.includes("US30") || t?.includes("DJ30") || t?.includes("SPX") || t?.includes("NAS") || t?.includes("DAX") || t?.includes("FTSE") || t?.includes("AU200") || t?.includes("EU50") || t?.includes("JP225") || t?.includes("UK100") || t?.includes("US500") || t?.includes("US100")), r = t?.includes("XAU") ?? !1, a = t?.includes("XAG") ?? !1;
   return { pipValue: o || s ? 1 : r ? 0.1 : a || n ? 0.01 : 1e-4 };
 }
-const kh = f.memo(({
+const bh = f.memo(({
   converter: t,
   slDragPrice: n,
   tpDragPrice: s,
@@ -20785,7 +20373,7 @@ const kh = f.memo(({
   }, [d]);
   const u = r.find((g) => g.id === o);
   if (!u) return null;
-  const h = u.status === "pending" && u.limitPrice || u.entryPrice, { pipValue: m } = zb(a), v = t.priceToY(h), N = u.type === "buy", y = N ? "#2196F3" : "#ef5350";
+  const h = u.status === "pending" && u.limitPrice || u.entryPrice, { pipValue: m } = Vb(a), v = t.priceToY(h), N = u.type === "buy", y = N ? "#2196F3" : "#ef5350";
   return /* @__PURE__ */ e.jsxs(e.Fragment, { children: [
     n !== null && (() => {
       const g = Math.round(t.priceToY(n)), L = Math.round(t.priceToY(h)), B = Math.round(Math.abs(n - h) / m);
@@ -20904,21 +20492,21 @@ const kh = f.memo(({
     )
   ] });
 });
-kh.displayName = "SlTpDragLines";
-const Xb = [
+bh.displayName = "SlTpDragLines";
+const Hb = [
   { id: "solid", label: "Solid", dashArray: void 0 },
   { id: "dashed", label: "Dashed", dashArray: "8,4" },
   { id: "dotted", label: "Dotted", dashArray: "2,4" }
-], fi = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1], wh = "drawing-toolbar-position", Kb = { x: 100, y: 60 }, Yb = 360, Gb = 44, Bo = 8, ra = (t) => {
+], fi = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1], yh = "drawing-toolbar-position", zb = { x: 100, y: 60 }, Xb = 360, Kb = 44, Do = 8, ra = (t) => {
   if (typeof window > "u") return t;
-  const n = Math.max(Bo, window.innerWidth - Yb - Bo), s = Math.max(Bo, window.innerHeight - Gb - Bo);
+  const n = Math.max(Do, window.innerWidth - Xb - Do), s = Math.max(Do, window.innerHeight - Kb - Do);
   return {
-    x: Math.min(Math.max(Bo, t.x), n),
-    y: Math.min(Math.max(Bo, t.y), s)
+    x: Math.min(Math.max(Do, t.x), n),
+    y: Math.min(Math.max(Do, t.y), s)
   };
-}, qb = () => {
+}, Yb = () => {
   try {
-    const t = localStorage.getItem(wh);
+    const t = localStorage.getItem(yh);
     if (t) {
       const n = JSON.parse(t);
       if (n && typeof n.x == "number" && typeof n.y == "number")
@@ -20926,15 +20514,15 @@ const Xb = [
     }
   } catch {
   }
-  return Kb;
-}, Zb = ({
+  return zb;
+}, Gb = ({
   drawing: t,
   onUpdateDrawing: n,
   onDeleteDrawing: s,
   onClose: o,
   anchorPosition: r
 }) => {
-  const [a, c] = f.useState(t.strokeWidth || 2), [d, l] = f.useState(t.opacity ?? 100), [u, h] = f.useState(t.fillOpacity ?? 100), [m, v] = f.useState(() => r ? ra({ x: r.x + 16, y: r.y + 16 }) : qb());
+  const [a, c] = f.useState(t.strokeWidth || 2), [d, l] = f.useState(t.opacity ?? 100), [u, h] = f.useState(t.fillOpacity ?? 100), [m, v] = f.useState(() => r ? ra({ x: r.x + 16, y: r.y + 16 }) : Yb());
   f.useEffect(() => {
     r && v(ra({ x: r.x + 16, y: r.y + 16 }));
   }, [t.id]);
@@ -20955,7 +20543,7 @@ const Xb = [
   };
   f.useEffect(() => {
     try {
-      localStorage.setItem(wh, JSON.stringify(m));
+      localStorage.setItem(yh, JSON.stringify(m));
     } catch {
     }
   }, [m]);
@@ -21015,7 +20603,7 @@ const Xb = [
             onMouseDown: $e,
             onTouchStart: $e,
             title: "Drag to move",
-            children: /* @__PURE__ */ e.jsx(Mm, { className: "h-4 w-4 text-muted-foreground" })
+            children: /* @__PURE__ */ e.jsx(bm, { className: "h-4 w-4 text-muted-foreground" })
           }
         ),
         /* @__PURE__ */ e.jsx("div", { className: "w-px h-5 bg-border/40 mx-0.5" }),
@@ -21106,7 +20694,7 @@ const Xb = [
               ] })
             }
           ) }),
-          /* @__PURE__ */ e.jsx(nn, { className: "w-auto p-2", side: "top", align: "center", children: /* @__PURE__ */ e.jsx("div", { className: "flex flex-col gap-1", children: Xb.map((ce) => /* @__PURE__ */ e.jsxs(
+          /* @__PURE__ */ e.jsx(nn, { className: "w-auto p-2", side: "top", align: "center", children: /* @__PURE__ */ e.jsx("div", { className: "flex flex-col gap-1", children: Hb.map((ce) => /* @__PURE__ */ e.jsxs(
             tt,
             {
               variant: "ghost",
@@ -21141,7 +20729,7 @@ const Xb = [
               size: "sm",
               className: "h-7 w-7 p-0 hover:bg-muted",
               title: "Fill",
-              children: U ? /* @__PURE__ */ e.jsx(Sa, { className: "h-4 w-4", style: { fill: U, color: F } }) : /* @__PURE__ */ e.jsx(Tm, { className: "h-4 w-4" })
+              children: U ? /* @__PURE__ */ e.jsx(Sa, { className: "h-4 w-4", style: { fill: U, color: F } }) : /* @__PURE__ */ e.jsx(ym, { className: "h-4 w-4" })
             }
           ) }),
           /* @__PURE__ */ e.jsx(nn, { className: "w-auto p-0 border-0 bg-transparent shadow-xl", side: "bottom", align: "center", children: /* @__PURE__ */ e.jsxs("div", { className: "p-2 rounded-lg bg-card border border-border", children: [
@@ -21250,7 +20838,7 @@ const Xb = [
               className: "h-7 px-2 gap-1 hover:bg-muted",
               title: "Edit Fibonacci Levels",
               children: [
-                /* @__PURE__ */ e.jsx(Wi, { className: "h-3.5 w-3.5" }),
+                /* @__PURE__ */ e.jsx(Bi, { className: "h-3.5 w-3.5" }),
                 /* @__PURE__ */ e.jsx("span", { className: "text-2xs text-muted-foreground", children: "Levels" })
               ]
             }
@@ -21347,7 +20935,7 @@ const Xb = [
               className: "h-7 px-2 gap-1 hover:bg-muted",
               title: "Text label",
               children: [
-                /* @__PURE__ */ e.jsx(ia, { className: "h-3.5 w-3.5" }),
+                /* @__PURE__ */ e.jsx(da, { className: "h-3.5 w-3.5" }),
                 /* @__PURE__ */ e.jsxs("span", { className: "text-2xs text-muted-foreground", children: [
                   Ke,
                   "px"
@@ -21476,7 +21064,7 @@ const Xb = [
                 className: "h-7 px-2 gap-1 hover:bg-muted",
                 title: "Edit Text",
                 children: [
-                  /* @__PURE__ */ e.jsx(Pm, { className: "h-3.5 w-3.5" }),
+                  /* @__PURE__ */ e.jsx(vm, { className: "h-3.5 w-3.5" }),
                   /* @__PURE__ */ e.jsx("span", { className: "text-2xs text-muted-foreground max-w-16 truncate", children: g || "Edit" })
                 ]
               }
@@ -21507,7 +21095,7 @@ const Xb = [
                 className: "h-7 px-2 gap-1 hover:bg-muted",
                 title: "Font Size",
                 children: [
-                  /* @__PURE__ */ e.jsx(ia, { className: "h-3.5 w-3.5" }),
+                  /* @__PURE__ */ e.jsx(da, { className: "h-3.5 w-3.5" }),
                   /* @__PURE__ */ e.jsxs("span", { className: "text-2xs text-muted-foreground", children: [
                     Z,
                     "px"
@@ -21569,7 +21157,7 @@ const Xb = [
       ]
     }
   );
-}, Jb = (t) => ({
+}, qb = (t) => ({
   upColor: "#22c55e",
   downColor: "#ef5350",
   upBorderColor: "#000000",
@@ -21590,8 +21178,8 @@ const Xb = [
   tpColor: "#16a34a",
   tpOpacity: 70
 });
-function Qb(t, n, s) {
-  const o = Jb(s);
+function Zb(t, n, s) {
+  const o = qb(s);
   return t ? {
     upColor: t.candle?.bodyUp || o.upColor,
     downColor: t.candle?.bodyDown || o.downColor,
@@ -21614,7 +21202,7 @@ function Qb(t, n, s) {
     tpOpacity: n?.tpOpacity ?? o.tpOpacity
   } : o;
 }
-function ey() {
+function Jb() {
   const t = Xo(), [n, s] = f.useState(() => typeof window < "u" ? document.documentElement.classList.contains("dark") ? "dark" : "light" : "dark");
   return f.useEffect(() => {
     const r = new MutationObserver((a) => {
@@ -21645,10 +21233,10 @@ function ey() {
       priceTickerBullish: t.chart.priceTickerBullish,
       priceTickerBearish: t.chart.priceTickerBearish
     };
-    return Qb(a, t.trading, r);
+    return Zb(a, t.trading, r);
   }, [n, t]);
 }
-const ty = vl(
+const Qb = vl(
   "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
   {
     variants: {
@@ -21665,15 +21253,15 @@ const ty = vl(
   }
 );
 function yo({ className: t, variant: n, ...s }) {
-  return /* @__PURE__ */ e.jsx("div", { className: He(ty({ variant: n }), t), ...s });
+  return /* @__PURE__ */ e.jsx("div", { className: He(Qb({ variant: n }), t), ...s });
 }
-const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
-  const { decimals: o } = xa(n, s);
+const pa = (t, n) => uh(t, n), dd = (t, n, s) => {
+  const { decimals: o } = pa(n, s);
   return t.toFixed(o);
 }, _l = (t, n, s, o) => {
-  const { pipValue: r } = xa(s, o);
+  const { pipValue: r } = pa(s, o);
   return Math.round(Math.abs(t - n) / r);
-}, ml = (t, n, s, o, r) => na(t, n, s, o, r), ud = "h-6 sm:h-7 px-2 sm:px-3 text-2xs sm:text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors", Ul = "text-text-secondary hover:text-foreground hover:bg-muted", Vl = "bg-accent text-foreground border border-border", Hl = "text-xs text-foreground hover:bg-muted cursor-pointer", sy = [0.01, 0.1, 1, 10], ny = ({
+}, ml = (t, n, s, o, r) => ta(t, n, s, o, r), ud = "h-6 sm:h-7 px-2 sm:px-3 text-2xs sm:text-xs font-semibold border border-border text-foreground hover:bg-muted transition-colors", Ul = "text-text-secondary hover:text-foreground hover:bg-muted", Vl = "bg-accent text-foreground border border-border", Hl = "text-xs text-foreground hover:bg-muted cursor-pointer", ey = [0.01, 0.1, 1, 10], ty = ({
   pair: t,
   category: n,
   currentPrice: s,
@@ -21731,8 +21319,8 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
           /* @__PURE__ */ e.jsx(or, { className: "h-2.5 w-2.5 sm:h-3 sm:w-3 ml-0.5" })
         ] }) }),
         /* @__PURE__ */ e.jsxs(so, { align: "start", className: "glass-strong border-border bg-background min-w-[200px]", children: [
-          /* @__PURE__ */ e.jsx("div", { className: "px-2 py-1.5 text-2xs text-muted-foreground border-b border-border mb-1", children: nb(t) }),
-          sy.map((H) => /* @__PURE__ */ e.jsxs(
+          /* @__PURE__ */ e.jsx("div", { className: "px-2 py-1.5 text-2xs text-muted-foreground border-b border-border mb-1", children: G0(t) }),
+          ey.map((H) => /* @__PURE__ */ e.jsxs(
             er,
             {
               onClick: () => v(H),
@@ -21743,7 +21331,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
                   " lot",
                   H !== 1 ? "s" : ""
                 ] }),
-                /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground ml-3", children: rb(t, H, s) })
+                /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground ml-3", children: q0(t, H, s) })
               ]
             },
             H
@@ -21901,7 +21489,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
           {
             onClick: F,
             className: "h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-text-secondary hover:text-text-primary transition-colors",
-            children: /* @__PURE__ */ e.jsx(Lm, { className: "h-3 w-3" })
+            children: /* @__PURE__ */ e.jsx(Nm, { className: "h-3 w-3" })
           }
         ),
         /* @__PURE__ */ e.jsx(
@@ -21909,7 +21497,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
           {
             onClick: k,
             className: "h-6 w-6 sm:h-7 sm:w-7 flex items-center justify-center rounded-full bg-electric-blue/15 border border-electric-blue/40 text-electric-blue hover:bg-electric-blue/25 transition-colors",
-            children: _ ? /* @__PURE__ */ e.jsx(Am, { className: "h-3.5 w-3.5" }) : /* @__PURE__ */ e.jsx(Rm, { className: "h-3.5 w-3.5" })
+            children: _ ? /* @__PURE__ */ e.jsx(km, { className: "h-3.5 w-3.5" }) : /* @__PURE__ */ e.jsx(wm, { className: "h-3.5 w-3.5" })
           }
         ),
         /* @__PURE__ */ e.jsx(
@@ -21917,7 +21505,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
           {
             onClick: I,
             className: "h-6 w-6 flex items-center justify-center rounded hover:bg-muted text-text-secondary hover:text-text-primary transition-colors",
-            children: /* @__PURE__ */ e.jsx(Em, { className: "h-3 w-3" })
+            children: /* @__PURE__ */ e.jsx(Sm, { className: "h-3 w-3" })
           }
         ),
         /* @__PURE__ */ e.jsx("div", { className: "h-4 w-px bg-border/50 mx-0.5 sm:mx-2" }),
@@ -21964,7 +21552,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
                 variant: "ghost",
                 size: "sm",
                 className: `h-6 px-2 text-xs rounded-full ${pt || O !== 1 && O !== 10 && O !== 100 ? "bg-neon-purple/30 text-neon-purple" : "text-text-secondary hover:text-text-primary"}`,
-                children: O !== 1 && O !== 10 && O !== 100 ? `${O}x` : /* @__PURE__ */ e.jsx(Im, { className: "h-3 w-3" })
+                children: O !== 1 && O !== 10 && O !== 100 ? `${O}x` : /* @__PURE__ */ e.jsx(Cm, { className: "h-3 w-3" })
               }
             ) }),
             /* @__PURE__ */ e.jsx(
@@ -22085,7 +21673,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
     ] }),
     rt && (ie.length > 0 || st.length > 0) && /* @__PURE__ */ e.jsxs("div", { className: "flex flex-wrap gap-2", children: [
       st.map((H) => {
-        const Ee = g === H.id, { pipValue: Mt, decimals: Vt, step: rs } = xa(t, n), St = H.limitPrice || s;
+        const Ee = g === H.id, { pipValue: Mt, decimals: Vt, step: rs } = pa(t, n), St = H.limitPrice || s;
         return /* @__PURE__ */ e.jsxs(
           "div",
           {
@@ -22208,7 +21796,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
         );
       }),
       ie.map((H) => {
-        const Ee = ml(H.type, H.entryPrice, s, H.lotSize, t), Mt = g === H.id, { pipValue: Vt, decimals: rs, step: St } = xa(t, n);
+        const Ee = ml(H.type, H.entryPrice, s, H.lotSize, t), Mt = g === H.id, { pipValue: Vt, decimals: rs, step: St } = pa(t, n);
         return /* @__PURE__ */ e.jsxs(
           "div",
           {
@@ -22403,7 +21991,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
                   /* @__PURE__ */ e.jsx("div", { className: He(
                     "flex items-center justify-center w-8 h-8 rounded-full",
                     m.type === "buy" ? "bg-neon-green/20" : "bg-red-500/20"
-                  ), children: m.type === "buy" ? /* @__PURE__ */ e.jsx($i, { className: "h-4 w-4 text-neon-green" }) : /* @__PURE__ */ e.jsx(Dm, { className: "h-4 w-4 text-red-400" }) }),
+                  ), children: m.type === "buy" ? /* @__PURE__ */ e.jsx(Oi, { className: "h-4 w-4 text-neon-green" }) : /* @__PURE__ */ e.jsx(jm, { className: "h-4 w-4 text-red-400" }) }),
                   /* @__PURE__ */ e.jsxs("div", { children: [
                     /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-2", children: [
                       /* @__PURE__ */ e.jsx(
@@ -22445,7 +22033,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
               ] }),
               /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-4 mt-2 pt-2 border-t border-border/50 text-2xs text-text-secondary", children: [
                 /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1", children: [
-                  /* @__PURE__ */ e.jsx(Bm, { className: "h-3 w-3" }),
+                  /* @__PURE__ */ e.jsx(Mm, { className: "h-3 w-3" }),
                   /* @__PURE__ */ e.jsxs("span", { children: [
                     "Size: $",
                     (m.lotSize * 1e5).toLocaleString()
@@ -22488,7 +22076,7 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
     o && "text-rose-700 dark:text-rose-500",
     !s && !o && "text-text-primary"
   ), children: n })
-] }), ry = ({
+] }), sy = ({
   open: t,
   onClose: n,
   trades: s,
@@ -22541,8 +22129,8 @@ const xa = (t, n) => ph(t, n), dd = (t, n, s) => {
     const Je = new Date(pe.timestamp).getUTCHours();
     Je >= 0 && Je < 8 ? (St.asian.trades++, St.asian.pnl += pe.pnl || 0) : Je >= 8 && Je < 13 ? (St.london.trades++, St.london.pnl += pe.pnl || 0) : Je >= 13 && Je < 17 ? (St.overlap.trades++, St.overlap.pnl += pe.pnl || 0) : (St.newYork.trades++, St.newYork.pnl += pe.pnl || 0);
   });
-  const de = L.filter((pe) => pe.type === "buy"), ke = L.filter((pe) => pe.type === "sell"), ot = de.reduce((pe, Je) => pe + (Je.pnl || 0), 0), Pt = ke.reduce((pe, Je) => pe + (Je.pnl || 0), 0), mt = de.length > 0 ? de.filter((pe) => (pe.pnl || 0) > 0).length / de.length * 100 : 0, ls = ke.length > 0 ? ke.filter((pe) => (pe.pnl || 0) > 0).length / ke.length * 100 : 0, Is = oy(L, o);
-  ly(L);
+  const de = L.filter((pe) => pe.type === "buy"), ke = L.filter((pe) => pe.type === "sell"), ot = de.reduce((pe, Je) => pe + (Je.pnl || 0), 0), Pt = ke.reduce((pe, Je) => pe + (Je.pnl || 0), 0), mt = de.length > 0 ? de.filter((pe) => (pe.pnl || 0) > 0).length / de.length * 100 : 0, ls = ke.length > 0 ? ke.filter((pe) => (pe.pnl || 0) > 0).length / ke.length * 100 : 0, Is = ny(L, o);
+  ry(L);
   const jt = B > 0 ? U / 100 * be - se / 100 * ze : 0, zt = (() => {
     let pe = 0;
     return F > 10 ? pe += 3 : F > 5 ? pe += 2 : F > 0 && (pe += 1), U > 60 ? pe += 3 : U > 50 ? pe += 2 : U > 40 && (pe += 1), Ie > 2 ? pe += 3 : Ie > 1.5 ? pe += 2 : Ie > 1 && (pe += 1), Is < 10 ? pe += 2 : Is < 20 && (pe += 1), pe >= 10 ? { grade: "A+", label: "EXCELLENT" } : pe >= 8 ? { grade: "A", label: "VERY GOOD" } : pe >= 6 ? { grade: "B", label: "GOOD" } : pe >= 4 ? { grade: "C", label: "AVERAGE" } : pe >= 2 ? { grade: "D", label: "BELOW AVG" } : { grade: "F", label: "POOR" };
@@ -22936,7 +22524,7 @@ Grade: ${zt.grade} (${zt.label})`;
                 className: "gap-1.5 h-8 px-3 text-xs rounded",
                 onClick: Ge,
                 children: [
-                  /* @__PURE__ */ e.jsx(Om, { className: "h-3.5 w-3.5" }),
+                  /* @__PURE__ */ e.jsx(Tm, { className: "h-3.5 w-3.5" }),
                   "Share"
                 ]
               }
@@ -22949,7 +22537,7 @@ Grade: ${zt.grade} (${zt.label})`;
                 className: "gap-1.5 h-8 px-3 text-xs rounded",
                 onClick: Ze,
                 children: [
-                  /* @__PURE__ */ e.jsx(Fm, { className: "h-3.5 w-3.5" }),
+                  /* @__PURE__ */ e.jsx(Pm, { className: "h-3.5 w-3.5" }),
                   "Export"
                 ]
               }
@@ -22970,7 +22558,7 @@ Grade: ${zt.grade} (${zt.label})`;
     }
   ) });
 };
-function oy(t, n) {
+function ny(t, n) {
   if (t.length === 0) return 0;
   let s = n, o = 0, r = n;
   return t.forEach((a) => {
@@ -22979,14 +22567,14 @@ function oy(t, n) {
     c > o && (o = c);
   }), o;
 }
-function ly(t) {
+function ry(t) {
   if (t.length < 2) return 0;
   const n = t.map((r) => r.pnl || 0), s = n.reduce((r, a) => r + a, 0) / n.length, o = Math.sqrt(
     n.reduce((r, a) => r + Math.pow(a - s, 2), 0) / (n.length - 1)
   );
   return o === 0 ? 0 : s / o * Math.sqrt(252);
 }
-function ay(t, n = {}) {
+function oy(t, n = {}) {
   return { prices: {}, isLoading: !1 };
 }
 function fd({ srcLight: t, srcDark: n, alt: s, className: o, onError: r }) {
@@ -23061,7 +22649,7 @@ const zl = [
     default:
       return { bg: "bg-muted/15", text: "text-muted-foreground", ring: "ring-border/20", badge: "text-muted-foreground/60" };
   }
-}, md = ["Index", "Stock", "ETF", "Commodity", "Futures", "Crypto", "Forex", "Other"], iy = {
+}, md = ["Index", "Stock", "ETF", "Commodity", "Futures", "Crypto", "Forex", "Other"], ly = {
   Index: "Indices",
   Stock: "Stocks",
   ETF: "ETFs",
@@ -23070,8 +22658,8 @@ const zl = [
   Commodity: "Commodities",
   Futures: "Futures",
   Other: "Other"
-}, cy = (t, n) => n <= 0 ? "--" : t === "Forex" ? n.toFixed(n < 10 ? 5 : 3) : t === "Crypto" ? n < 1 ? n.toFixed(6) : n.toLocaleString(void 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toLocaleString(void 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), dy = (t) => t >= 1e12 ? `${(t / 1e12).toFixed(1)}T` : t >= 1e9 ? `${(t / 1e9).toFixed(1)}B` : t >= 1e6 ? `${(t / 1e6).toFixed(1)}M` : t.toLocaleString();
-function uy({
+}, ay = (t, n) => n <= 0 ? "--" : t === "Forex" ? n.toFixed(n < 10 ? 5 : 3) : t === "Crypto" ? n < 1 ? n.toFixed(6) : n.toLocaleString(void 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toLocaleString(void 0, { minimumFractionDigits: 2, maximumFractionDigits: 2 }), iy = (t) => t >= 1e12 ? `${(t / 1e12).toFixed(1)}T` : t >= 1e9 ? `${(t / 1e9).toFixed(1)}B` : t >= 1e6 ? `${(t / 1e6).toFixed(1)}M` : t.toLocaleString();
+function cy({
   currentPair: t,
   onPairSelect: n,
   watchlist: s,
@@ -23079,7 +22667,7 @@ function uy({
   livePrices: r,
   newsArticles: a
 }) {
-  const [c, d] = f.useState(""), { searchAssets: l } = Gi(), u = f.useMemo(() => l.map((N) => ({ symbol: N.symbol, category: N.category })), [l]), h = f.useMemo(() => {
+  const [c, d] = f.useState(""), { searchAssets: l } = Yi(), u = f.useMemo(() => l.map((N) => ({ symbol: N.symbol, category: N.category })), [l]), h = f.useMemo(() => {
     if (!c.trim()) return [];
     const N = c.toLowerCase();
     return u.filter(
@@ -23102,7 +22690,7 @@ function uy({
     // Only the detail panel sibling at the bottom keeps its grey fill.
     /* @__PURE__ */ e.jsxs("div", { className: "flex-1 flex flex-col overflow-hidden bg-card", children: [
       /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-2.5 pb-2.5 border-b border-border/40", children: /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
-        /* @__PURE__ */ e.jsx(da, { className: "absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50 pointer-events-none" }),
+        /* @__PURE__ */ e.jsx(ca, { className: "absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50 pointer-events-none" }),
         /* @__PURE__ */ e.jsx(
           jn,
           {
@@ -23146,7 +22734,7 @@ function uy({
       ] }) : v.map(([N, y]) => /* @__PURE__ */ e.jsxs("div", { children: [
         /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1 px-3 py-1 text-[8.5px] uppercase tracking-[0.08em] text-muted-foreground/65 font-semibold border-y border-border/30 select-none", children: [
           /* @__PURE__ */ e.jsx(or, { className: "h-2.5 w-2.5 opacity-60", strokeWidth: 2.5 }),
-          /* @__PURE__ */ e.jsx("span", { children: iy[N] ?? N }),
+          /* @__PURE__ */ e.jsx("span", { children: ly[N] ?? N }),
           /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground/40 font-normal normal-case tracking-normal ml-0.5", children: y.length })
         ] }),
         y.map((g) => {
@@ -23176,7 +22764,7 @@ function uy({
                   )
                 ] }),
                 /* @__PURE__ */ e.jsx("span", { className: `flex-1 min-w-0 truncate text-[11.5px] font-semibold tracking-tight ${S ? "text-foreground" : "text-foreground/95"}`, children: g.symbol }),
-                /* @__PURE__ */ e.jsx("span", { className: "w-[68px] text-right text-xs font-mono tabular-nums text-foreground/95 leading-none", children: L ? cy(g.category, L.price) : "--" }),
+                /* @__PURE__ */ e.jsx("span", { className: "w-[68px] text-right text-xs font-mono tabular-nums text-foreground/95 leading-none", children: L ? ay(g.category, L.price) : "--" }),
                 /* @__PURE__ */ e.jsx("span", { className: `w-[60px] text-right text-[10.5px] font-mono tabular-nums leading-none ${L && L.price > 0 ? B ? "text-up" : "text-down" : "text-muted-foreground/40"}`, children: L && L.price > 0 ? `${B ? "+" : ""}${L.change.toFixed(2)}%` : "--" })
               ]
             },
@@ -23246,7 +22834,7 @@ function uy({
             ] }),
             /* @__PURE__ */ e.jsxs("div", { className: "bg-card/70 border border-border/30 rounded-md px-3 py-2", children: [
               /* @__PURE__ */ e.jsx("div", { className: "text-[8px] text-muted-foreground/55 uppercase tracking-[0.1em] font-semibold mb-0.5", children: y.marketCap ? "Market Cap" : "H / L" }),
-              /* @__PURE__ */ e.jsx("div", { className: "text-sm font-mono font-medium tabular-nums text-foreground/90", children: y.marketCap ? dy(y.marketCap) : y.high && y.low ? `${y.high.toFixed(S > 3 ? 2 : S)} / ${y.low.toFixed(S > 3 ? 2 : S)}` : "--" })
+              /* @__PURE__ */ e.jsx("div", { className: "text-sm font-mono font-medium tabular-nums text-foreground/90", children: y.marketCap ? iy(y.marketCap) : y.high && y.low ? `${y.high.toFixed(S > 3 ? 2 : S)} / ${y.low.toFixed(S > 3 ? 2 : S)}` : "--" })
             ] }),
             y.marketCap && y.high && y.low && /* @__PURE__ */ e.jsxs(e.Fragment, { children: [
               /* @__PURE__ */ e.jsxs("div", { className: "bg-card/70 border border-border/30 rounded-md px-3 py-2", children: [
@@ -23277,7 +22865,7 @@ function uy({
                   ] })
                 ] })
               ] }),
-              /* @__PURE__ */ e.jsx(Wm, { className: "h-2.5 w-2.5 text-muted-foreground/15 flex-shrink-0 mt-1 group-hover/news:text-muted-foreground/40" })
+              /* @__PURE__ */ e.jsx(Lm, { className: "h-2.5 w-2.5 text-muted-foreground/15 flex-shrink-0 mt-1 group-hover/news:text-muted-foreground/40" })
             ] }, O.id)) })
           ] })
         ] });
@@ -23285,7 +22873,7 @@ function uy({
     ] })
   );
 }
-function hy() {
+function dy() {
   const { user: t } = gr(), [n, s] = f.useState(zl), o = f.useRef(null), r = f.useRef(null);
   f.useEffect(() => {
     let c = !1;
@@ -23323,7 +22911,7 @@ function hy() {
     o.current && clearTimeout(o.current);
   }, []), { watchlist: n, setWatchlist: a };
 }
-function fy() {
+function uy() {
   const [t, n] = f.useState(!1), [s, o] = f.useState(!1);
   return f.useEffect(() => {
     const r = () => {
@@ -23365,17 +22953,17 @@ const pd = [
   { id: "text", name: "Text", category: "Annotations" },
   { id: "long", name: "Long Position", category: "Positions" },
   { id: "short", name: "Short Position", category: "Positions" }
-], my = (t) => {
+], hy = (t) => {
   if (!t.shiftKey || t.ctrlKey || t.metaKey || t.altKey || ["Control", "Alt", "Shift", "Meta"].includes(t.key)) return "";
   let n = t.key;
   return n === " " ? n = "Space" : n.length === 1 ? n = n.toUpperCase() : n === "ArrowUp" ? n = "↑" : n === "ArrowDown" ? n = "↓" : n === "ArrowLeft" ? n = "←" : n === "ArrowRight" && (n = "→"), `Shift+${n}`;
-}, py = (t, n) => {
+}, fy = (t, n) => {
   if (!n.shiftKey || n.ctrlKey || n.metaKey || n.altKey || !t.startsWith("Shift+")) return !1;
   const s = t.substring(6);
   let o = n.key;
   return o === " " ? o = "Space" : o.length === 1 ? o = o.toUpperCase() : o === "ArrowUp" ? o = "↑" : o === "ArrowDown" ? o = "↓" : o === "ArrowLeft" ? o = "←" : o === "ArrowRight" && (o = "→"), s === o;
 };
-function xy(t) {
+function my(t) {
   const { user: n } = gr(), [s, o] = f.useState({}), [r, a] = f.useState(!0), [c, d] = f.useState(!1), [l, u] = f.useState(!1);
   f.useEffect(() => {
     if (!n) {
@@ -23441,7 +23029,7 @@ function xy(t) {
       const B = L.target;
       if (!(B.tagName === "INPUT" || B.tagName === "TEXTAREA" || B.isContentEditable)) {
         for (const [S, Z] of Object.entries(s))
-          if (py(S, L)) {
+          if (fy(S, L)) {
             L.preventDefault(), t(Z);
             return;
           }
@@ -23461,25 +23049,58 @@ function xy(t) {
     requiresAuth: y
   };
 }
-const gy = (t) => {
+const vh = ({ className: t = "h-4 w-4" }) => /* @__PURE__ */ e.jsxs("svg", { className: t, viewBox: "0 0 24 24", fill: "none", strokeLinecap: "round", strokeLinejoin: "round", children: [
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "4", x2: "21", y2: "4", stroke: "#22c55e", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "13", x2: "21", y2: "13", stroke: "currentColor", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "21", y2: "20", stroke: "#ef4444", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("path", { d: "M3 16 L3 7", stroke: "#22c55e", strokeWidth: "2" }),
+  /* @__PURE__ */ e.jsx("path", { d: "M1 10 L3 6 L5 10", stroke: "#22c55e", strokeWidth: "1.5", fill: "none" }),
+  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "4", width: "15", height: "9", fill: "#22c55e", opacity: "0.08" }),
+  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "13", width: "15", height: "7", fill: "#ef4444", opacity: "0.08" })
+] }), Nh = ({ className: t = "h-4 w-4" }) => /* @__PURE__ */ e.jsxs("svg", { className: t, viewBox: "0 0 24 24", fill: "none", strokeLinecap: "round", strokeLinejoin: "round", children: [
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "4", x2: "21", y2: "4", stroke: "#ef4444", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "11", x2: "21", y2: "11", stroke: "currentColor", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "21", y2: "20", stroke: "#22c55e", strokeWidth: "1.5" }),
+  /* @__PURE__ */ e.jsx("path", { d: "M3 8 L3 17", stroke: "#ef4444", strokeWidth: "2" }),
+  /* @__PURE__ */ e.jsx("path", { d: "M1 14 L3 18 L5 14", stroke: "#ef4444", strokeWidth: "1.5", fill: "none" }),
+  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "4", width: "15", height: "7", fill: "#ef4444", opacity: "0.08" }),
+  /* @__PURE__ */ e.jsx("rect", { x: "6", y: "11", width: "15", height: "9", fill: "#22c55e", opacity: "0.08" })
+] }), kh = "lse-drawing-favorites";
+function xa() {
+  try {
+    const t = localStorage.getItem(kh);
+    return t ? JSON.parse(t) : [];
+  } catch {
+    return [];
+  }
+}
+function py(t) {
+  localStorage.setItem(kh, JSON.stringify(t)), window.dispatchEvent(new Event("drawingFavoritesChanged"));
+}
+function wh(t) {
+  const n = xa();
+  let s;
+  return n.includes(t) ? s = n.filter((o) => o !== t) : s = [...n, t], py(s), s;
+}
+const xy = (t) => {
   const n = "h-4 w-4";
   switch (t) {
     case "trend":
-      return /* @__PURE__ */ e.jsx($i, { className: n });
-    case "horizontal":
       return /* @__PURE__ */ e.jsx(Oi, { className: n });
+    case "horizontal":
+      return /* @__PURE__ */ e.jsx($i, { className: n });
     case "horizontalRay":
       return /* @__PURE__ */ e.jsx(pl, { className: n });
     case "vertical":
-      return /* @__PURE__ */ e.jsx(tu, { className: n });
+      return /* @__PURE__ */ e.jsx(ou, { className: n });
     case "line":
       return /* @__PURE__ */ e.jsx("svg", { className: n, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }) });
     case "straightArrow":
       return /* @__PURE__ */ e.jsx(bl, { className: n });
     case "fibonacci":
-      return /* @__PURE__ */ e.jsx(Wi, { className: n });
+      return /* @__PURE__ */ e.jsx(Bi, { className: n });
     case "measure":
-      return /* @__PURE__ */ e.jsx(eu, { className: n });
+      return /* @__PURE__ */ e.jsx(ru, { className: n });
     case "rectangle":
       return /* @__PURE__ */ e.jsx(nu, { className: n });
     case "square":
@@ -23496,22 +23117,22 @@ const gy = (t) => {
     case "octagon":
       return /* @__PURE__ */ e.jsx(su, { className: n });
     case "brush":
-      return /* @__PURE__ */ e.jsx(Fi, { className: n });
+      return /* @__PURE__ */ e.jsx(Wi, { className: n });
     case "highlighter":
-      return /* @__PURE__ */ e.jsx(ru, { className: n });
+      return /* @__PURE__ */ e.jsx(tu, { className: n });
     case "arrow":
       return /* @__PURE__ */ e.jsx(bl, { className: n });
     case "text":
-      return /* @__PURE__ */ e.jsx(ia, { className: n });
+      return /* @__PURE__ */ e.jsx(da, { className: n });
     case "long":
-      return /* @__PURE__ */ e.jsx(ih, { className: n });
+      return /* @__PURE__ */ e.jsx(vh, { className: n });
     case "short":
-      return /* @__PURE__ */ e.jsx(ch, { className: n });
+      return /* @__PURE__ */ e.jsx(Nh, { className: n });
     default:
       return null;
   }
 };
-function by({
+function gy({
   open: t,
   onOpenChange: n,
   shortcuts: s,
@@ -23520,9 +23141,9 @@ function by({
   getShortcutForTool: a,
   onClearAll: c
 }) {
-  const [d, l] = f.useState(null), [u, h] = f.useState(""), [m, v] = f.useState(ma), [N, y] = f.useState(!1), { user: g } = gr(), L = f.useRef(null);
+  const [d, l] = f.useState(null), [u, h] = f.useState(""), [m, v] = f.useState(xa), [N, y] = f.useState(!1), { user: g } = gr(), L = f.useRef(null);
   f.useEffect(() => {
-    const _ = () => v(ma());
+    const _ = () => v(xa());
     return window.addEventListener("drawingFavoritesChanged", _), () => window.removeEventListener("drawingFavoritesChanged", _);
   }, []);
   const B = pd.reduce((_, k) => (_[k.category] || (_[k.category] = []), _[k.category].push(k), _), {}), S = Object.entries(B).reduce((_, [k, O]) => {
@@ -23538,7 +23159,7 @@ function by({
         l(null);
         return;
       }
-      const O = my(k);
+      const O = hy(k);
       if (!O) return;
       const z = s[O];
       if (z && z !== d) {
@@ -23557,7 +23178,7 @@ function by({
     /* @__PURE__ */ e.jsx(ao, { open: t, onOpenChange: n, children: /* @__PURE__ */ e.jsxs(zr, { className: "max-w-md max-h-[85vh] flex flex-col p-0 gap-0", children: [
       /* @__PURE__ */ e.jsxs(zo, { className: "p-4 pb-3 border-b border-border", children: [
         /* @__PURE__ */ e.jsxs(ko, { className: "flex items-center gap-2 text-base", children: [
-          /* @__PURE__ */ e.jsx(Bi, { className: "h-5 w-5" }),
+          /* @__PURE__ */ e.jsx(Fi, { className: "h-5 w-5" }),
           "Drawing Shortcuts"
         ] }),
         /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground mt-1", children: "Assign keyboard shortcuts to quickly select drawing tools" })
@@ -23608,7 +23229,7 @@ function by({
                 className: `flex items-center justify-between p-2 rounded-lg transition-colors ${F ? "bg-foreground/10 border border-foreground/40" : "hover:bg-muted/50"}`,
                 children: [
                   /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground", children: gy(O.id) }),
+                    /* @__PURE__ */ e.jsx("span", { className: "text-muted-foreground", children: xy(O.id) }),
                     /* @__PURE__ */ e.jsx("span", { className: "text-sm font-medium", children: O.name })
                   ] }),
                   /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1", children: [
@@ -23643,7 +23264,7 @@ function by({
                             y(!0);
                             return;
                           }
-                          const I = uh(O.id);
+                          const I = wh(O.id);
                           v(I), hs.success(I.includes(O.id) ? `${O.name} added to favorites` : `${O.name} removed from favorites`);
                         },
                         title: m.includes(O.id) ? "Remove from Favorites" : "Add to Favorites",
@@ -23707,7 +23328,7 @@ function by({
       ] })
     ] }) }),
     /* @__PURE__ */ e.jsx(
-      Yi,
+      Gi,
       {
         open: N,
         onOpenChange: y,
@@ -23716,22 +23337,22 @@ function by({
     )
   ] });
 }
-function yy({ open: t, onOpenChange: n }) {
+function by({ open: t, onOpenChange: n }) {
   const s = vo(), o = vd(), r = () => {
     n(!1);
     const c = encodeURIComponent(o.pathname + o.search);
     s(`/auth?returnTo=${c}`);
   }, a = [
     { key: "T", tool: "Trend Line", icon: /* @__PURE__ */ e.jsx("svg", { className: "h-4 w-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", children: /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }) }) },
-    { key: "H", tool: "Horizontal Line", icon: /* @__PURE__ */ e.jsx(Oi, { className: "h-4 w-4" }) },
+    { key: "H", tool: "Horizontal Line", icon: /* @__PURE__ */ e.jsx($i, { className: "h-4 w-4" }) },
     { key: "R", tool: "Rectangle", icon: /* @__PURE__ */ e.jsx(Sa, { className: "h-4 w-4" }) },
-    { key: "B", tool: "Brush", icon: /* @__PURE__ */ e.jsx(Fi, { className: "h-4 w-4" }) }
+    { key: "B", tool: "Brush", icon: /* @__PURE__ */ e.jsx(Wi, { className: "h-4 w-4" }) }
   ];
   return /* @__PURE__ */ e.jsx(ao, { open: t, onOpenChange: n, children: /* @__PURE__ */ e.jsxs(zr, { className: "max-w-md p-0 gap-0 overflow-hidden", children: [
     /* @__PURE__ */ e.jsxs("div", { className: "relative bg-gradient-to-br from-foreground/10 via-foreground/5 to-background p-6 pb-8", children: [
       /* @__PURE__ */ e.jsx("div", { className: "absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--foreground)/0.08),transparent_50%)]" }),
       /* @__PURE__ */ e.jsx("div", { className: "relative", children: /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-3 mb-3", children: [
-        /* @__PURE__ */ e.jsx("div", { className: "p-2.5 rounded-xl bg-foreground/10 border border-foreground/20 dark:border-border", children: /* @__PURE__ */ e.jsx(Bi, { className: "h-6 w-6 text-foreground" }) }),
+        /* @__PURE__ */ e.jsx("div", { className: "p-2.5 rounded-xl bg-foreground/10 border border-foreground/20 dark:border-border", children: /* @__PURE__ */ e.jsx(Fi, { className: "h-6 w-6 text-foreground" }) }),
         /* @__PURE__ */ e.jsxs("div", { children: [
           /* @__PURE__ */ e.jsx(ko, { className: "text-xl font-bold", children: "Custom Shortcuts" }),
           /* @__PURE__ */ e.jsx(Xi, { className: "text-sm text-muted-foreground", children: "Trade faster with keyboard shortcuts" })
@@ -23756,21 +23377,21 @@ function yy({ open: t, onOpenChange: n }) {
     ] }),
     /* @__PURE__ */ e.jsxs("div", { className: "p-4 space-y-3", children: [
       /* @__PURE__ */ e.jsxs("div", { className: "flex items-start gap-3", children: [
-        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-emerald-500/10", children: /* @__PURE__ */ e.jsx(ou, { className: "h-4 w-4 text-emerald-500" }) }),
+        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-emerald-500/10", children: /* @__PURE__ */ e.jsx(eu, { className: "h-4 w-4 text-emerald-500" }) }),
         /* @__PURE__ */ e.jsxs("div", { children: [
           /* @__PURE__ */ e.jsx("p", { className: "text-sm font-medium", children: "Lightning Fast" }),
           /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground", children: "Switch tools instantly without clicking" })
         ] })
       ] }),
       /* @__PURE__ */ e.jsxs("div", { className: "flex items-start gap-3", children: [
-        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-blue-500/10", children: /* @__PURE__ */ e.jsx($m, { className: "h-4 w-4 text-blue-500" }) }),
+        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-blue-500/10", children: /* @__PURE__ */ e.jsx(Am, { className: "h-4 w-4 text-blue-500" }) }),
         /* @__PURE__ */ e.jsxs("div", { children: [
           /* @__PURE__ */ e.jsx("p", { className: "text-sm font-medium", children: "Cloud Synced" }),
           /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground", children: "Your shortcuts sync across all devices" })
         ] })
       ] }),
       /* @__PURE__ */ e.jsxs("div", { className: "flex items-start gap-3", children: [
-        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-purple-500/10", children: /* @__PURE__ */ e.jsx(_m, { className: "h-4 w-4 text-purple-500" }) }),
+        /* @__PURE__ */ e.jsx("div", { className: "p-1.5 rounded-lg bg-purple-500/10", children: /* @__PURE__ */ e.jsx(Rm, { className: "h-4 w-4 text-purple-500" }) }),
         /* @__PURE__ */ e.jsxs("div", { children: [
           /* @__PURE__ */ e.jsx("p", { className: "text-sm font-medium", children: "Fully Customizable" }),
           /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground", children: "Assign any key to any drawing tool" })
@@ -23789,6 +23410,385 @@ function yy({ open: t, onOpenChange: n }) {
       /* @__PURE__ */ e.jsx("p", { className: "text-xs text-muted-foreground text-center mt-2", children: "Free account • No credit card required" })
     ] })
   ] }) });
+}
+function Bo({
+  toolId: t,
+  label: n,
+  icon: s,
+  isActive: o,
+  drawingFavorites: r,
+  onSelect: a,
+  onToggleFavorite: c
+}) {
+  return /* @__PURE__ */ e.jsxs(
+    tt,
+    {
+      variant: "ghost",
+      size: "sm",
+      className: `w-full group justify-start gap-2.5 h-8 px-3 rounded-none text-popover-foreground hover:bg-muted hover:text-foreground ${o ? "active-tool bg-foreground/10 text-foreground" : ""}`,
+      onPointerDown: (d) => {
+        d.preventDefault(), a();
+      },
+      onClick: a,
+      children: [
+        s,
+        /* @__PURE__ */ e.jsx("span", { className: "text-base font-normal flex-1 text-left", children: n }),
+        /* @__PURE__ */ e.jsx(
+          "button",
+          {
+            className: `ml-auto p-0.5 rounded transition-all ${r.includes(t) ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`,
+            onPointerDown: (d) => {
+              d.stopPropagation(), d.preventDefault();
+            },
+            onClick: (d) => {
+              d.stopPropagation(), c(t);
+            },
+            title: r.includes(t) ? "Remove from Favorites" : "Add to Favorites",
+            children: /* @__PURE__ */ e.jsx(lo, { className: `h-3 w-3 ${r.includes(t) ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500"}` })
+          }
+        )
+      ]
+    }
+  );
+}
+function yy({
+  activeTool: t,
+  onToolSelect: n,
+  drawings: s = [],
+  onClearAllDrawings: o,
+  selectedDrawingId: r,
+  onDeleteSelectedDrawing: a,
+  drawingsLocked: c = !1,
+  onToggleLock: d,
+  drawingsHidden: l = !1,
+  onToggleHide: u,
+  indicatorCount: h = 0,
+  onClearIndicators: m,
+  onOpenShortcutsDialog: v,
+  mobileTradingOpen: N,
+  onToggleMobileTrading: y,
+  bottomPanelHidden: g = !1,
+  onToggleBottomPanel: L,
+  onOpenSettings: B,
+  multiTimeframeLayout: S,
+  onLayoutChange: Z,
+  syncSettings: _,
+  onSyncSettingsChange: k,
+  layoutSymbol: O,
+  layoutTimeframe: z,
+  layoutDrawings: F,
+  layoutIndicators: I,
+  onLoadLayout: U,
+  onOpenSaveDialog: se,
+  onToggleCalendar: be,
+  calendarPanelActive: ze = !1,
+  onShowAlertDialog: Ie,
+  alertCount: Oe = 0
+}) {
+  const { user: Ke } = gr(), [We, rt] = f.useState(!1), [Q, Xe] = f.useState(xa), [q, pt] = f.useState("trend"), [V, $e] = f.useState("horizontal"), [ie, st] = f.useState("fibonacci"), [ft, Me] = f.useState("rectangle"), [ce, H] = f.useState("brush"), [Ee, Mt] = f.useState(!1), [Vt, rs] = f.useState(!1), [St, de] = f.useState(!1), [ke, ot] = f.useState(!1), [Pt, mt] = f.useState(!1), ls = f.useCallback((Ge) => {
+    if (!Ke) {
+      rt(!0);
+      return;
+    }
+    Xe(wh(Ge));
+  }, [Ke]);
+  if (!n) return null;
+  const Is = (Ge, kt, pe, Je, Et, Wt) => /* @__PURE__ */ e.jsxs(on, { open: Ge, onOpenChange: kt, children: [
+    /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
+      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(
+          tt,
+          {
+            variant: "ghost",
+            size: "icon",
+            className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${Je.includes(t) ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`,
+            onClick: () => {
+              n(t === pe ? null : pe);
+            },
+            children: Et
+          }
+        ) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: pe })
+      ] }) }),
+      /* @__PURE__ */ e.jsx(ln, { asChild: !0, children: /* @__PURE__ */ e.jsx(
+        "button",
+        {
+          className: "absolute -right-1 top-1/2 -translate-y-1/2 w-5 h-10 flex items-center justify-center text-muted-foreground/30 hover:text-muted-foreground transition-colors",
+          onClick: (_e) => {
+            _e.stopPropagation(), kt(!Ge);
+          },
+          children: /* @__PURE__ */ e.jsx(pl, { className: "h-3 w-3" })
+        }
+      ) })
+    ] }),
+    /* @__PURE__ */ e.jsx(nn, { side: "right", align: "start", className: "drawing-tool-menu w-auto min-w-[180px] p-0 bg-card border border-border shadow-xl rounded-lg z-50 overflow-hidden", sideOffset: 8, children: Wt })
+  ] }), jt = {
+    trend: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+      /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }),
+      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "20", r: "1.5", fill: "currentColor" }),
+      /* @__PURE__ */ e.jsx("circle", { cx: "20", cy: "4", r: "1.5", fill: "currentColor" })
+    ] }),
+    trendRay: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "12", r: "1.5", fill: "currentColor" }),
+      /* @__PURE__ */ e.jsx("line", { x1: "5.5", y1: "12", x2: "20", y2: "4" })
+    ] }),
+    parallelChannel: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+      /* @__PURE__ */ e.jsx("line", { x1: "2", y1: "18", x2: "22", y2: "10" }),
+      /* @__PURE__ */ e.jsx("line", { x1: "2", y1: "10", x2: "22", y2: "2" })
+    ] }),
+    straightArrow: /* @__PURE__ */ e.jsx(bl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
+  }, Ft = {
+    horizontal: /* @__PURE__ */ e.jsx($i, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    horizontalRay: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: [
+      /* @__PURE__ */ e.jsx("circle", { cx: "4", cy: "12", r: "1.5", fill: "currentColor" }),
+      /* @__PURE__ */ e.jsx("line", { x1: "5.5", y1: "12", x2: "20", y2: "12" }),
+      /* @__PURE__ */ e.jsx("polyline", { points: "17,9 20,12 17,15" })
+    ] }),
+    vertical: /* @__PURE__ */ e.jsx(ou, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    line: /* @__PURE__ */ e.jsx("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ e.jsx("line", { x1: "4", y1: "20", x2: "20", y2: "4" }) })
+  }, zt = {
+    rectangle: /* @__PURE__ */ e.jsx(nu, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    square: /* @__PURE__ */ e.jsx(Sa, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    circle: /* @__PURE__ */ e.jsx(xl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    oval: /* @__PURE__ */ e.jsx(xl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { transform: "scaleX(1.3)" } }),
+    triangle: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    freeTriangle: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { opacity: 0.7 } }),
+    parallelogram: /* @__PURE__ */ e.jsx("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round", strokeLinejoin: "round", children: /* @__PURE__ */ e.jsx("polygon", { points: "6,4 22,4 18,20 2,20" }) }),
+    octagon: /* @__PURE__ */ e.jsx(su, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    diamond: /* @__PURE__ */ e.jsx($m, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    pentagon: /* @__PURE__ */ e.jsx(Wm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    hexagon: /* @__PURE__ */ e.jsx(Fm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    star: /* @__PURE__ */ e.jsx(lo, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    cross: /* @__PURE__ */ e.jsx(wa, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    arrowBlock: /* @__PURE__ */ e.jsx(Om, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    wedge: /* @__PURE__ */ e.jsx(Yl, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", style: { transform: "rotate(-90deg)" } }),
+    heart: /* @__PURE__ */ e.jsx(Bm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
+  }, ae = {
+    brush: /* @__PURE__ */ e.jsx(Wi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    highlighter: /* @__PURE__ */ e.jsx(tu, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }),
+    arrow: /* @__PURE__ */ e.jsx(_m, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
+  }, Ze = (Ge, kt, pe) => () => {
+    Ge(pe), n(pe), kt(!1);
+  };
+  return /* @__PURE__ */ e.jsxs(e.Fragment, { children: [
+    /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-0", children: [
+      Is(
+        Ee,
+        Mt,
+        q,
+        ["trend", "trendRay", "parallelChannel", "straightArrow"],
+        jt[q],
+        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Trend Lines" }),
+          [
+            { id: "trend", label: "Trend Line" },
+            { id: "trendRay", label: "Trend Line Ray" },
+            { id: "parallelChannel", label: "Parallel Channel" },
+            { id: "straightArrow", label: "Arrow" }
+          ].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge.id, label: Ge.label, icon: jt[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(pt, Mt, Ge.id), onToggleFavorite: ls }, Ge.id))
+        ] })
+      ),
+      Is(
+        Vt,
+        rs,
+        V,
+        ["horizontal", "horizontalRay", "vertical", "line"],
+        Ft[V],
+        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Lines" }),
+          [
+            { id: "horizontal", label: "Horizontal Line" },
+            { id: "horizontalRay", label: "Horizontal Ray" },
+            { id: "vertical", label: "Vertical Line" },
+            { id: "line", label: "Straight Line" }
+          ].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge.id, label: Ge.label, icon: Ft[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze($e, rs, Ge.id), onToggleFavorite: ls }, Ge.id))
+        ] })
+      ),
+      Is(
+        St,
+        de,
+        ie,
+        ["fibonacci", "fibExtension"],
+        /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
+          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "4", x2: "21", y2: "4" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "9", x2: "17", y2: "9", opacity: "0.7" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "13", y2: "14", opacity: "0.5" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "19", x2: "21", y2: "19" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "18", y1: "4", x2: "6", y2: "19", strokeWidth: "1.5", strokeDasharray: "3 2" })
+        ] }),
+        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Fibonacci" }),
+          [
+            { id: "fibonacci", label: "Fib Retracement", icon: /* @__PURE__ */ e.jsxs("svg", { className: "h-4 w-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "4", x2: "21", y2: "4" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "9", x2: "17", y2: "9", opacity: "0.7" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "13", y2: "14", opacity: "0.5" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "19", x2: "21", y2: "19" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "18", y1: "4", x2: "6", y2: "19", strokeWidth: "1.5", strokeDasharray: "3 2" })
+            ] }) },
+            { id: "fibExtension", label: "Fib Extension", icon: /* @__PURE__ */ e.jsxs("svg", { className: "h-4 w-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "20", x2: "21", y2: "20" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "14", x2: "17", y2: "14", opacity: "0.7" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "8", x2: "13", y2: "8", opacity: "0.5" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "3", x2: "21", y2: "3" }),
+              /* @__PURE__ */ e.jsx("line", { x1: "6", y1: "20", x2: "18", y2: "3", strokeWidth: "1.5", strokeDasharray: "3 2" }),
+              /* @__PURE__ */ e.jsx("polyline", { points: "15,3 18,3 18,6", strokeWidth: "1.5" })
+            ] }) }
+          ].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge.id, label: Ge.label, icon: Ge.icon, isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(st, de, Ge.id), onToggleFavorite: ls }, Ge.id))
+        ] })
+      ),
+      Is(
+        ke,
+        ot,
+        ft,
+        Object.keys(zt),
+        zt[ft],
+        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Shapes" }),
+          ["rectangle", "square", "circle", "triangle", "oval", "freeTriangle", "parallelogram", "octagon"].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge, label: Ge.charAt(0).toUpperCase() + Ge.slice(1).replace(/([A-Z])/g, " $1"), icon: zt[Ge], isActive: t === Ge, drawingFavorites: Q, onSelect: Ze(Me, ot, Ge), onToggleFavorite: ls }, Ge)),
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-2.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "More Shapes" }),
+          ["diamond", "pentagon", "hexagon", "star", "cross", "arrowBlock", "wedge", "heart"].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge, label: Ge === "arrowBlock" ? "Arrow Block" : Ge.charAt(0).toUpperCase() + Ge.slice(1), icon: zt[Ge], isActive: t === Ge, drawingFavorites: Q, onSelect: Ze(Me, ot, Ge), onToggleFavorite: ls }, Ge))
+        ] })
+      ),
+      Is(
+        Pt,
+        mt,
+        ce,
+        ["brush", "highlighter", "arrow"],
+        ae[ce],
+        /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col gap-px py-1", children: [
+          /* @__PURE__ */ e.jsx("div", { className: "px-3 pt-1.5 pb-1 text-2xs font-semibold uppercase tracking-wider text-muted-foreground/50", children: "Brushes" }),
+          [
+            { id: "brush", label: "Brush" },
+            { id: "highlighter", label: "Highlighter" },
+            { id: "arrow", label: "Arrow" }
+          ].map((Ge) => /* @__PURE__ */ e.jsx(Bo, { toolId: Ge.id, label: Ge.label, icon: ae[Ge.id], isActive: t === Ge.id, drawingFavorites: Q, onSelect: Ze(H, mt, Ge.id), onToggleFavorite: ls }, Ge.id))
+        ] })
+      ),
+      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "text" ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: () => n(t === "text" ? null : "text"), children: /* @__PURE__ */ e.jsx(da, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Text" })
+      ] }) }),
+      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "long" ? "text-neon-green before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-neon-green before:rounded-r" : "text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-neon-green"}`, onClick: () => n(t === "long" ? null : "long"), children: /* @__PURE__ */ e.jsx(vh, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Long Position" })
+      ] }) }),
+      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "short" ? "text-neon-pink before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-neon-pink before:rounded-r" : "text-muted-foreground hover:bg-black/10 dark:hover:bg-white/10 hover:text-neon-pink"}`, onClick: () => n(t === "short" ? null : "short"), children: /* @__PURE__ */ e.jsx(Nh, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Short Position" })
+      ] }) }),
+      d && /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${c ? "text-yellow-400 before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-yellow-400 before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: d, children: c ? /* @__PURE__ */ e.jsx(Em, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) : /* @__PURE__ */ e.jsx(Im, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: c ? "Unlock Drawings" : "Lock Drawings" })
+      ] }) }),
+      u && /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${l ? "text-muted-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-muted-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: u, children: l ? /* @__PURE__ */ e.jsx(Dm, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) : /* @__PURE__ */ e.jsx(yi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: l ? "Show Drawings" : "Hide Drawings" })
+      ] }) }),
+      /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all ${t === "measure" ? "text-electric-blue before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-electric-blue before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: () => n(t === "measure" ? null : "measure"), children: /* @__PURE__ */ e.jsx(ru, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Measure Tool" })
+      ] }) }),
+      /* @__PURE__ */ e.jsx("div", { className: "w-7 lg:w-9 h-px bg-border mx-auto my-0.5" }),
+      Z && S && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(
+        ih,
+        {
+          selectedLayout: S,
+          onLayoutChange: Z,
+          syncSettings: _,
+          onSyncSettingsChange: k || (() => {
+          }),
+          isMultiPanelActive: S !== "1x1",
+          onExitMultiPanel: () => Z("1x1"),
+          symbol: O || "",
+          timeframe: z || "",
+          drawings: F || [],
+          indicators: I,
+          onLoadLayout: U || (() => {
+          }),
+          onOpenSaveDialog: se || (() => {
+          }),
+          hideExitButton: !0,
+          className: "h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground p-0 border-0 bg-transparent shadow-none flex items-center justify-center"
+        }
+      ) }),
+      be && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: `relative h-10 w-10 rounded-none transition-all ${ze ? "text-foreground before:absolute before:left-0 before:top-1 before:bottom-1 before:w-[3px] before:bg-foreground before:rounded-r" : "text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground"}`, onClick: be, children: /* @__PURE__ */ e.jsxs("svg", { className: "h-5 w-5", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.75", strokeLinecap: "round", strokeLinejoin: "round", children: [
+          /* @__PURE__ */ e.jsx("rect", { x: "3", y: "4", width: "18", height: "18", rx: "2" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "3", y1: "10", x2: "21", y2: "10" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "8", y1: "2", x2: "8", y2: "6" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "16", y1: "2", x2: "16", y2: "6" }),
+          /* @__PURE__ */ e.jsx("circle", { cx: "17.5", cy: "17.5", r: "4", fill: "var(--background, white)", stroke: "currentColor", strokeWidth: "1.75" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "17.5", y1: "15.5", x2: "17.5", y2: "17.5" }),
+          /* @__PURE__ */ e.jsx("line", { x1: "17.5", y1: "17.5", x2: "19", y2: "18.5" })
+        ] }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Calendar" })
+      ] }) }) }),
+      Ie && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "icon", className: "relative h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: Ie, children: [
+          /* @__PURE__ */ e.jsx(gl, { className: "h-5 w-5" }),
+          Oe > 0 && /* @__PURE__ */ e.jsx("span", { className: "absolute -top-1 -right-1 h-3 min-w-[12px] px-0.5 text-[8px] bg-electric-blue text-white rounded-full flex items-center justify-center", children: Oe })
+        ] }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Alerts" })
+      ] }) }) }),
+      B && /* @__PURE__ */ e.jsx("div", { className: "md:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: () => B?.(), children: /* @__PURE__ */ e.jsx(ia, { className: "h-5 w-5" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs", children: "Settings" })
+      ] }) }) }),
+      v && /* @__PURE__ */ e.jsx("div", { className: "hidden md:block", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+        /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-foreground/80 hover:bg-black/10 dark:hover:bg-white/10 hover:text-foreground", onClick: v, children: /* @__PURE__ */ e.jsx(Fi, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+        /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Drawing Shortcuts" })
+      ] }) }) }),
+      (s.length > 0 || h > 0) && /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
+        /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
+          /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(
+            tt,
+            {
+              variant: "ghost",
+              size: "icon",
+              className: `h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-muted-foreground hover:bg-destructive/10 hover:text-destructive ${r ? "text-destructive/70" : ""}`,
+              onClick: () => {
+                r && a && a(r);
+              },
+              children: /* @__PURE__ */ e.jsx(oo, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" })
+            }
+          ) }),
+          /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: r ? "Delete Selected Drawing" : "Delete (select a drawing first)" })
+        ] }) }),
+        /* @__PURE__ */ e.jsxs(on, { children: [
+          /* @__PURE__ */ e.jsx(ln, { asChild: !0, children: /* @__PURE__ */ e.jsx("button", { className: "absolute -right-1 top-1/2 -translate-y-1/2 w-5 h-10 flex items-center justify-center text-muted-foreground/30 hover:text-muted-foreground transition-colors", children: /* @__PURE__ */ e.jsx(pl, { className: "h-3 w-3" }) }) }),
+          /* @__PURE__ */ e.jsx(nn, { side: "right", align: "start", className: "w-auto p-1 bg-card border border-border shadow-lg", children: /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col", children: [
+            r && a && /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-destructive/10 hover:text-destructive", onClick: () => a(r), children: "Remove selected drawing" }),
+            o && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => o(), children: [
+              "Remove ",
+              s.length,
+              " drawing",
+              s.length !== 1 ? "s" : ""
+            ] }),
+            m && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => m(), children: [
+              "Remove ",
+              h,
+              " indicator",
+              h !== 1 ? "s" : ""
+            ] }),
+            o && m && (s.length > 0 || h > 0) && /* @__PURE__ */ e.jsxs(tt, { variant: "ghost", size: "sm", className: "justify-start h-8 px-3 text-xs font-normal hover:bg-muted", onClick: () => {
+              o && o(), m && m();
+            }, children: [
+              "Remove ",
+              s.length,
+              " drawing",
+              s.length !== 1 ? "s" : "",
+              " & ",
+              h,
+              " indicator",
+              h !== 1 ? "s" : ""
+            ] })
+          ] }) })
+        ] })
+      ] })
+    ] }),
+    /* @__PURE__ */ e.jsx(Gi, { open: We, onOpenChange: rt, message: "Sign in to save your favorite drawing tools and sync them across devices." })
+  ] });
 }
 function vy({
   onOpenShortcutsDialog: t,
@@ -23838,7 +23838,7 @@ function vy({
     ] }) }) }),
     c && a && /* @__PURE__ */ e.jsx("div", { className: "hidden md:block lg:hidden", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
       /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(
-        ah,
+        ih,
         {
           selectedLayout: a,
           onLayoutChange: c,
@@ -23862,7 +23862,7 @@ function vy({
       /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Layout" })
     ] }) }) }),
     /* @__PURE__ */ e.jsx("div", { className: "hidden md:block", children: /* @__PURE__ */ e.jsx(hn, { delayDuration: 300, children: /* @__PURE__ */ e.jsxs(fn, { children: [
-      /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: g, children: /* @__PURE__ */ e.jsx(ca, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
+      /* @__PURE__ */ e.jsx(mn, { asChild: !0, children: /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", className: "h-10 w-10 lg:h-12 lg:w-12 rounded-none transition-all text-foreground/80 hover:bg-muted/50 hover:text-foreground", onClick: g, children: /* @__PURE__ */ e.jsx(ia, { className: "h-5 w-5 lg:h-[38px] lg:w-[38px]" }) }) }),
       /* @__PURE__ */ e.jsx(cn, { side: "right", className: "text-xs lg:text-sm", children: "Settings" })
     ] }) }) })
   ] });
@@ -24094,7 +24094,7 @@ function jy(t) {
     onPanelChange: pt,
     shortcutsDialogOpen: V,
     onShortcutsDialogChange: $e
-  } = t, { isMobileLandscape: ie } = fy(), [st, ft] = f.useState(null), Me = q !== void 0 ? q : st, ce = pt || ft, { watchlist: H, setWatchlist: Ee } = hy(), { prices: Mt } = ay(H, {}), [Vt, rs] = f.useState([]), [St, de] = f.useState(!0), [ke, ot] = f.useState([]), [Pt, mt] = f.useState(!1), [ls, Is] = f.useState({ high: !0, medium: !1, low: !1 }), [jt, Ft] = f.useState(!1), [zt, ae] = f.useState(() => {
+  } = t, { isMobileLandscape: ie } = uy(), [st, ft] = f.useState(null), Me = q !== void 0 ? q : st, ce = pt || ft, { watchlist: H, setWatchlist: Ee } = dy(), { prices: Mt } = oy(H, {}), [Vt, rs] = f.useState([]), [St, de] = f.useState(!0), [ke, ot] = f.useState([]), [Pt, mt] = f.useState(!1), [ls, Is] = f.useState({ high: !0, medium: !1, low: !1 }), [jt, Ft] = f.useState(!1), [zt, ae] = f.useState(() => {
     try {
       const As = localStorage.getItem("chart-sidebar-width");
       return As ? Math.max(240, Math.min(480, parseInt(As))) : 240;
@@ -24119,7 +24119,7 @@ function jy(t) {
     showSignupPrompt: Kt,
     setShowSignupPrompt: ts,
     requiresAuth: Ls
-  } = xy(r), Us = () => {
+  } = my(r), Us = () => {
     Ls() || es(!0);
   }, Tn = (As) => {
     if (!As) return [];
@@ -24295,7 +24295,7 @@ function jy(t) {
             ] }),
             /* @__PURE__ */ e.jsx("div", { className: "w-5 h-px bg-border/40 my-1.5 lg:hidden" }),
             /* @__PURE__ */ e.jsx(
-              R0,
+              yy,
               {
                 activeTool: o,
                 onToolSelect: r,
@@ -24346,7 +24346,7 @@ function jy(t) {
               /* @__PURE__ */ e.jsx("span", { className: "font-semibold text-sm", children: Me === "watchlist" ? "Watchlist" : Me === "news" ? "News" : "Economic Events" }),
               /* @__PURE__ */ e.jsx(tt, { variant: "ghost", size: "icon", onClick: () => ce(null), className: "h-6 w-6", children: /* @__PURE__ */ e.jsx(tr, { className: "h-4 w-4" }) })
             ] }),
-            Me === "watchlist" && /* @__PURE__ */ e.jsx(uy, { currentPair: n, onPairSelect: s, watchlist: H, onToggleWatchlist: pn, livePrices: Mt, newsArticles: Vt }),
+            Me === "watchlist" && /* @__PURE__ */ e.jsx(cy, { currentPair: n, onPairSelect: s, watchlist: H, onToggleWatchlist: pn, livePrices: Mt, newsArticles: Vt }),
             Me === "news" && /* @__PURE__ */ e.jsx(Ty, { newsArticles: Vt, newsLoading: St }),
             Me === "calendar" && /* @__PURE__ */ e.jsx(Sy, { calendarEvents: ke, calendarLoading: Pt, impactFilters: ls, onImpactFilterChange: Is, showEventsOnChart: g, onShowEventsOnChartChange: L }),
             /* @__PURE__ */ e.jsx(
@@ -24362,8 +24362,8 @@ function jy(t) {
       )
     ] }),
     /* @__PURE__ */ e.jsx(rh, { open: jt, onOpenChange: Ft }),
-    /* @__PURE__ */ e.jsx(by, { open: _e, onOpenChange: es, shortcuts: Gs, onSetShortcut: dn, onRemoveShortcut: ws, getShortcutForTool: ps, onClearAll: qt }),
-    /* @__PURE__ */ e.jsx(yy, { open: Kt, onOpenChange: ts })
+    /* @__PURE__ */ e.jsx(gy, { open: _e, onOpenChange: es, shortcuts: Gs, onSetShortcut: dn, onRemoveShortcut: ws, getShortcutForTool: ps, onClearAll: qt }),
+    /* @__PURE__ */ e.jsx(by, { open: Kt, onOpenChange: ts })
   ] });
 }
 const My = la.memo(jy);
@@ -24402,7 +24402,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
   "1D": 1440,
   "1W": 10080,
   "1M": 43200
-}, oa = (t, n) => ph(t, n), ol = (t, n, s) => {
+}, oa = (t, n) => uh(t, n), ol = (t, n, s) => {
   const { decimals: o } = oa(n, s);
   return t.toFixed(o);
 }, Py = ({ cols: t, rows: n, isSelected: s }) => {
@@ -24484,7 +24484,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
     ] }) })
   ] });
 }, Ry = () => {
-  const { pair: t } = Of(), [n] = Ff(), s = vo(), { user: o } = gr(), { getCategory: r } = Gi(), a = t ? r(t) : void 0;
+  const { pair: t } = Of(), [n] = Ff(), s = vo(), { user: o } = gr(), { getCategory: r } = Yi(), a = t ? r(t) : void 0;
   f.useEffect(() => {
     const C = document.documentElement, A = document.body, b = C.style.overflow, R = A.style.overflow, D = C.style.position, E = A.style.position, x = C.style.height, w = A.style.height, P = A.style.overscrollBehavior, W = A.style.touchAction;
     return C.style.overflow = "hidden", A.style.overflow = "hidden", C.style.position = "fixed", A.style.position = "fixed", C.style.height = "100%", A.style.height = "100%", C.style.width = "100%", A.style.width = "100%", A.style.overscrollBehavior = "none", A.style.touchAction = "none", () => {
@@ -24558,7 +24558,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
     $e,
     Ze
   ]);
-  const [es, ms] = f.useState(null), [Ws, Os] = f.useState(null), [Js, Gt] = f.useState(null), [Qs, ys] = f.useState(null), [Gs, dn] = f.useState(null), ws = f.useRef(!1), [ps, qt] = f.useState({ ...hh }), [Kt, ts] = f.useState(null), Ls = f.useRef(null), Us = f.useRef(() => {
+  const [es, ms] = f.useState(null), [Ws, Os] = f.useState(null), [Js, Gt] = f.useState(null), [Qs, ys] = f.useState(null), [Gs, dn] = f.useState(null), ws = f.useRef(!1), [ps, qt] = f.useState({ ...lh }), [Kt, ts] = f.useState(null), Ls = f.useRef(null), Us = f.useRef(() => {
   }), Tn = f.useRef(() => {
   }), yn = f.useRef(() => {
   }), pn = f.useRef(() => {
@@ -24591,7 +24591,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
     } catch (w) {
       w.message?.includes("42P01") ? hs.error("Backtest saving requires database setup. Please contact support.") : hs.error("Failed to save progress"), console.error(w);
     }
-  }, qs = ey(), Rs = f.useCallback((C) => {
+  }, qs = Jb(), Rs = f.useCallback((C) => {
     ts(C);
   }, []), Vn = f.useRef(Pt);
   f.useEffect(() => {
@@ -24820,7 +24820,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
   const re = f.useCallback(() => {
     T(), Ge([]), _e(!1);
   }, [T]);
-  return /* @__PURE__ */ e.jsx(vh, { defaultOpen: !1, className: "h-full min-h-0", children: /* @__PURE__ */ e.jsxs("div", { className: "relative h-full w-full bg-bg flex flex-col overflow-hidden", style: { touchAction: "none", overscrollBehavior: "none" }, children: [
+  return /* @__PURE__ */ e.jsx(xh, { defaultOpen: !1, className: "h-full min-h-0", children: /* @__PURE__ */ e.jsxs("div", { className: "relative h-full w-full bg-bg flex flex-col overflow-hidden", style: { touchAction: "none", overscrollBehavior: "none" }, children: [
     /* @__PURE__ */ e.jsx("div", { className: "quantum-grid" }),
     /* @__PURE__ */ e.jsx("div", { className: "z-30 w-full bg-bg border-b border-border", children: /* @__PURE__ */ e.jsxs("div", { className: "flex items-center justify-between h-7 sm:h-10 px-1.5 sm:px-3 md:px-4", children: [
       /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1.5 sm:gap-2", children: [
@@ -24890,7 +24890,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
       ] })
     ] }) }),
     /* @__PURE__ */ e.jsx("div", { className: "z-20 px-1.5 sm:px-3 md:px-4 py-0.5 sm:py-1.5 bg-bg border-b border-border", children: /* @__PURE__ */ e.jsx(
-      ny,
+      ty,
       {
         pair: t || "BTCUSD",
         category: a,
@@ -24995,7 +24995,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
           }
         ),
         be && U.find((C) => C.id === be) && /* @__PURE__ */ e.jsx(
-          Zb,
+          Gb,
           {
             drawing: U.find((C) => C.id === be),
             onUpdateDrawing: (C, A) => {
@@ -25010,7 +25010,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
           }
         ),
         Ks === "1x1" && Kt && Ze.filter((C) => C.status === "pending" || C.status === "open").length > 0 && /* @__PURE__ */ e.jsx(
-          Nh,
+          gh,
           {
             converter: Kt,
             trades: Ze,
@@ -25143,7 +25143,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
                   className: "absolute inset-0 overflow-hidden pointer-events-none",
                   style: { right: Kt.priceAxisWidth || 112 },
                   children: /* @__PURE__ */ e.jsx(
-                    kh,
+                    bh,
                     {
                       converter: Kt,
                       slDragPrice: Js,
@@ -25185,7 +25185,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
           }
         ),
         /* @__PURE__ */ e.jsx(
-          lb,
+          J0,
           {
             pair: t || "BTCUSD",
             layout: Ks,
@@ -25252,7 +25252,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
       ] })
     ] }),
     /* @__PURE__ */ e.jsx(
-      Hb,
+      Ub,
       {
         open: _,
         onOpenChange: k,
@@ -25268,7 +25268,7 @@ const Xl = "lse_backtest_session", xd = ["1m", "5m", "15m", "30m", "1H", "4H", "
       }
     ),
     /* @__PURE__ */ e.jsx(
-      ry,
+      sy,
       {
         open: Wt,
         onClose: () => _e(!1),
@@ -25523,7 +25523,7 @@ function By({ open: t, onOpenChange: n }) {
                 className: "p-2 border-b border-border sticky top-0 bg-background z-10",
                 onKeyDown: (ie) => ie.stopPropagation(),
                 children: /* @__PURE__ */ e.jsxs("div", { className: "relative", children: [
-                  /* @__PURE__ */ e.jsx(da, { className: "absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" }),
+                  /* @__PURE__ */ e.jsx(ca, { className: "absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" }),
                   /* @__PURE__ */ e.jsx(
                     "input",
                     {
@@ -25795,19 +25795,18 @@ export {
   hg as bA,
   ha as bB,
   Un as bC,
-  hh as bD,
+  lh as bD,
   Hy as bE,
   sp as bF,
   zy as bG,
   us as bH,
   Xy as bI,
-  R0 as bJ,
-  g0 as bK,
-  b0 as bL,
-  y0 as bM,
-  Ky as bN,
-  Yy as bO,
-  Gy as bP,
+  g0 as bJ,
+  b0 as bK,
+  y0 as bL,
+  Ky as bM,
+  Yy as bN,
+  Gy as bO,
   bg as ba,
   gg as bb,
   Yu as bc,
