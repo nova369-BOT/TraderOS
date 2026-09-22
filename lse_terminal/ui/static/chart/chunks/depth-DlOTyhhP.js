@@ -57,18 +57,18 @@ function wt(t, e) {
 function He(t, e, s) {
   const o = new Uint8ClampedArray(1024), a = 1 - Math.min(1, Math.max(0, e.dimming)), r = 1 + e.contrast, l = e.brightness * 255, i = s >= 2 ? Math.ceil(256 / Math.min(s, 256)) : 1, h = (c) => {
     const b = c / 255;
-    let T, v, m;
-    t === null ? T = v = m = b * 255 : [T, v, m] = wt(t, b);
-    const g = (T + v + m) / 3;
-    return T = g + (T - g) * e.intensity, v = g + (v - g) * e.intensity, m = g + (m - g) * e.intensity, T *= a, v *= a, m *= a, T = (T / 255 - 0.5) * r * 255 + 127.5 + l, v = (v / 255 - 0.5) * r * 255 + 127.5 + l, m = (m / 255 - 0.5) * r * 255 + 127.5 + l, [
+    let T, v, f;
+    t === null ? T = v = f = b * 255 : [T, v, f] = wt(t, b);
+    const g = (T + v + f) / 3;
+    return T = g + (T - g) * e.intensity, v = g + (v - g) * e.intensity, f = g + (f - g) * e.intensity, T *= a, v *= a, f *= a, T = (T / 255 - 0.5) * r * 255 + 127.5 + l, v = (v / 255 - 0.5) * r * 255 + 127.5 + l, f = (f / 255 - 0.5) * r * 255 + 127.5 + l, [
       Math.min(255, Math.max(0, T)),
       Math.min(255, Math.max(0, v)),
-      Math.min(255, Math.max(0, m))
+      Math.min(255, Math.max(0, f))
     ];
   };
   for (let c = 0; c < 256; c++) {
-    const b = i > 1 ? Math.min(Math.floor(c / i) * i + Math.floor(i / 2), 255) : c, [T, v, m] = h(b);
-    o[c * 4] = T, o[c * 4 + 1] = v, o[c * 4 + 2] = m, o[c * 4 + 3] = 255;
+    const b = i > 1 ? Math.min(Math.floor(c / i) * i + Math.floor(i / 2), 255) : c, [T, v, f] = h(b);
+    o[c * 4] = T, o[c * 4 + 1] = v, o[c * 4 + 2] = f, o[c * 4 + 3] = 255;
   }
   return o;
 }
@@ -194,22 +194,22 @@ function Qe(t, e, s, o, a, r, l) {
   t.stroke(), t.restore();
 }
 function Pt(t, e) {
-  const { fieldW: s, cssW: o, cssH: a, centre: r, ppu: l, pLo: i, pHi: h } = e, c = (m) => a / 2 - (m - r) * l;
+  const { fieldW: s, cssW: o, cssH: a, centre: r, ppu: l, pLo: i, pHi: h } = e, c = (f) => a / 2 - (f - r) * l;
   t.fillStyle = "#0c0f14", t.fillRect(s, 0, o - s, a), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(s + 0.5, 0), t.lineTo(s + 0.5, a), t.stroke();
   const b = Ct(h - i), T = Math.ceil(i / b) * b;
   t.font = Le, t.textAlign = "right", t.save(), t.setLineDash([1, 3]);
-  for (let m = T; m <= h; m += b) {
-    const g = Math.round(c(m)) + 0.5;
-    g < 8 || g > a - 4 || (t.strokeStyle = "rgba(255, 255, 255, 0.05)", t.beginPath(), t.moveTo(0, g), t.lineTo(s, g), t.stroke(), t.strokeStyle = "#3a4453", t.beginPath(), t.moveTo(s, g), t.lineTo(s + 4, g), t.stroke(), e.fused || (t.fillStyle = "#8b96a5", t.fillText(We(m, b), o - 5, g + 3)));
+  for (let f = T; f <= h; f += b) {
+    const g = Math.round(c(f)) + 0.5;
+    g < 8 || g > a - 4 || (t.strokeStyle = "rgba(255, 255, 255, 0.05)", t.beginPath(), t.moveTo(0, g), t.lineTo(s, g), t.stroke(), t.strokeStyle = "#3a4453", t.beginPath(), t.moveTo(s, g), t.lineTo(s + 4, g), t.stroke(), e.fused || (t.fillStyle = "#8b96a5", t.fillText(We(f, b), o - 5, g + 3)));
   }
   t.restore();
-  const v = (m, g, w) => {
-    const u = c(m);
-    u < 8 || u > a - 8 || (t.fillStyle = g, t.fillRect(s + 2, u - 8, o - s - 4, 16), t.fillStyle = w, t.font = `600 ${Le}`, t.fillText(We(m, b), o - 5, u + 3), t.font = Le);
+  const v = (f, g, w) => {
+    const u = c(f);
+    u < 8 || u > a - 8 || (t.fillStyle = g, t.fillRect(s + 2, u - 8, o - s - 4, 16), t.fillStyle = w, t.font = `600 ${Le}`, t.fillText(We(f, b), o - 5, u + 3), t.font = Le);
   };
   if (e.bookAsk !== null && v(e.bookAsk, "rgba(239, 83, 80, 0.92)", "#2b0b0a"), e.bookBid !== null && v(e.bookBid, "rgba(38, 166, 154, 0.92)", "#06201c"), e.lastPrice !== null) {
-    const m = c(e.lastPrice);
-    m >= 0 && m <= a && (t.save(), t.strokeStyle = e.lastBuy ? "rgba(38, 166, 154, 0.65)" : "rgba(239, 83, 80, 0.65)", t.setLineDash([5, 4]), t.beginPath(), t.moveTo(0, Math.round(m) + 0.5), t.lineTo(s, Math.round(m) + 0.5), t.stroke(), t.restore(), m >= 8 && m <= a - 8 && (t.fillStyle = e.lastBuy ? "#26a69a" : "#ef5350", t.fillRect(s + 2, m - 8, o - s - 4, 16), t.fillStyle = "#08131a", t.font = `700 ${Le}`, t.fillText(We(e.lastPrice, b), o - 5, m + 3), t.font = Le));
+    const f = c(e.lastPrice);
+    f >= 0 && f <= a && (t.save(), t.strokeStyle = e.lastBuy ? "rgba(38, 166, 154, 0.65)" : "rgba(239, 83, 80, 0.65)", t.setLineDash([5, 4]), t.beginPath(), t.moveTo(0, Math.round(f) + 0.5), t.lineTo(s, Math.round(f) + 0.5), t.stroke(), t.restore(), f >= 8 && f <= a - 8 && (t.fillStyle = e.lastBuy ? "#26a69a" : "#ef5350", t.fillRect(s + 2, f - 8, o - s - 4, 16), t.fillStyle = "#08131a", t.font = `700 ${Le}`, t.fillText(We(e.lastPrice, b), o - 5, f + 3), t.font = Le));
   }
   t.textAlign = "left";
 }
@@ -221,8 +221,8 @@ function Dt(t, e, s, o, a, r, l, i) {
   const h = (c, b) => {
     t.strokeStyle = b, t.lineWidth = 1, t.beginPath();
     let T = null, v = 0;
-    for (let m = s; m < o; m++) {
-      const g = c(e[m]), w = a(e[m].tsMs), u = m + 1 < o ? a(e[m + 1].tsMs) : w + 1;
+    for (let f = s; f < o; f++) {
+      const g = c(e[f]), w = a(e[f].tsMs), u = f + 1 < o ? a(e[f + 1].tsMs) : w + 1;
       if (g === null || g < l || g > i) {
         T = null;
         continue;
@@ -240,13 +240,13 @@ function At(t, e, s, o, a, r, l, i, h) {
   const c = [];
   if (h.mode === "pie") {
     const b = Math.max(4, h.cssH / 80), T = Math.max(5, 1400 / Math.max(0.5, (o - s) / Math.max(1, h.fieldW))), v = /* @__PURE__ */ new Map();
-    for (const m of e) {
-      if (m.tsMs < s || m.tsMs > o || m.price < a || m.price > r) continue;
-      const g = l(m.tsMs), w = i(m.price), u = `${Math.round(g / T)}:${Math.round(w / b)}`;
+    for (const f of e) {
+      if (f.tsMs < s || f.tsMs > o || f.price < a || f.price > r) continue;
+      const g = l(f.tsMs), w = i(f.price), u = `${Math.round(g / T)}:${Math.round(w / b)}`;
       let x = v.get(u);
-      x || (x = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }, v.set(u, x)), x.x += g, x.y += w, x.n += 1, x.size += m.size, m.buy ? x.buy += m.size : x.sell += m.size;
+      x || (x = { x: 0, y: 0, n: 0, size: 0, buy: 0, sell: 0 }, v.set(u, x)), x.x += g, x.y += w, x.n += 1, x.size += f.size, f.buy ? x.buy += f.size : x.sell += f.size;
     }
-    for (const m of v.values()) c.push({ ...m, x: m.x / m.n, y: m.y / m.n });
+    for (const f of v.values()) c.push({ ...f, x: f.x / f.n, y: f.y / f.n });
   } else
     for (const b of e)
       b.tsMs < s || b.tsMs > o || b.price < a || b.price > r || c.push({
@@ -258,8 +258,8 @@ function At(t, e, s, o, a, r, l, i, h) {
         sell: b.buy ? 0 : b.size
       });
   for (const b of c) {
-    const T = Math.min(16, Math.max(2.5, Math.sqrt(b.size) * 0.9 * h.scale)), v = b.buy + b.sell, m = v > 0 ? b.buy / v : 0.5, g = -Math.PI / 2;
-    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g, g + m * Math.PI * 2), t.closePath(), t.fillStyle = ct, t.fill(), m < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g + m * Math.PI * 2, g + Math.PI * 2), t.closePath(), t.fillStyle = ht, t.fill()), h.mode !== "solid") {
+    const T = Math.min(16, Math.max(2.5, Math.sqrt(b.size) * 0.9 * h.scale)), v = b.buy + b.sell, f = v > 0 ? b.buy / v : 0.5, g = -Math.PI / 2;
+    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g, g + f * Math.PI * 2), t.closePath(), t.fillStyle = ct, t.fill(), f < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, T, g + f * Math.PI * 2, g + Math.PI * 2), t.closePath(), t.fillStyle = ht, t.fill()), h.mode !== "solid") {
       const w = t.createRadialGradient(
         b.x - T * 0.35,
         b.y - T * 0.42,
@@ -292,15 +292,15 @@ function Nt(t, e, s, o, a, r, l, i, h, c) {
     let u = v.get(w);
     u || (u = { o: g.price, h: g.price, l: g.price, c: g.price }, v.set(w, u)), u.h = Math.max(u.h, g.price), u.l = Math.min(u.l, g.price), u.c = g.price;
   }
-  const m = Math.min(9, Math.max(2, T / h * 0.6));
+  const f = Math.min(9, Math.max(2, T / h * 0.6));
   t.save(), t.globalAlpha = 0.92;
   for (const [g, w] of v) {
     const u = l(g * T + T / 2);
-    if (u < -m || u > c + m) continue;
+    if (u < -f || u > c + f) continue;
     const _ = w.c >= w.o ? ct : ht;
     t.strokeStyle = _, t.fillStyle = _, t.lineWidth = 1, t.beginPath(), t.moveTo(Math.round(u) + 0.5, i(w.h)), t.lineTo(Math.round(u) + 0.5, i(w.l)), t.stroke();
     const p = i(w.o), E = i(w.c), d = Math.min(p, E);
-    t.fillRect(u - m / 2, d, m, Math.max(1, Math.abs(p - E)));
+    t.fillRect(u - f / 2, d, f, Math.max(1, Math.abs(p - E)));
   }
   t.restore();
 }
@@ -309,19 +309,19 @@ function zt(t, e, s, o, a, r, l, i, h) {
   t.fillStyle = "#0a0d12", t.fillRect(0, l, h, i - l), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(0, Math.round(l) + 0.5), t.lineTo(h, Math.round(l) + 0.5), t.stroke();
   const c = i - Ut - 2, b = c - l - 14;
   if (b < 8) return;
-  const v = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((d) => d / r >= 5) ?? 36e5, m = /* @__PURE__ */ new Map();
+  const v = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((d) => d / r >= 5) ?? 36e5, f = /* @__PURE__ */ new Map();
   let g = 0;
   for (const d of e) {
     if (d.tsMs < s || d.tsMs > o) continue;
     const k = Math.floor(d.tsMs / v);
-    let C = m.get(k);
-    C || (C = { b: 0, s: 0 }, m.set(k, C)), d.buy ? C.b += d.size : C.s += d.size, g = Math.max(g, C.b, C.s);
+    let C = f.get(k);
+    C || (C = { b: 0, s: 0 }, f.set(k, C)), d.buy ? C.b += d.size : C.s += d.size, g = Math.max(g, C.b, C.s);
   }
-  const w = [...m.keys()].sort((d, k) => d - k);
+  const w = [...f.keys()].sort((d, k) => d - k);
   let u = 0, x = 0, _ = 0;
   const p = [];
   for (const d of w) {
-    const k = m.get(d);
+    const k = f.get(d);
     u += k.b - k.s, p.push([d, u]), x = Math.min(x, u), _ = Math.max(_, u);
   }
   t.font = "600 8px ui-monospace, Menlo, monospace";
@@ -329,7 +329,7 @@ function zt(t, e, s, o, a, r, l, i, h) {
   for (let d = E; d <= o; d += v) {
     const k = a(d), C = a(d + v);
     if (C < -4 || k > h + 4) continue;
-    const O = C - k, L = m.get(Math.floor(d / v));
+    const O = C - k, L = f.get(Math.floor(d / v));
     if (!L) continue;
     const q = Math.max(1, O * 0.36), N = k + O / 2, I = g > 0 ? L.s / g * b : 0, $ = g > 0 ? L.b / g * b : 0;
     t.fillStyle = "rgba(239, 83, 80, 0.85)", t.fillRect(N - q - 0.5, c - I, q, I), t.fillStyle = "rgba(100, 165, 240, 0.85)", t.fillRect(N + 0.5, c - $, q, $), O >= 26 && (t.textAlign = "center", t.fillStyle = "rgba(255, 150, 147, 0.9)", t.fillText($e(L.s), N - q / 2, c - I - 3), t.fillStyle = "rgba(147, 197, 253, 0.9)", t.fillText($e(L.b), N + q / 2 + 1, c - $ - 3));
@@ -351,14 +351,14 @@ function Ft(t, e, s, o) {
     g.tsMs < s || g.tsMs > o || (g.buy ? a += g.size : r += g.size);
   const l = a + r, i = l > 0 ? (a - r) / l : 0, h = l > 0 ? (a - r) / l : 0, c = 178, b = 44, T = 8, v = 8;
   t.save(), t.fillStyle = "rgba(10, 13, 18, 0.78)", t.fillRect(T, v, c, b), t.strokeStyle = "#232a35", t.strokeRect(T + 0.5, v + 0.5, c - 1, b - 1);
-  const m = (g, w, u, x) => {
+  const f = (g, w, u, x) => {
     t.font = `700 ${dt}`, t.fillStyle = "#8b96a5", t.fillText(g, T + 8, x + 7);
     const _ = T + 40, p = 92, E = 6;
     t.fillStyle = "rgba(239, 83, 80, 0.55)", t.fillRect(_, x, p / 2, E), t.fillStyle = "rgba(38, 166, 154, 0.55)", t.fillRect(_ + p / 2, x, p / 2, E);
     const d = _ + p / 2 + (u ? w * (p / 2 - 2) : 0);
     t.fillStyle = u ? "#eef1f6" : "#5c6672", t.fillRect(d - 1, x - 2, 2, E + 4), t.textAlign = "right", t.fillStyle = u ? w >= 0 ? "#26a69a" : "#ef5350" : "#5c6672", t.fillText(u ? `${w >= 0 ? "+" : "−"}${Math.abs(Math.round(w * 100))}%` : "—", T + c - 8, x + 7), t.textAlign = "left";
   };
-  m("IMB", i, l > 0, v + 8), m("CVD", h, l > 0, v + 26), t.restore();
+  f("IMB", i, l > 0, v + 8), f("CVD", h, l > 0, v + 26), t.restore();
 }
 function It(t) {
   return t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 ? t.toFixed(0) : t >= 1 ? t.toFixed(1) : t.toPrecision(2);
@@ -383,10 +383,10 @@ function $t(t, e, s, o) {
   let b = 0;
   for (const [_, p] of [...a, ...r])
     _ >= e.lo && _ <= e.hi && (b = Math.max(b, p));
-  const T = e.fieldW + 5, v = e.fieldW + 46, m = 22, g = e.cssW - 4, w = (_, p, E, d, k) => {
+  const T = e.fieldW + 5, v = e.fieldW + 46, f = 22, g = e.cssW - 4, w = (_, p, E, d, k) => {
     const C = l(_);
     if (C < -c || C > e.fH + c) return;
-    const O = C - c / 2, L = b > 0 ? Math.max(1.5, p / b * m) : 1.5;
+    const O = C - c / 2, L = b > 0 ? Math.max(1.5, p / b * f) : 1.5;
     t.fillStyle = E === "bid" ? d ? "rgba(38,166,154,0.18)" : "rgba(38, 166, 154, 0.68)" : d ? "rgba(239,83,80,0.18)" : "rgba(239, 83, 80, 0.68)", t.fillRect(v, O, L, Math.max(1, c - 1)), t.font = k ? "700 9px ui-monospace, Menlo, monospace" : "9px ui-monospace, Menlo, monospace", t.textAlign = "left", t.fillStyle = d ? "#4a5260" : k ? E === "bid" ? "#26a69a" : "#ef5350" : "#8b96a5", t.fillText(Ot(_), T, C + 3), t.textAlign = "right", t.fillStyle = d ? "#4a5260" : E === "bid" ? "#9fd6cd" : "#f4b3ae", t.fillText(It(p), g, C + 3);
   }, u = a.length ? a[0][0] : null, x = r.length ? r[0][0] : null;
   if (a.forEach(([_, p], E) => {
@@ -716,8 +716,8 @@ class qt {
     const l = this.priceCenter ?? (s + o) / 2, i = (p) => a / 2 - (p - l) * r;
     this.viewLo = s, this.viewHi = o, this.viewCentre = l, this.viewPpu = r, this.viewH = a, this.viewVersion += 1;
     const h = this.fieldW(), c = this.settings.subpanes, b = this.xToTs(0), T = this.xToTs(h);
-    let v = this.lowerBound(b), m = this.lowerBound(T);
-    m = Math.min(m, this.cols.length), this.follow && this.rightOffsetPx <= 0 && (this.rightOffsetPx = 0);
+    let v = this.lowerBound(b), f = this.lowerBound(T);
+    f = Math.min(f, this.cols.length), this.follow && this.rightOffsetPx <= 0 && (this.rightOffsetPx = 0);
     const g = c ? this.cssH - 14 : a;
     this.settings.view === "footprint" ? (this.paintFootprint(e, b, T, s, o, i, a), Qe(
       e,
@@ -727,7 +727,7 @@ class qt {
       b,
       T,
       this.niceTimeStep(h * this.msPerPx)
-    )) : this.paintHeatField(e, v, m, b, T, s, o, i, h, a, g), c && (zt(
+    )) : this.paintHeatField(e, v, f, b, T, s, o, i, h, a, g), c && (zt(
       e,
       this.dots,
       b,
@@ -791,21 +791,21 @@ class qt {
    * colourise → blit → glow → time grid → path → candles → bubbles →
    * volume strip. */
   paintHeatField(e, s, o, a, r, l, i, h, c, b, T) {
-    const v = this.settings, m = Math.max(1, o - s), g = Xt, w = (i - l) / g;
-    (this.off.width !== m || this.off.height !== g) && (this.off.width = m, this.off.height = g, this.glow.width = m, this.glow.height = g);
-    const u = Math.min(1, Math.max(0.25, v.gamma || 1)), x = new Uint8ClampedArray(m * g), _ = new Uint8Array(m * g).fill(255);
-    for (let N = 0; N < m; N++) {
+    const v = this.settings, f = Math.max(1, o - s), g = Xt, w = (i - l) / g;
+    (this.off.width !== f || this.off.height !== g) && (this.off.width = f, this.off.height = g, this.glow.width = f, this.glow.height = g);
+    const u = Math.min(1, Math.max(0.25, v.gamma || 1)), x = new Uint8ClampedArray(f * g), _ = new Uint8Array(f * g).fill(255);
+    for (let N = 0; N < f; N++) {
       const I = this.cols[s + N], { keys: $, sizes: W, sides: J } = I;
       for (let ye = 0; ye < $.length; ye++) {
         const pe = $[ye];
         if (pe < l || pe > i) continue;
         const be = W[ye];
         if (be <= 0) continue;
-        const de = Math.min(g - 1, Math.max(0, Math.floor((i - pe) / w))) * m + N, R = Rt(be, this.lo, this.hi, u);
+        const de = Math.min(g - 1, Math.max(0, Math.floor((i - pe) / w))) * f + N, R = Rt(be, this.lo, this.hi, u);
         R > x[de] && (x[de] = R, _[de] = J[ye]);
       }
     }
-    const p = this.offCtx.createImageData(m, g), E = this.glowCtx.createImageData(m, g), d = p.data, k = E.data;
+    const p = this.offCtx.createImageData(f, g), E = this.glowCtx.createImageData(f, g), d = p.data, k = E.data;
     for (let N = 0; N < x.length; N++) {
       const I = _[N];
       if (I === 255) continue;
@@ -813,7 +813,7 @@ class qt {
       d[J] = $[W], d[J + 1] = $[W + 1], d[J + 2] = $[W + 2], d[J + 3] = 255, x[N] >= Gt && (k[J] = $[W], k[J + 1] = $[W + 1], k[J + 2] = $[W + 2], k[J + 3] = 255);
     }
     this.offCtx.putImageData(p, 0, 0), this.glowCtx.putImageData(E, 0, 0);
-    const C = this.tsToX(this.cols[s].tsMs), O = this.tsToX(this.cols[s].tsMs + m * this.columnMs()), L = h(i), q = h(l);
+    const C = this.tsToX(this.cols[s].tsMs), O = this.tsToX(this.cols[s].tsMs + f * this.columnMs()), L = h(i), q = h(l);
     if (e.imageSmoothingEnabled = v.smoothColumns, e.drawImage(this.off, C, L, Math.max(1, O - C), Math.max(1, q - L)), e.imageSmoothingEnabled = !1, v.glow && (e.save(), e.globalCompositeOperation = "lighter", e.globalAlpha = 0.38, "filter" in e && (e.filter = "blur(6px)"), e.imageSmoothingEnabled = !0, e.drawImage(this.glow, C, L, Math.max(1, O - C), Math.max(1, q - L)), e.restore()), Qe(
       e,
       c,
@@ -885,14 +885,14 @@ class qt {
       250,
       500,
       1e3
-    ].find((d) => b / d <= 20) ?? b / 20, m = /* @__PURE__ */ new Map(), g = /* @__PURE__ */ new Map();
+    ].find((d) => b / d <= 20) ?? b / 20, f = /* @__PURE__ */ new Map(), g = /* @__PURE__ */ new Map();
     let w = 0, u = 0;
     for (const d of this.dots) {
       if (d.tsMs < s || d.tsMs > o || d.price < a || d.price > r) continue;
       u += 1;
       const k = Math.floor(d.tsMs / c), C = Math.floor(d.price / v), O = k + ":" + C;
-      let L = m.get(O);
-      L || (L = { b: 0, s: 0 }, m.set(O, L)), d.buy ? L.b += d.size : L.s += d.size, w = Math.max(w, L.b, L.s);
+      let L = f.get(O);
+      L || (L = { b: 0, s: 0 }, f.set(O, L)), d.buy ? L.b += d.size : L.s += d.size, w = Math.max(w, L.b, L.s);
       let q = g.get(k);
       q || (q = { b: 0, s: 0 }, g.set(k, q)), d.buy ? q.b += d.size : q.s += d.size;
     }
@@ -906,7 +906,7 @@ class qt {
       if (C < -4 || k > _ + 4) continue;
       const O = C - k, L = Math.floor(d / c), q = O >= 92, N = O / 2 - 4;
       e.strokeStyle = "rgba(30, 36, 47, 0.95)", e.beginPath(), e.moveTo(Math.round(C) + 0.5, 0), e.lineTo(Math.round(C) + 0.5, i), e.stroke();
-      for (const [$, W] of m) {
+      for (const [$, W] of f) {
         const [J, ye] = $.split(":");
         if (Number(J) !== L) continue;
         const pe = Number(ye), be = l((pe + 0.5) * v);
@@ -1653,8 +1653,8 @@ function Qt({
     const v = () => {
       const u = l.getBoundingClientRect(), x = window.devicePixelRatio || 1;
       l.width = Math.max(1, Math.round(u.width * x)), l.height = Math.max(1, Math.round(u.height * x)), c = -1;
-    }, m = new ResizeObserver(v);
-    m.observe(l), v();
+    }, f = new ResizeObserver(v);
+    f.observe(l), v();
     const g = () => {
       const u = t.current;
       if (!u) return;
@@ -1729,7 +1729,7 @@ function Qt({
       T || (g(), h = requestAnimationFrame(w));
     };
     return h = requestAnimationFrame(w), () => {
-      T = !0, cancelAnimationFrame(h), m.disconnect();
+      T = !0, cancelAnimationFrame(h), f.disconnect();
     };
   }, [t, e]), /* @__PURE__ */ n.jsxs("div", { style: {
     flex: `0 0 ${o}px`,
@@ -1778,16 +1778,16 @@ function ss({
   onLoad: e,
   onClose: s
 }) {
-  const [o, a] = y.useState(null), [r, l] = y.useState(null), [i, h] = y.useState(null), [c, b] = y.useState(null), [T, v] = y.useState(null), m = y.useCallback(() => {
+  const [o, a] = y.useState(null), [r, l] = y.useState(null), [i, h] = y.useState(null), [c, b] = y.useState(null), [T, v] = y.useState(null), f = y.useCallback(() => {
     fetch("/api/orderflow/sessions").then((u) => u.ok ? u.json() : Promise.reject(new Error(`HTTP ${u.status}`))).then((u) => {
       a(u.filter((x) => x.symbol === t)), l(null);
     }).catch((u) => l(String(u)));
   }, [t]);
   y.useEffect(() => {
-    m();
-    const u = setInterval(m, 4e3);
+    f();
+    const u = setInterval(f, 4e3);
     return () => clearInterval(u);
-  }, [m]), y.useEffect(() => {
+  }, [f]), y.useEffect(() => {
     const u = (x) => {
       x.key === "Escape" && s();
     };
@@ -1825,7 +1825,7 @@ function ss({
         const _ = await x.json().catch(() => ({ detail: `HTTP ${x.status}` }));
         throw new Error(String(_.detail || x.status));
       }
-      m();
+      f();
     } catch (x) {
       l(String(x));
     }
@@ -1936,7 +1936,7 @@ function ns({
   h.current || (h.current = new Ae());
   const [c, b] = y.useState({ kind: "loading" }), [T, v] = y.useState(
     () => Ge(t)
-  ), [m, g] = y.useState(50), [w, u] = y.useState(!1), [x, _] = y.useState(null), [p, E] = y.useState(!1), [d, k] = y.useState(null), [C, O] = y.useState(null), [L, q] = y.useState(0), [N, I] = y.useState(null), [$, W] = y.useState(0), J = y.useCallback((S) => {
+  ), [f, g] = y.useState(50), [w, u] = y.useState(!1), [x, _] = y.useState(null), [p, E] = y.useState(!1), [d, k] = y.useState(null), [C, O] = y.useState(null), [L, q] = y.useState(0), [N, I] = y.useState(null), [$, W] = y.useState(0), J = y.useCallback((S) => {
     v((U) => {
       const ee = { ...U, ...S };
       return ee.applySchemeGlobally && S.scheme && S.scheme !== U.scheme && (Ve(S.scheme, !0), window.dispatchEvent(new CustomEvent(
@@ -2081,9 +2081,9 @@ function ns({
     };
   }, [t, $]), y.useEffect(() => {
     if (!(T.cutoffMode === "percentile")) return;
-    const U = 90 - m * 0.8, ee = Math.max(0, 50 - U / 2), fe = Math.min(100, 50 + U / 2);
+    const U = 90 - f * 0.8, ee = Math.max(0, 50 - U / 2), fe = Math.min(100, 50 + U / 2);
     J({ cutoffLower: ee, cutoffUpper: fe });
-  }, [m]);
+  }, [f]);
   const de = y.useMemo(() => c.kind === "live" && c.demo ? "DEMO" : c.kind === "live" ? c.provider.toUpperCase() : "", [c]), R = y.useCallback((S) => {
     i.current?.wheel(S.deltaX, S.deltaY, S.shiftKey);
   }, []), A = y.useRef(null), H = y.useCallback((S) => {
@@ -2163,7 +2163,7 @@ function ns({
           type: "range",
           min: 0,
           max: 100,
-          value: m,
+          value: f,
           onChange: (S) => g(Number(S.target.value)),
           title: "Cut-off window — narrows/widens where the gradient saturates (S3)",
           style: { width: 90, accentColor: "#78909c" }
@@ -2848,21 +2848,21 @@ class ms {
       this.ringCount = 0, this.gpuDirty = !1;
       return;
     }
-    const s = Array.from(this.timeline.entries()).sort((v, m) => v[0] - m[0]), o = s[0][0];
+    const s = Array.from(this.timeline.entries()).sort((v, f) => v[0] - f[0]), o = s[0][0];
     this.gpuOriginMs = Math.floor(o / this.timeStepMs) * this.timeStepMs, this.gpuBucketSize = this.nativeBucket * (this.mode === "orderbook" ? this.bucketMultiplier : 1), this.globalMaxQty = 0.01;
     let a = 1 / 0, r = -1 / 0;
     for (const [, v] of s)
-      for (const m of v.keys())
-        m < a && (a = m), m > r && (r = m);
+      for (const f of v.keys())
+        f < a && (a = f), f > r && (r = f);
     const i = (a + r) / 2 - he / 2 * this.gpuBucketSize, h = new Float32Array(le * he), c = new Float32Array(le * 4), b = new Float32Array(le * he);
     let T = 0;
-    for (const [v, m] of s) {
+    for (const [v, f] of s) {
       const g = Math.floor((v - this.gpuOriginMs) / this.timeStepMs);
       if (g < 0 || g >= le) continue;
       g >= T && (T = g + 1);
       const w = new Float32Array(he);
       let u = 0, x = 0;
-      for (const [p, E] of m) {
+      for (const [p, E] of f) {
         const d = Math.floor((p - i) / this.nativeBucket);
         if (d >= 0 && d < he) {
           w[d] += E, d > u && (u = d);
@@ -2916,10 +2916,10 @@ class ms {
 }
 const ps = y.lazy(() => Promise.resolve().then(() => os).then((t) => ({ default: t.DepthHeatPane }))), qe = [
   // SECONDS PRO locked
-  { label: "1s", ms: 1e3, sec: 1, pro: !0 },
-  { label: "5s", ms: 5e3, sec: 5, pro: !0 },
-  { label: "15s", ms: 15e3, sec: 15, pro: !0 },
-  { label: "30s", ms: 3e4, sec: 30, pro: !0 },
+  { label: "1s", ms: 1e3, sec: 1 },
+  { label: "5s", ms: 5e3, sec: 5 },
+  { label: "15s", ms: 15e3, sec: 15 },
+  { label: "30s", ms: 3e4, sec: 30 },
   // MINUTES
   { label: "1m", ms: 6e4, sec: 60 },
   { label: "3m", ms: 18e4, sec: 180 },
@@ -2943,10 +2943,10 @@ const ps = y.lazy(() => Promise.resolve().then(() => os).then((t) => ({ default:
   { id: "flow", label: "Flow & Positioning" }
 ];
 function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColormap: a, opacity: r, intensity: l, gamma: i, noiseFloor: h, tickPerRow: c, halfLife: b }) {
-  const T = y.useRef(null), v = y.useRef(null), m = y.useRef(null), g = y.useRef(null), w = y.useRef(0), u = y.useRef(null), [x, _] = y.useState(qe[4]), [p, E] = y.useState(() => {
+  const T = y.useRef(null), v = y.useRef(null), f = y.useRef(null), g = y.useRef(null), w = y.useRef(0), u = y.useRef(null), [x, _] = y.useState(qe[4]), [p, E] = y.useState(() => {
     try {
-      const f = localStorage.getItem("ed_fav_tf");
-      return new Set(f ? JSON.parse(f) : ["1m", "5m", "15m", "1h", "4h", "1D"]);
+      const m = localStorage.getItem("ed_fav_tf");
+      return new Set(m ? JSON.parse(m) : ["1m", "5m", "15m", "1h", "4h", "1D"]);
     } catch {
       return /* @__PURE__ */ new Set(["1m", "5m", "15m", "1h", "4h", "1D"]);
     }
@@ -2969,25 +2969,25 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
     } catch {
     }
   }, [p]);
-  const Ye = y.useCallback((f, B) => {
+  const Ye = y.useCallback((m, B) => {
     B?.preventDefault(), E((K) => {
       const te = new Set(K);
-      if (te.has(f)) te.delete(f);
+      if (te.has(m)) te.delete(m);
       else {
         if (te.size >= 6) {
           const se = te.values().next().value;
           se && te.delete(se);
         }
-        te.add(f);
+        te.add(m);
       }
       return te;
     });
   }, []);
   y.useEffect(() => {
-    const f = T.current, B = m.current;
-    if (!f || !B) return;
+    const m = T.current, B = f.current;
+    if (!m || !B) return;
     const K = new ms();
-    if (!K.attach(f)) {
+    if (!K.attach(m)) {
       console.warn("WebGL2 not available, fallback to Canvas2D DepthHeatPane"), ve(!0);
       return;
     }
@@ -2998,16 +2998,16 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
       se.disconnect(), K.dispose(), g.current = null;
     };
   }, []), y.useEffect(() => {
-    const f = g.current;
-    f && (f.setMode(d), f.setLiqColormap(C), f.setObColormap(L), f.setSensitivity(N), f.setOpacity($), f.setBucketMultiplier(J), f.setReachModulation(pe), f.setLinearFiltering(ce), f.setColumnInterval(x.ms));
+    const m = g.current;
+    m && (m.setMode(d), m.setLiqColormap(C), m.setObColormap(L), m.setSensitivity(N), m.setOpacity($), m.setBucketMultiplier(J), m.setReachModulation(pe), m.setLinearFiltering(ce), m.setColumnInterval(x.ms));
   }, [d, C, L, N, $, J, pe, ce, x.ms]), y.useEffect(() => {
     if (!Re) return;
-    const f = setInterval(() => {
+    const m = setInterval(() => {
       S([Date.now() - 36e5, Date.now()]);
     }, 1e3);
-    return () => clearInterval(f);
+    return () => clearInterval(m);
   }, [Re]), y.useEffect(() => {
-    let f = !1, B = null;
+    let m = !1, B = null;
     const K = g.current;
     if (!K && !ge) return;
     const te = async () => {
@@ -3045,7 +3045,7 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
           const V = await fetch(`/api/orderflow/depth?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}&from=${we / 1e3}&to=${me / 1e3}&column_ms=${x.ms}&max_levels=80`);
           if (V.ok) {
             const X = await V.json();
-            if (f) return;
+            if (m) return;
             const D = X.events || [];
             for (const z of D)
               if (z.bids?.length || z.asks?.length) {
@@ -3075,7 +3075,7 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             }
           } else {
             const X = await V.json().catch(() => ({}));
-            f || Te(`no depth: ${X.detail || V.status} — live only`);
+            m || Te(`no depth: ${X.detail || V.status} — live only`);
           }
         }
         try {
@@ -3089,16 +3089,16 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
           }
         } catch {
         }
-        f || Te(P ? `${G.toUpperCase()} ${je}ms ${d} — live` : `${G.toUpperCase()} ${je}ms — waiting for live book...`);
+        m || Te(P ? `${G.toUpperCase()} ${je}ms ${d} — live` : `${G.toUpperCase()} ${je}ms — waiting for live book...`);
       } catch (me) {
-        f || Te(`engine unreachable: ${me}`);
+        m || Te(`engine unreachable: ${me}`);
       }
       const ae = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(t)}&provider=${encodeURIComponent(G)}`;
       try {
         B = new WebSocket(ae), B.onopen = () => {
-          f || Te(`${G.toUpperCase()} ${je}ms ${d} — WS live`);
+          m || Te(`${G.toUpperCase()} ${je}ms ${d} — WS live`);
         }, B.onmessage = (me) => {
-          if (!f)
+          if (!m)
             try {
               const we = JSON.parse(me.data);
               if (we.type === "depth") {
@@ -3125,26 +3125,26 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             } catch {
             }
         }, B.onerror = () => {
-          f || Te(`${G.toUpperCase()} WS error — retrying...`);
+          m || Te(`${G.toUpperCase()} WS error — retrying...`);
         }, B.onclose = () => {
-          f || Te(`${G.toUpperCase()} WS closed — reconnecting...`), f || setTimeout(() => {
-            f || te();
+          m || Te(`${G.toUpperCase()} WS closed — reconnecting...`), m || setTimeout(() => {
+            m || te();
           }, 2e3);
         };
       } catch (me) {
-        f || Te(`WS failed: ${me}`);
+        m || Te(`WS failed: ${me}`);
       }
     };
     return te(), () => {
-      f = !0;
+      m = !0;
       try {
         B?.close();
       } catch {
       }
     };
   }, [t, G, x.ms, je, d, ge]), y.useEffect(() => {
-    const f = T.current, B = v.current, K = m.current, te = g.current;
-    if (!f || !B || !K || !te) return;
+    const m = T.current, B = v.current, K = f.current, te = g.current;
+    if (!m || !B || !K || !te) return;
     const se = () => {
       const P = K.getBoundingClientRect();
       if (P.width < 10 || P.height < 10) {
@@ -3199,22 +3199,22 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
     };
     return w.current = requestAnimationFrame(se), () => cancelAnimationFrame(w.current);
   }, [Z, oe, U, Pe, R, F]);
-  const ft = y.useCallback((f) => {
-    f.preventDefault();
-    const B = f.currentTarget.getBoundingClientRect(), K = B.width - 58;
-    if (B.height - 20, f.shiftKey) {
-      const te = oe[1] - oe[0] || 1e3, se = f.deltaY > 0 ? 1.1 : 0.9, P = (oe[0] + oe[1]) / 2, xe = te * se / 2;
+  const ft = y.useCallback((m) => {
+    m.preventDefault();
+    const B = m.currentTarget.getBoundingClientRect(), K = B.width - 58;
+    if (B.height - 20, m.shiftKey) {
+      const te = oe[1] - oe[0] || 1e3, se = m.deltaY > 0 ? 1.1 : 0.9, P = (oe[0] + oe[1]) / 2, xe = te * se / 2;
       ue([P - xe, P + xe]);
     } else {
-      const te = Z[1] - Z[0], se = f.deltaY > 0 ? 1.1 : 0.9, xe = (f.clientX - B.left) / Math.max(K, 1), ae = Z[0] + xe * te, me = te * se;
+      const te = Z[1] - Z[0], se = m.deltaY > 0 ? 1.1 : 0.9, xe = (m.clientX - B.left) / Math.max(K, 1), ae = Z[0] + xe * te, me = te * se;
       S([ae - xe * me, ae + (1 - xe) * me]);
     }
-  }, [Z, oe]), mt = y.useCallback((f) => {
-    u.current = { x: f.clientX, y: f.clientY, t0: [...Z], p0: [...oe] };
-  }, [Z, oe]), pt = y.useCallback((f) => {
-    const B = f.currentTarget.getBoundingClientRect(), K = f.clientX - B.left, te = f.clientY - B.top, se = B.width - 58, P = B.height - 20, xe = Z[1] - Z[0], ae = oe[1] - oe[0] || 1e3, me = (oe[0] + oe[1]) / 2 + (P / 2 - te) / (P / ae), we = Z[0] + K / Math.max(se, 1) * xe;
-    if (ee({ x: K, y: te, price: me, time: we }), u.current && f.buttons & 1) {
-      const M = f.clientX - u.current.x, V = f.clientY - u.current.y, X = M / Math.max(se, 1) * xe, D = V / Math.max(P, 1) * ae;
+  }, [Z, oe]), mt = y.useCallback((m) => {
+    u.current = { x: m.clientX, y: m.clientY, t0: [...Z], p0: [...oe] };
+  }, [Z, oe]), pt = y.useCallback((m) => {
+    const B = m.currentTarget.getBoundingClientRect(), K = m.clientX - B.left, te = m.clientY - B.top, se = B.width - 58, P = B.height - 20, xe = Z[1] - Z[0], ae = oe[1] - oe[0] || 1e3, me = (oe[0] + oe[1]) / 2 + (P / 2 - te) / (P / ae), we = Z[0] + K / Math.max(se, 1) * xe;
+    if (ee({ x: K, y: te, price: me, time: we }), u.current && m.buttons & 1) {
+      const M = m.clientX - u.current.x, V = m.clientY - u.current.y, X = M / Math.max(se, 1) * xe, D = V / Math.max(P, 1) * ae;
       S([u.current.t0[0] - X, u.current.t0[1] - X]);
       const j = u.current.p0[0] === 0 && u.current.p0[1] === 0 ? F.bid && F.ask ? [(F.bid + F.ask) / 2 - 500, (F.bid + F.ask) / 2 + 500] : [6e4, 7e4] : u.current.p0;
       ue([j[0] + D, j[1] + D]);
@@ -3225,48 +3225,48 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
     u.current = null, ee(null);
   }, []), xt = y.useCallback(() => {
     if (Ce(!0), S([Date.now() - 36e5, Date.now()]), F.bid !== null && F.ask !== null) {
-      const f = (F.bid + F.ask) / 2, B = Math.max((F.ask - F.bid) * 10, f * 0.01);
-      ue([f - B, f + B]);
+      const m = (F.bid + F.ask) / 2, B = Math.max((F.ask - F.bid) * 10, m * 0.01);
+      ue([m - B, m + B]);
     }
   }, [F]);
   if (ge)
     return /* @__PURE__ */ n.jsx(y.Suspense, { fallback: /* @__PURE__ */ n.jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-[var(--panel)] text-[var(--dim)] text-[11px]", children: "Loading fallback depth..." }), children: /* @__PURE__ */ n.jsx(ps, { symbol: t, sourceProvider: G, onToggleKind: s }) });
-  const Xe = qe.filter((f) => p.has(f.label)), yt = qe.filter((f) => !p.has(f.label));
+  const Xe = qe.filter((m) => p.has(m.label)), yt = qe.filter((m) => !p.has(m.label));
   return /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col bg-[#1c1c1c] text-[#e8e8e8] select-none", children: [
     /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] text-[11px] flex-wrap shrink-0 bg-[#2a2a2a]", children: [
       /* @__PURE__ */ n.jsx("span", { className: "font-bold opacity-80 tracking-wider", children: "EDGEDEPTH HEATMAP" }),
       /* @__PURE__ */ n.jsx("span", { className: "font-mono font-semibold ml-1", children: t }),
       /* @__PURE__ */ n.jsx("span", { className: "text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] truncate max-w-[240px]", children: H }),
-      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: ["binance", "coinbase", "hyperliquid"].map((f) => /* @__PURE__ */ n.jsxs(
+      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: ["binance", "coinbase", "hyperliquid"].map((m) => /* @__PURE__ */ n.jsxs(
         "button",
         {
-          onClick: () => Ie(f),
-          className: `px-2 py-0.5 text-[10px] font-medium transition-colors ${G === f ? "bg-[#d0d0d0] text-[#1c1c1c]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`,
-          title: `${f} ${f === "hyperliquid" ? "15ms ⚡ ultra-fast" : f === "binance" ? "20ms" : "50ms"}`,
+          onClick: () => Ie(m),
+          className: `px-2 py-0.5 text-[10px] font-medium transition-colors ${G === m ? "bg-[#d0d0d0] text-[#1c1c1c]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`,
+          title: `${m} ${m === "hyperliquid" ? "15ms ⚡ ultra-fast" : m === "binance" ? "20ms" : "50ms"}`,
           children: [
-            f.toUpperCase(),
+            m.toUpperCase(),
             " ",
-            f === "hyperliquid" ? "⚡15ms" : f === "binance" ? "20ms" : "50ms"
+            m === "hyperliquid" ? "⚡15ms" : m === "binance" ? "20ms" : "50ms"
           ]
         },
-        f
+        m
       )) }),
       /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-0.5 ml-2 border border-[#3a3a3a] rounded overflow-hidden", children: [
-        Xe.map((f) => /* @__PURE__ */ n.jsxs(
+        Xe.map((m) => /* @__PURE__ */ n.jsxs(
           "button",
           {
-            onClick: () => _(f),
+            onClick: () => _(m),
             onContextMenu: (B) => {
-              B.preventDefault(), Ye(f.label, B);
+              B.preventDefault(), Ye(m.label, B);
             },
-            className: `px-1.5 py-0.5 text-[10px] ${x.label === f.label ? "bg-[#414141] text-[#e8e8e8]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"} ${f.pro ? "border-l border-[#f0426c]/30" : ""}`,
-            title: f.pro ? "SECONDS PRO — locked" : `Right-click to unpin (fav ${Xe.length}/6)`,
+            className: `px-1.5 py-0.5 text-[10px] ${x.label === m.label ? "bg-[#414141] text-[#e8e8e8]" : "bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"} `,
+            title: m.pro ? "SECONDS PRO — locked" : `Right-click to unpin (fav ${Xe.length}/6)`,
             children: [
-              f.label,
-              f.pro ? " PRO" : ""
+              m.label,
+              m.pro ? " PRO" : ""
             ]
           },
-          f.label
+          m.label
         )),
         /* @__PURE__ */ n.jsxs("span", { className: "text-[8px] px-1 text-[#b9b9b9] border-l border-[#3a3a3a]", children: [
           "FAV ",
@@ -3274,29 +3274,29 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
           "/6"
         ] })
       ] }),
-      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: yt.slice(0, 8).map((f) => /* @__PURE__ */ n.jsx(
+      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: yt.slice(0, 8).map((m) => /* @__PURE__ */ n.jsx(
         "button",
         {
-          onClick: () => _(f),
+          onClick: () => _(m),
           onContextMenu: (B) => {
-            B.preventDefault(), Ye(f.label, B);
+            B.preventDefault(), Ye(m.label, B);
           },
-          className: `px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100 hover:bg-[#343434] ${f.pro ? "text-[#f0426c]" : "text-[#b9b9b9]"}`,
-          title: f.pro ? "PRO — right-click to pin" : "Click sets, right-click pins max 6",
-          children: f.label
+          className: "px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100 hover:bg-[#343434] ",
+          title: m.pro ? "PRO — right-click to pin" : "Click sets, right-click pins max 6",
+          children: m.label
         },
-        f.label
+        m.label
       )) }),
-      /* @__PURE__ */ n.jsx("select", { value: d, onChange: (f) => k(f.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: bs.map((f) => /* @__PURE__ */ n.jsx("option", { value: f.id, children: f.label }, f.id)) }),
+      /* @__PURE__ */ n.jsx("select", { value: d, onChange: (m) => k(m.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: bs.map((m) => /* @__PURE__ */ n.jsx("option", { value: m.id, children: m.label }, m.id)) }),
       /* @__PURE__ */ n.jsxs("div", { className: "ml-auto flex items-center gap-1", children: [
-        /* @__PURE__ */ n.jsx("button", { onClick: () => Ce((f) => !f), className: `px-1.5 py-0.5 rounded border text-[10px] ${Re ? "bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]" : "border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: Re ? "FOLLOW" : "FREE" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => A((f) => !f), className: `px-1.5 py-0.5 rounded border text-[10px] ${R ? "bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]" : "border-[#3a3a3a] text-[#b9b9b9]"}`, children: "Bubbles" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => Ce((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${Re ? "bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]" : "border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: Re ? "FOLLOW" : "FREE" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => A((m) => !m), className: `px-1.5 py-0.5 rounded border text-[10px] ${R ? "bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]" : "border-[#3a3a3a] text-[#b9b9b9]"}`, children: "Bubbles" }),
         /* @__PURE__ */ n.jsx("button", { onClick: () => ve(!0), className: "px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[10px] text-[#b9b9b9] hover:bg-[#343434]", title: "Switch to legacy Canvas2D renderer", children: "Legacy" }),
-        /* @__PURE__ */ n.jsx("button", { onClick: () => Me((f) => !f), className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]", children: "⚙" }),
+        /* @__PURE__ */ n.jsx("button", { onClick: () => Me((m) => !m), className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]", children: "⚙" }),
         s && /* @__PURE__ */ n.jsx("button", { onClick: s, className: "px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#b9b9b9]", children: "chart ⇄" })
       ] })
     ] }),
-    /* @__PURE__ */ n.jsxs("div", { ref: m, className: "relative flex-1 min-h-0 w-full h-full bg-[#2a2a2a]", onWheel: ft, onMouseDown: mt, onMouseMove: pt, onMouseUp: bt, onMouseLeave: gt, onDoubleClick: xt, children: [
+    /* @__PURE__ */ n.jsxs("div", { ref: f, className: "relative flex-1 min-h-0 w-full h-full bg-[#2a2a2a]", onWheel: ft, onMouseDown: mt, onMouseMove: pt, onMouseUp: bt, onMouseLeave: gt, onDoubleClick: xt, children: [
       /* @__PURE__ */ n.jsx("canvas", { ref: T, className: "absolute inset-0 w-full h-full block", style: { width: "100%", height: "100%" } }),
       /* @__PURE__ */ n.jsx("canvas", { ref: v, className: "absolute inset-0 w-full h-full block pointer-events-none", style: { width: "100%", height: "100%" } }),
       oe[0] === 0 && oe[1] === 0 && !F.bid && /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col items-center justify-center pointer-events-none", children: [
@@ -3325,7 +3325,7 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "space-y-2", children: [
         /* @__PURE__ */ n.jsx("div", { className: "text-[10px] text-[#b9b9b9] uppercase", children: "Colormap — data colors exact EdgeDepth, chrome zinc" }),
-        d === "liquidation" ? /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["inferno", "ember", "viridis", "magma"].map((f) => /* @__PURE__ */ n.jsx("button", { onClick: () => O(f), className: `flex-1 py-1 rounded border text-[10px] capitalize ${C === f ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: f }, f)) }) : /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["orderbook", "deepdom", "bookmap", "realtime", "realtime_warm"].map((f) => /* @__PURE__ */ n.jsx("button", { onClick: () => q(f), className: `flex-1 py-1 rounded border text-[10px] capitalize ${L === f ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: f }, f)) })
+        d === "liquidation" ? /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["inferno", "ember", "viridis", "magma"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => O(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${C === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: m }, m)) }) : /* @__PURE__ */ n.jsx("div", { className: "flex gap-1", children: ["orderbook", "deepdom", "bookmap", "realtime", "realtime_warm"].map((m) => /* @__PURE__ */ n.jsx("button", { onClick: () => q(m), className: `flex-1 py-1 rounded border text-[10px] capitalize ${L === m ? "bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]" : "border-[#3a3a3a] bg-[#2a2a2a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]"}`, children: m }, m)) })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
         /* @__PURE__ */ n.jsxs("label", { className: "flex flex-col gap-1", children: [
@@ -3333,7 +3333,7 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             "Sensitivity ",
             N.toFixed(2)
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 3, step: 0.1, value: N, onChange: (f) => I(parseFloat(f.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 3, step: 0.1, value: N, onChange: (m) => I(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
         ] }),
         /* @__PURE__ */ n.jsxs("label", { className: "flex flex-col gap-1", children: [
           /* @__PURE__ */ n.jsxs("span", { className: "text-[10px] text-[#b9b9b9]", children: [
@@ -3341,7 +3341,7 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             Math.round($ * 100),
             "%"
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 1, step: 0.05, value: $, onChange: (f) => W(parseFloat(f.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 0.1, max: 1, step: 0.05, value: $, onChange: (m) => W(parseFloat(m.target.value)), className: "accent-[#d0d0d0]" })
         ] })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "grid grid-cols-2 gap-2", children: [
@@ -3350,15 +3350,15 @@ function nt({ symbol: t, provider: e, onToggleKind: s, liqColormap: o, obColorma
             "Bucket ×",
             J
           ] }),
-          /* @__PURE__ */ n.jsx("input", { type: "range", min: 1, max: 8, step: 1, value: J, onChange: (f) => ye(parseInt(f.target.value)), className: "accent-[#d0d0d0]" })
+          /* @__PURE__ */ n.jsx("input", { type: "range", min: 1, max: 8, step: 1, value: J, onChange: (m) => ye(parseInt(m.target.value)), className: "accent-[#d0d0d0]" })
         ] }),
         /* @__PURE__ */ n.jsxs("label", { className: "flex items-center gap-2 mt-4", children: [
-          /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: ce, onChange: (f) => de(f.target.checked) }),
+          /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: ce, onChange: (m) => de(m.target.checked) }),
           /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Linear filter (smooth cloud)" })
         ] })
       ] }),
       d === "liquidation" && /* @__PURE__ */ n.jsxs("label", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: pe, onChange: (f) => be(f.target.checked) }),
+        /* @__PURE__ */ n.jsx("input", { type: "checkbox", checked: pe, onChange: (m) => be(m.target.checked) }),
         /* @__PURE__ */ n.jsx("span", { className: "text-[10px] text-[#e8e8e8]", children: "Reach modulation (cone around mark)" })
       ] }),
       /* @__PURE__ */ n.jsxs("div", { className: "pt-2 border-t border-[#3a3a3a] space-y-1 text-[10px] text-[#b9b9b9]", children: [

@@ -15,10 +15,10 @@ const ALL_INDICATORS: IndicatorDef[] = [
   { id: 'cvd', label: 'CVD', desc: 'Cumulative Volume Delta', enabled: true, height: 100, lseKey: 'cvd' },
   { id: 'rsi', label: 'RSI', desc: 'Relative Strength Index (14)', enabled: false, height: 90, lseKey: 'rsi' },
   { id: 'macd', label: 'MACD', desc: 'Moving Average Convergence Divergence', enabled: false, height: 100, lseKey: 'macd' },
-  { id: 'funding', label: 'Funding Rate', desc: 'Blue above 0 longs pay shorts, red below', enabled: false, height: 80, pro: false },
-  { id: 'oi', label: 'Open Interest', desc: 'Green increased, red decreased OHLC', enabled: false, height: 100, pro: false },
-  { id: 'vpin', label: 'VPIN', desc: 'Toxicity pane 0-1.0 fixed axis, step-hold line', enabled: false, height: 110, pro: true },
-  { id: 'toxicity', label: 'Toxicity', desc: 'Regime washes + corner readout', enabled: false, height: 110, pro: true },
+  { id: 'funding', label: 'Funding Rate', desc: 'Blue above 0 longs pay shorts, red below', enabled: false, height: 80 },
+  { id: 'oi', label: 'Open Interest', desc: 'Green increased, red decreased OHLC', enabled: false, height: 100 },
+  { id: 'vpin', label: 'VPIN', desc: 'Toxicity pane 0-1.0 fixed axis, step-hold line', enabled: false, height: 110 },
+  { id: 'toxicity', label: 'Toxicity', desc: 'Regime washes + corner readout', enabled: false, height: 110 },
 ];
 
 export function EdgeDepthIndicators({
@@ -106,7 +106,7 @@ export function EdgeDepthIndicators({
             className={`px-2 py-0.5 rounded border text-[10px] whitespace-nowrap ${ind.enabled ? 'bg-[#d0d0d0] border-[#d0d0d0] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}
             title={ind.desc + (ind.lseKey ? ' • LSE dedup: take ONE' : '')}
           >
-            {ind.label}{ind.pro ? ' PRO' : ''} {ind.enabled ? '●' : '○'}
+            {ind.label} {ind.enabled ? '●' : '○'}
           </button>
         ))}
         <span className="ml-auto text-[9px] text-[#b9b9b9]">Render-in-order • Deduplicate LSE RSI/MACD/Volume/CVD take ONE</span>

@@ -10,10 +10,10 @@ export interface TF { label: string; ms: number; sec: number; pro?: boolean }
 
 export const ALL_TF: TF[] = [
   { label: 'tick', ms: 0, sec: 0 },
-  { label: '1s', ms: 1000, sec: 1, pro: true },
-  { label: '5s', ms: 5000, sec: 5, pro: true },
-  { label: '15s', ms: 15000, sec: 15, pro: true },
-  { label: '30s', ms: 30000, sec: 30, pro: true },
+  { label: '1s', ms: 1000, sec: 1 },
+  { label: '5s', ms: 5000, sec: 5 },
+  { label: '15s', ms: 15000, sec: 15 },
+  { label: '30s', ms: 30000, sec: 30 },
   { label: '1m', ms: 60000, sec: 60 },
   { label: '3m', ms: 180000, sec: 180 },
   { label: '5m', ms: 300000, sec: 300 },
@@ -174,13 +174,11 @@ export function EdgeDepthTimeframeBar({
               </div>
             </div>
 
-            {/* SECONDS PRO */}
+            {/* SECONDS — free, no paywall, exact EdgeDepth code present */}
             <div>
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] text-[#b9b9b9] tracking-wider">SECONDS</span>
-                <span className="text-[9px] px-1 py-0.5 bg-[#1e2a2a] border border-[#21b3a4]/30 text-[#21b3a4] rounded flex items-center gap-0.5">
-                  🔒 PRO
-                </span>
+                <span className="text-[9px] px-1 py-0.5 bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9] rounded">LIVE</span>
               </div>
               <div className="flex gap-3 text-[11px] flex-wrap">
                 {['1s', '5s', '15s', '30s'].map(l => {
@@ -193,9 +191,9 @@ export function EdgeDepthTimeframeBar({
                       onClick={() => { if (tf) handleSelect(tf); }}
                       onContextMenu={e => { e.preventDefault(); onToggleFav(l); }}
                       className={`flex items-center gap-0.5 ${isActive ? 'text-[#e8e8e8] border-b-[2px] border-[#e8e8e8]' : 'text-[#b9b9b9] hover:text-[#e8e8e8]'}`}
-                      title="SECONDS PRO — click sets, right-click pins"
+                      title="Seconds — exact EdgeDepth, no paywall"
                     >
-                      {l} {fav && <span className="text-[8px]">★</span>} <span className="text-[8px] opacity-50">🔒</span>
+                      {l} {fav && <span className="text-[8px]">★</span>}
                     </button>
                   );
                 })}

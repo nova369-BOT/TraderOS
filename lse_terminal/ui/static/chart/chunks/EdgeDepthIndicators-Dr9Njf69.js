@@ -4,31 +4,31 @@ const y = [
   { id: "cvd", label: "CVD", desc: "Cumulative Volume Delta", enabled: !0, height: 100, lseKey: "cvd" },
   { id: "rsi", label: "RSI", desc: "Relative Strength Index (14)", enabled: !1, height: 90, lseKey: "rsi" },
   { id: "macd", label: "MACD", desc: "Moving Average Convergence Divergence", enabled: !1, height: 100, lseKey: "macd" },
-  { id: "funding", label: "Funding Rate", desc: "Blue above 0 longs pay shorts, red below", enabled: !1, height: 80, pro: !1 },
-  { id: "oi", label: "Open Interest", desc: "Green increased, red decreased OHLC", enabled: !1, height: 100, pro: !1 },
-  { id: "vpin", label: "VPIN", desc: "Toxicity pane 0-1.0 fixed axis, step-hold line", enabled: !1, height: 110, pro: !0 },
-  { id: "toxicity", label: "Toxicity", desc: "Regime washes + corner readout", enabled: !1, height: 110, pro: !0 }
+  { id: "funding", label: "Funding Rate", desc: "Blue above 0 longs pay shorts, red below", enabled: !1, height: 80 },
+  { id: "oi", label: "Open Interest", desc: "Green increased, red decreased OHLC", enabled: !1, height: 100 },
+  { id: "vpin", label: "VPIN", desc: "Toxicity pane 0-1.0 fixed axis, step-hold line", enabled: !1, height: 110 },
+  { id: "toxicity", label: "Toxicity", desc: "Regime washes + corner readout", enabled: !1, height: 110 }
 ];
 function N({
-  symbol: p,
-  provider: b = "binance",
+  symbol: b,
+  provider: p = "binance",
   onToggle: u,
-  enabledIds: f
+  enabledIds: m
 }) {
-  const [m, g] = x.useState(y), [c, d] = x.useState({});
+  const [f, g] = x.useState(y), [c, d] = x.useState({});
   x.useEffect(() => {
-    g((s) => s.map((a) => ({ ...a, enabled: f ? f.has(a.id) : a.enabled })));
-  }, [f]), x.useEffect(() => {
+    g((s) => s.map((a) => ({ ...a, enabled: m ? m.has(a.id) : a.enabled })));
+  }, [m]), x.useEffect(() => {
     let s = !0;
     const a = async () => {
       try {
-        const l = await fetch(`/api/orderflow/cvd?symbol=${encodeURIComponent(p)}&provider=${encodeURIComponent(b)}&window=session`);
+        const l = await fetch(`/api/orderflow/cvd?symbol=${encodeURIComponent(b)}&provider=${encodeURIComponent(p)}&window=session`);
         if (l.ok && s) {
           const i = await l.json();
           d((o) => ({ ...o, cvd: i }));
         }
         try {
-          const i = await fetch(`/api/orderflow/funding?symbol=${encodeURIComponent(p)}&provider=${encodeURIComponent(b)}`);
+          const i = await fetch(`/api/orderflow/funding?symbol=${encodeURIComponent(b)}&provider=${encodeURIComponent(p)}`);
           if (i.ok && s) {
             const o = await i.json();
             d((r) => ({ ...r, funding: o }));
@@ -55,7 +55,7 @@ function N({
     return () => {
       s = !1, clearInterval(t);
     };
-  }, [p, b]);
+  }, [b, p]);
   const v = (s) => {
     g((a) => {
       const t = a.map((n) => n.id === s ? { ...n, enabled: !n.enabled } : n), l = t.find((n) => n.id === s);
@@ -75,7 +75,7 @@ function N({
   return /* @__PURE__ */ e.jsxs("div", { className: "flex flex-col bg-[#1c1c1c] border-t border-[#3a3a3a]", children: [
     /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-1 px-2 py-1 bg-[#2a2a2a] border-b border-[#3a3a3a] text-[10px] overflow-x-auto", children: [
       /* @__PURE__ */ e.jsx("span", { className: "font-bold tracking-wider text-[#b9b9b9] mr-2", children: "INDICATORS" }),
-      m.map((s) => /* @__PURE__ */ e.jsxs(
+      f.map((s) => /* @__PURE__ */ e.jsxs(
         "button",
         {
           onClick: () => v(s.id),
@@ -83,7 +83,6 @@ function N({
           title: s.desc + (s.lseKey ? " • LSE dedup: take ONE" : ""),
           children: [
             s.label,
-            s.pro ? " PRO" : "",
             " ",
             s.enabled ? "●" : "○"
           ]
@@ -92,7 +91,7 @@ function N({
       )),
       /* @__PURE__ */ e.jsx("span", { className: "ml-auto text-[9px] text-[#b9b9b9]", children: "Render-in-order • Deduplicate LSE RSI/MACD/Volume/CVD take ONE" })
     ] }),
-    /* @__PURE__ */ e.jsx("div", { className: "flex flex-col", children: m.filter((s) => s.enabled).map((s) => /* @__PURE__ */ e.jsxs("div", { className: "border-b border-[#3a3a3a]/50 bg-[#2a2a2a]", style: { height: s.height }, children: [
+    /* @__PURE__ */ e.jsx("div", { className: "flex flex-col", children: f.filter((s) => s.enabled).map((s) => /* @__PURE__ */ e.jsxs("div", { className: "border-b border-[#3a3a3a]/50 bg-[#2a2a2a]", style: { height: s.height }, children: [
       /* @__PURE__ */ e.jsxs("div", { className: "flex items-center gap-2 px-2 py-0.5 bg-[#262626] border-b border-[#3a3a3a]/30 text-[9px] text-[#b9b9b9]", children: [
         /* @__PURE__ */ e.jsx("span", { className: "font-medium text-[#e8e8e8]", children: s.label }),
         /* @__PURE__ */ e.jsx("span", { className: "opacity-60", children: s.desc }),

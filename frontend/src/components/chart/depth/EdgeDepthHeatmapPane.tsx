@@ -20,10 +20,10 @@ type DepthWsFrame = { type: 'depth'|'trade'|'liquidation'|'tape'|'book'; event: 
 interface Timeframe { label: string; ms: number; sec: number; pro?: boolean; fav?: boolean }
 const ALL_TF: Timeframe[] = [
   // SECONDS PRO locked
-  { label: '1s', ms: 1000, sec: 1, pro: true },
-  { label: '5s', ms: 5000, sec: 5, pro: true },
-  { label: '15s', ms: 15000, sec: 15, pro: true },
-  { label: '30s', ms: 30000, sec: 30, pro: true },
+  { label: '1s', ms: 1000, sec: 1 },
+  { label: '5s', ms: 5000, sec: 5 },
+  { label: '15s', ms: 15000, sec: 15 },
+  { label: '30s', ms: 30000, sec: 30 },
   // MINUTES
   { label: '1m', ms: 60000, sec: 60 },
   { label: '3m', ms: 180000, sec: 180 },
@@ -598,7 +598,7 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColorm
               key={t.label}
               onClick={() => setTf(t)}
               onContextMenu={(e) => { e.preventDefault(); toggleFav(t.label, e); }}
-              className={`px-1.5 py-0.5 text-[10px] ${tf.label === t.label ? 'bg-[#414141] text-[#e8e8e8]' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'} ${t.pro ? 'border-l border-[#f0426c]/30' : ''}`}
+              className={`px-1.5 py-0.5 text-[10px] ${tf.label === t.label ? 'bg-[#414141] text-[#e8e8e8]' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'} `}
               title={t.pro ? 'SECONDS PRO — locked' : `Right-click to unpin (fav ${favList.length}/6)`}
             >
               {t.label}{t.pro ? ' PRO' : ''}
@@ -612,7 +612,7 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColorm
               key={t.label}
               onClick={() => setTf(t)}
               onContextMenu={(e) => { e.preventDefault(); toggleFav(t.label, e); }}
-              className={`px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100 hover:bg-[#343434] ${t.pro ? 'text-[#f0426c]' : 'text-[#b9b9b9]'}`}
+              className={`px-1.5 py-0.5 text-[10px] opacity-60 hover:opacity-100 hover:bg-[#343434] `}
               title={t.pro ? 'PRO — right-click to pin' : 'Click sets, right-click pins max 6'}
             >
               {t.label}

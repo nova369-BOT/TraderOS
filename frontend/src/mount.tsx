@@ -16,7 +16,6 @@ import { EdgeDepthTimeframeBar, type TF as EDTF, ALL_TF as ED_ALL_TF } from '@/c
 import { EdgeDepthAppearancePanel, type AppearanceSettings, defaultAppearance } from '@/components/chart/edgedepth/EdgeDepthAppearancePanel';
 import { EdgeDepthFindSymbol } from '@/components/chart/edgedepth/EdgeDepthFindSymbol';
 import { EdgeDepthWidgetMenu } from '@/components/chart/edgedepth/EdgeDepthWidgetMenu';
-import { EdgeDepthProModal } from '@/components/chart/edgedepth/EdgeDepthProModal';
 import { DEFAULT_INDICATOR_CONFIG, type IndicatorConfig } from '@/components/chart/IndicatorSettings';
 import { getDefaultColors, type Candle, type ChartType } from '@/components/chart/core/types';
 import { MemoryRouter } from 'react-router-dom';
@@ -249,8 +248,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
   const [edAppearanceOpen, setEdAppearanceOpen] = useState(false);
   useEffect(() => { try { localStorage.setItem('ed_appearance', JSON.stringify(edAppearance)); } catch {} }, [edAppearance]);
   const [edFindOpen, setEdFindOpen] = useState(false);
-  const [edProOpen, setEdProOpen] = useState(false);
-  const [edProFeature, setEdProFeature] = useState('SECONDS PRO');
+  const [rtMode, setRtMode] = useState(true);
   const [edLayersOpen, setEdLayersOpen] = useState(false);
   // Layers lifted state — wired to real chart indicators
   const [edLayers, setEdLayers] = useState(() => {
@@ -678,9 +676,8 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡15ms':provider==='binance'?'20ms':provider==='coinbase'?'50ms':''} • {timeframe} • LIVE</span>
         <div className="ml-2" style={{ overflow: 'visible', position: 'relative', zIndex: 50 }}>
           <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => {
-            if ((tf as any).pro) { setEdProFeature('SECONDS PRO'); setEdProOpen(true); return; }
+            // No paywall — seconds and all TFs are free, exact EdgeDepth code present
             setEdTf(tf);
-            // Wire lower bar to real chart — upper is in control, so lower must drive upper via shell
             try {
               const shell: any = (window as any).__lseShell;
               if (shell?.setTimeframe) {
@@ -713,7 +710,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         <div className="ml-auto flex items-center gap-1">
           <span className="text-[10px] text-[#b9b9b9]">RT</span>
           <div className="w-2 h-2 rounded-full bg-[#21b3a4] animate-pulse" title="follow-live streaming" />
-          <button onClick={() => { setEdProFeature('RT MODE'); setEdProOpen(true); }} className="px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[9px] bg-[#21b3a4]/20 text-[#21b3a4] hover:bg-[#21b3a4]/30">RT MODE ●</button>
+          <button onClick={() => setRtMode(v => !v)} className={`px-1.5 py-0.5 rounded border text-[9px] ${rtMode?'bg-[#21b3a4]/20 border-[#21b3a4]/50 text-[#21b3a4]':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]'}`} title="Real-time follow mode — exact EdgeDepth, no paywall, code present">RT MODE {rtMode?'● ON':'○ OFF'}</button>
           <button onClick={() => setEdAppearanceOpen(v => !v)} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">⚙ Appearance</button>
           <button onClick={openIndicatorBrowser} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">Indicators</button>
         </div>
@@ -953,7 +950,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         </div>
       )}
       <EdgeDepthFindSymbol open={edFindOpen} onClose={() => setEdFindOpen(false)} onSelect={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />
-      <EdgeDepthProModal open={edProOpen} onClose={() => setEdProOpen(false)} feature={edProFeature} />
       {ctxMenu && (
         <div
           className="fixed z-[110]"
