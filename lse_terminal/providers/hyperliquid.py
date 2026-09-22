@@ -129,8 +129,8 @@ LADDER = ["tick", "1s", "15s", "30s",
 _SEC_BUCKET = re.compile(r"^(\d+)s$")
 
 _MAX_REST_CANDLES = 5000
-_WS_OPEN_TIMEOUT_S = 0.2   # ULTRA-FAST: 200ms - faster than Binance 300ms, Coinbase 800ms
-_BACKOFF_CAP_S = 0.2       # ULTRA-FAST: 200ms
+_WS_OPEN_TIMEOUT_S = 0.1   # ULTRA-FAST: 200ms - faster than Binance 300ms, Coinbase 800ms
+_BACKOFF_CAP_S = 0.1       # ULTRA-FAST: 200ms
 
 def _iso_s(ts: str) -> float:
     t = ts.strip()

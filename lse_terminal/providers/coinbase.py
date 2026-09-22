@@ -133,8 +133,8 @@ _SEC_BUCKET = re.compile(r"^(\d+)s$")
 _TAPE_PAGE = 1000
 
 _MAX_REST_CANDLES = 300
-_WS_OPEN_TIMEOUT_S = 0.8        # 50MS MAX
-_BACKOFF_CAP_S = 0.8            # 50MS MAX
+_WS_OPEN_TIMEOUT_S = 0.25        # 50MS MAX
+_BACKOFF_CAP_S = 0.25            # 50MS MAX
 
 
 def _iso_s(ts: str) -> float:

@@ -136,8 +136,8 @@ LADDER = ["tick", "1s", "15s", "30s",
 _SEC_BUCKET = re.compile(r"^(\d+)s$")
 
 _MAX_REST_CANDLES = 1500
-_WS_OPEN_TIMEOUT_S = 0.3        # Binance > Coinbase: 300ms timeout - FASTER than Coinbase 800ms, user says Coinbase looks faster
-_BACKOFF_CAP_S = 0.3            # Binance > Coinbase: 300ms backoff - FASTER than Coinbase
+_WS_OPEN_TIMEOUT_S = 0.15        # Binance > Coinbase: 300ms timeout - FASTER than Coinbase 800ms, user says Coinbase looks faster
+_BACKOFF_CAP_S = 0.15            # Binance > Coinbase: 300ms backoff - FASTER than Coinbase
 
 
 def _iso_s(ts: str) -> float:

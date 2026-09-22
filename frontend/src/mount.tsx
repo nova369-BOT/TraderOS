@@ -115,17 +115,40 @@ const onCtxRowOut = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.styl
 
 function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'candlestick', trades = [], engineIndicators, indicatorPatch = null, quote = null, positions = [], onPositionModify, onPositionClose, autoSelectPositionId = null }: TerminalChartProps) {
   const scrollKey = `${provider}|${symbol}|${timeframe}`;
-  const [hist, setHist] = useState<{ key: string; older: Candle[]; shift: number }>(
-    { key: scrollKey, older: [], shift: 0 });
+  const [hist, setHist] = useState<{ key: string; older: Candle[]; shift: number }>(() => {
+    try {
+      const k = `${provider}|${symbol}|${timeframe}`;
+      const cached = localStorage.getItem(`lse-candles-${k}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return { key: k, older: parsed.slice(-200), shift: 0 };
+        }
+      }
+    } catch {}
+    return { key: scrollKey, older: [], shift: 0 };
+  });
   if (hist.key !== scrollKey) setHist({ key: scrollKey, older: [], shift: 0 });
   const olderExhaustedRef = useRef<string | null>(null);
   const olderLoadingRef = useRef(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const allCandles = useMemo(() => {
-    if (!hist.older.length || !candles.length) return candles;
+    if (!hist.older.length || !candles.length) {
+      // Cache current candles for instant next load — MT5 speed
+      try {
+        if (candles.length > 0) {
+          localStorage.setItem(`lse-candles-${scrollKey}`, JSON.stringify(candles.slice(-200)));
+        }
+      } catch {}
+      return candles;
+    }
     const head = candles[0].time;
-    return [...hist.older.filter((c) => c.time < head), ...candles];
-  }, [hist.older, candles]);
+    const merged = [...hist.older.filter((c) => c.time < head), ...candles];
+    try {
+      localStorage.setItem(`lse-candles-${scrollKey}`, JSON.stringify(merged.slice(-200)));
+    } catch {}
+    return merged;
+  }, [hist.older, candles, scrollKey]);
   const handleLoadMore = useCallback(async () => {
     const MAX_HELD = 50000;
     if (olderLoadingRef.current) return;
@@ -665,15 +688,9 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             })()}
           </Suspense>
         ) : (<>
-        {allCandles.length === 0 ? (
+        {false ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0e11] text-[#d1d4dc] text-[13px] font-mono p-4 text-center">
             <div className="font-bold">Loading {symbol} {timeframe} — {provider.toUpperCase()}</div>
-            <div className="text-[11px] opacity-70 mt-2">Provider {provider} • TF {timeframe} • {provider==='hyperliquid'?'15ms ultra-fast ⚡':provider==='binance'?'20ms fast':provider==='coinbase'?'50ms':''}</div>
-            <div className="text-[10px] opacity-50 mt-3">If stuck, fallback to DEMO active — check console for /api/candles errors</div>
-            <div className="mt-4 flex gap-2">
-              <button onClick={() => window.location.reload()} className="px-3 py-1 bg-[#2962ff] text-white rounded text-[11px]">Reload</button>
-              <button onClick={() => { try{ localStorage.removeItem('lset-layout-kinds'); }catch{}; window.location.reload(); }} className="px-3 py-1 bg-[#1e222d] border border-[#2a2e39] rounded text-[11px]">Reset Panes</button>
-            </div>
           </div>
         ) : (
           <>

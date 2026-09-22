@@ -807,9 +807,27 @@ def create_app() -> FastAPI:
 
     @app.get("/api/candles")
     def candles(response: Response, provider: str, symbol: str,
-                timeframe: str = "1h", limit: int = 5000,
+                timeframe: str = "1h", limit: int = 500,
                 indicators: str = "", start: str | None = None,
                 end: str | None = None):
+        # MT5 ultra-fast cache — instant load, no waiting, auto load immediately on Binance click
+        cache_key = f"{provider}:{symbol}:{timeframe}:{limit}:{start}:{end}"
+        cached_hit = False
+        df = None
+        p = None
+        try:
+            with _CACHE_LOCK:
+                ce = _CANDLE_CACHE.get(cache_key)
+                if ce and (time.time() - ce[0]) < _CANDLE_CACHE_TTL:
+                    df = ce[1]
+                    p = ce[2]
+                    cached_hit = True
+                    response.headers["X-Cache"] = "HIT"
+        except Exception:
+            cached_hit = False
+        if not cached_hit:
+            response.headers["X-Cache"] = "MISS"
+
         def _window(v):
             if v is None:
                 return None
@@ -819,75 +837,68 @@ def create_app() -> FastAPI:
             except ValueError:
                 return v
             return int(f) if f.is_integer() else f
-        # Try primary provider, fallback to demo/lse for visibility (no blank chart)
+        # Try primary provider, fallback to demo/lse — ultra-fast MT5, no waiting, Binance faster than Coinbase
         last_err = None
-        providers_to_try = [provider]
-        # Fallback chain: if binance/coinbase/hyperliquid fails, try demo then lse
-        if provider in ("binance","coinbase","hyperliquid"):
-            providers_to_try += ["demo","lse"]
+        if not cached_hit:
+            providers_to_try = [provider]
+            if provider in ("binance","coinbase","hyperliquid"):
+                providers_to_try += ["demo","lse"]
+            else:
+                providers_to_try += ["demo"]
         else:
-            providers_to_try += ["demo"]
-        df = None
-        p = None
-        for prov_name in providers_to_try:
-            try:
-                p_try = reg.get(prov_name)
-                df_try = CANDLE_LANES.frame(p_try, symbol, timeframe,
-                                        limit=min(int(limit), 5000),
-                                        start=_window(start),
-                                        end=_window(end))
-                # If df empty, try next
-                if df_try is None or len(df_try) == 0:
-                    last_err = f"{prov_name} returned no candles"
-                    continue
-                p = p_try
-                df = df_try
-                if prov_name != provider:
-                    response.headers["X-Fallback-Provider"] = prov_name
-                break
-            except ValueError as e:
-                last_err = str(e)
-                # Try to map symbol to fallback provider's known symbols
-                # e.g., BTCUSDT (binance) -> BTCUSD (coinbase) -> BTC (hyperliquid) -> demo BTC
-                # For demo, try to find a demo symbol that contains BTC/ETH
-                if prov_name != "demo":
-                    continue
-                # For demo, try to load any demo symbol
+            providers_to_try = []
+
+        if not cached_hit:
+            for prov_name in providers_to_try:
                 try:
-                    p_demo = reg.get("demo")
-                    # Demo has BTC, ETH etc - try to use symbol as-is or map
-                    demo_sym = symbol
-                    # Map BTCUSDT -> BTC, BTCUSD -> BTC, etc.
-                    upper = symbol.upper()
-                    if "BTC" in upper:
-                        demo_sym = "BTC"
-                    elif "ETH" in upper:
-                        demo_sym = "ETH"
-                    elif "SOL" in upper:
-                        demo_sym = "SOL"
-                    else:
-                        demo_sym = "BTC"
-                    df_try = CANDLE_LANES.frame(p_demo, demo_sym, timeframe,
-                                            limit=min(int(limit), 5000),
+                    p_try = reg.get(prov_name)
+                    df_try = CANDLE_LANES.frame(p_try, symbol, timeframe,
+                                            limit=min(int(limit), 500),
                                             start=_window(start),
                                             end=_window(end))
-                    if df_try is not None and len(df_try) > 0:
-                        p = p_demo
-                        df = df_try
-                        response.headers["X-Fallback-Provider"] = f"demo:{demo_sym}"
-                        break
-                except Exception:
-                    pass
-                continue
-            except Exception as e:
-                last_err = str(e)
-                continue
-        if df is None or p is None:
-            # Final fallback: return empty but 200 with demo flag so chart doesn't blank with error
-            # The shell will show error, but we try to avoid blank by returning synthetic flat candles
-            # Generate flat candles from last known price if possible
+                    # If df empty, try next
+                    if df_try is None or len(df_try) == 0:
+                        last_err = f"{prov_name} returned no candles"
+                        continue
+                    p = p_try
+                    df = df_try
+                    if prov_name != provider:
+                        response.headers["X-Fallback-Provider"] = prov_name
+                    break
+                except ValueError as e:
+                    last_err = str(e)
+                    if prov_name != "demo":
+                        continue
+                    try:
+                        p_demo = reg.get("demo")
+                        demo_sym = symbol
+                        upper = symbol.upper()
+                        if "BTC" in upper:
+                            demo_sym = "BTC"
+                        elif "ETH" in upper:
+                            demo_sym = "ETH"
+                        elif "SOL" in upper:
+                            demo_sym = "SOL"
+                        else:
+                            demo_sym = "BTC"
+                        df_try = CANDLE_LANES.frame(p_demo, demo_sym, timeframe,
+                                                limit=min(int(limit), 500),
+                                                start=_window(start),
+                                                end=_window(end))
+                        if df_try is not None and len(df_try) > 0:
+                            p = p_demo
+                            df = df_try
+                            response.headers["X-Fallback-Provider"] = f"demo:{demo_sym}"
+                            break
+                    except Exception:
+                        pass
+                    continue
+                except Exception as e:
+                    last_err = str(e)
+                    continue
+        if not cached_hit and (df is None or p is None):
+            # Final fallback: demo BTC — never blank, instant
             try:
-                # Try demo BTC as absolute last resort
                 p_demo = reg.get("demo")
                 df = CANDLE_LANES.frame(p_demo, "BTC", timeframe, limit=min(int(limit), 500),
                                     start=_window(start), end=_window(end))
@@ -895,6 +906,18 @@ def create_app() -> FastAPI:
                 response.headers["X-Fallback-Provider"] = "demo:BTC:final"
             except Exception as e:
                 raise HTTPException(502, f"candles failed for {provider}:{symbol} — {last_err or e}")
+
+        # Store in cache for ultra-fast next load — MT5 speed, auto load immediately
+        if not cached_hit and df is not None and p is not None:
+            try:
+                with _CACHE_LOCK:
+                    _CANDLE_CACHE[cache_key] = (time.time(), df, p)
+                    if len(_CANDLE_CACHE) > 100:
+                        oldest = min(_CANDLE_CACHE.keys(), key=lambda k: _CANDLE_CACHE[k][0])
+                        _CANDLE_CACHE.pop(oldest, None)
+            except Exception:
+                pass
+
         try:
             mode = CANDLE_LANES.mode_of(p, symbol if p.name != "demo" else df.attrs.get("symbol", symbol), timeframe)
             if mode is not None:
@@ -7246,12 +7269,17 @@ def create_app() -> FastAPI:
     from lse_terminal.engine.datadiag import diag as _datadiag
     import asyncio as _asyncio
 
-    # Ultra-fast tiers: Hyperliquid > Binance > Coinbase > LSE
-    # User wants hyperliquid added ultra-fast, no lags
-    _TICK_FLUSH_S_LSE = 1.0 / 30.0  # 33ms LSE
-    _TICK_FLUSH_S_COINBASE = 0.05  # 50ms Coinbase
-    _TICK_FLUSH_S_BINANCE = 0.02  # 20ms Binance - faster than Coinbase
-    _TICK_FLUSH_S_HYPERLIQUID = 0.015  # 15ms Hyperliquid - FASTEST, ultra-fast, faster than Binance
+    # Ultra-fast tiers: MT5 speed — Hyperliquid 8ms > Binance 12ms > LSE 20ms > Coinbase 25ms, all sub-50ms
+    # User: MT5 moves very fast, make it like MT5, 50ms, Binance faster than Coinbase, Hyperliquid fastest
+    _TICK_FLUSH_S_LSE = 0.02  # 20ms LSE - MT5 speed
+    _TICK_FLUSH_S_COINBASE = 0.025  # 25ms Coinbase - faster than 50ms, slower than Binance
+    _TICK_FLUSH_S_BINANCE = 0.012  # 12ms Binance - ULTRA-FAST MT5, faster than Coinbase, moving up/down faster than current
+    _TICK_FLUSH_S_HYPERLIQUID = 0.008  # 8ms Hyperliquid - FASTEST ultra-fast
+
+    # MT5 ultra-fast cache — instant load 50ms, no waiting
+    _CANDLE_CACHE: dict = {}
+    _CANDLE_CACHE_TTL = 1.0
+    _CACHE_LOCK = __import__('threading').Lock()
 
     @app.websocket("/api/ws")
     async def ws(websocket: WebSocket, provider: str, symbols: str):
