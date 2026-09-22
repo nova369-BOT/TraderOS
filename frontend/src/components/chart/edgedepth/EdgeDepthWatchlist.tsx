@@ -76,7 +76,8 @@ export function EdgeDepthWatchlist({
           const v = venues[i % venues.length];
           const sym = `${b}${v === 'binancef' ? 'USDT' : '-USD'}`;
           const cat = cats[i % cats.length];
-          list.push({ symbol: `${sym}-${i}`, exchange: v, last_price: 100 + Math.random()*50000, change_pct_24h: (Math.random()-0.5)*20, volume_quote: Math.random()*1e9, base_asset: b, categories: [cat], score: Math.random()*100, type: i%3===0?'perps':'spot' });
+          // Keep real symbol for selection, use index only for key uniqueness
+          list.push({ symbol: sym, exchange: v, last_price: 100 + Math.random()*50000, change_pct_24h: (Math.random()-0.5)*20, volume_quote: Math.random()*1e9, base_asset: b, categories: [cat], score: Math.random()*100, type: i%3===0?'perps':'spot' });
         }
         try {
           const r = await fetch('/api/orderflow/tickers?limit=1503');
@@ -168,14 +169,14 @@ export function EdgeDepthWatchlist({
       <div ref={containerRef} className="flex-1 overflow-auto relative" onScroll={handleScroll}>
         <div style={{ height: total*ROW_H, position: 'relative' }}>
           <div style={{ transform: `translateY(${startIdx*ROW_H}px)`, position: 'absolute', top: 0, left: 0, right: 0 }}>
-            {slice.map(t => {
+            {slice.map((t, idx) => {
               const isFav = favs.has(t.symbol);
               const isActive = activeSymbol === t.symbol;
               const spark = sparks[t.symbol] || [];
               const changePos = t.change_pct_24h >= 0;
               return (
                 <button
-                  key={`${t.exchange}:${t.symbol}`}
+                  key={`${t.exchange}:${t.symbol}:${startIdx+idx}`}
                   onClick={() => onSelectSymbol?.(t.symbol)}
                   className={`w-full flex items-center gap-2 px-3 border-b border-[#2a2a2a]/50 hover:bg-[#262626] text-left transition-colors ${isActive?'bg-[#262626]':''}`}
                   style={{ height: ROW_H }}

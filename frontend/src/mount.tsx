@@ -16,6 +16,7 @@ import { EdgeDepthTimeframeBar, type TF as EDTF, ALL_TF as ED_ALL_TF } from '@/c
 import { EdgeDepthAppearancePanel, type AppearanceSettings, defaultAppearance } from '@/components/chart/edgedepth/EdgeDepthAppearancePanel';
 import { EdgeDepthFindSymbol } from '@/components/chart/edgedepth/EdgeDepthFindSymbol';
 import { EdgeDepthWidgetMenu } from '@/components/chart/edgedepth/EdgeDepthWidgetMenu';
+import { EdgeDepthViewPicker, type ViewId } from '@/components/chart/edgedepth/EdgeDepthViewPicker';
 import { DEFAULT_INDICATOR_CONFIG, type IndicatorConfig } from '@/components/chart/IndicatorSettings';
 import { getDefaultColors, type Candle, type ChartType } from '@/components/chart/core/types';
 import { MemoryRouter } from 'react-router-dom';
@@ -733,27 +734,8 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             }} favs={edFavs} onToggleFav={toggleEdFav} />
           </div>
           <EdgeDepthChartTypePicker value={edChartType} onChange={setEdChartType} />
-          {/* Professional View selector — own UI, not native select */}
-          <div className="relative">
-            <select
-              value={layoutState.panelKinds[0] || 'chart'}
-              onChange={e => layoutStore.setPanelKind(0, e.target.value as any)}
-              className="appearance-none pl-3 pr-7 py-1.5 rounded-md border border-[#3a3a3a] bg-[#262626] text-[12px] font-medium text-[#e8e8e8] hover:bg-[#343434] hover:border-[#4a4a4a] focus:outline-none focus:border-[#4a4a4a] cursor-pointer"
-            >
-              <option value="chart">Chart</option>
-              <option value="edgedepth">Heatmap Pro</option>
-              <option value="depth">Depth Heat</option>
-              <option value="dom">DOM Ladder</option>
-              <option value="tape">Tape</option>
-              <option value="footprint">Footprint</option>
-              <option value="vpvr">VPVR</option>
-              <option value="tpo">TPO</option>
-              <option value="liquidations">Liquidations</option>
-              <option value="watchlist">Watchlist</option>
-              <option value="indicators">Indicators</option>
-            </select>
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#6a6a6a]">▼</span>
-          </div>
+          {/* Professional View selector — own UI, not native select, not EdgeDepth clone */}
+          <EdgeDepthViewPicker value={(layoutState.panelKinds[0] as ViewId) || 'chart'} onChange={(v) => layoutStore.setPanelKind(0, v as any)} />
         </div>
 
         {/* Right: Tools */}

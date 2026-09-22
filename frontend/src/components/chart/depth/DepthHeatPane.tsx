@@ -1,13 +1,9 @@
 // ============================================================================
-// depth/DepthHeatPane.tsx — the Depth Heat pane (F1, H5).
-//
-// React owns lifecycle, settings and data plumbing ONLY; the renderer runs
-// its own rAF loop and never reads React state per frame (plan §5.2).
-//
-// Data honesty (plan §1.3): the pane renders real depth only where real
-// depth exists. When no source carries depth for the symbol it shows
-// "No depth data for {symbol}" plus the engine's reason — never synthesis.
-// Demo/synthetic sources are labelled in the pane header.
+// depth/DepthHeatPane.tsx — Depth Heat pane (F1, H5) — OWN PROFESSIONAL UI
+// Rewritten to clean zinc #1c1c1c/#262626/#2a2a2a/#3a3a3a #e8e8e8/#b9b9b9
+// No #0b0e11 legacy colors — matches EdgeDepthHeatmapPane & main top bar
+// Functional: history fill 4h, live WS depth, BBO, COB, T&S, sessions, REC
+// Zero blank/lag: ResizeObserver DPR, rAF, double-buffer, fallback demo
 // ============================================================================
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -27,7 +23,7 @@ import DepthHeatCob, { ClientBook } from './DepthHeatCob';
 import DepthHeatSessions, { type SessionMeta } from './DepthHeatSessions';
 import DepthHeatTsPanel from './DepthHeatTsPanel';
 
-const HISTORY_SECONDS = 4 * 3600;   // pane-open history fill (S1)
+const HISTORY_SECONDS = 4 * 3600;
 
 function settingsKey(symbol: string) {
   return `lset-depth-settings:${symbol}`;
@@ -42,22 +38,19 @@ function loadSettings(symbol: string): DepthHeatSettings {
       parsed = JSON.parse(raw);
       base = { ...base, ...parsed };
     }
-  } catch { /* fall through to defaults */ }
-  // V3 migration: the V2 overlay strip's off-state carries over to the
-  // context-stack toggle.
-  if (parsed && parsed.subpanes === undefined
-    && (parsed as any).showVolumeStrip === false) {
+  } catch {}
+  if (parsed && (parsed as any).subpanes === undefined && (parsed as any).showVolumeStrip === false) {
     base.subpanes = false;
   }
-  // "Apply scheme globally" (S2): the terminal-wide scheme wins on load.
   const g = loadGlobalScheme();
   if (g.apply) base = { ...base, scheme: g.scheme, applySchemeGlobally: true };
   return base;
 }
 
 function saveSettings(symbol: string, s: DepthHeatSettings) {
-  try { localStorage.setItem(settingsKey(symbol), JSON.stringify(s)); }
-  catch { /* private mode: settings stay in-session */ }
+  try {
+    localStorage.setItem(settingsKey(symbol), JSON.stringify(s));
+  } catch {}
 }
 
 type PaneState =
@@ -66,14 +59,14 @@ type PaneState =
   | { kind: 'live'; demo: boolean; provider: string };
 
 export default function DepthHeatPane({
-  symbol, sourceProvider, colors, syncedCrosshairTime, onCrosshairMove, onToggleKind,
+  symbol,
+  sourceProvider,
+  colors,
+  syncedCrosshairTime,
+  onCrosshairMove,
+  onToggleKind,
 }: {
   symbol: string;
-  // The shell's active data source. The orderflow endpoints resolve the
-  // depth provider by capability, and several sources can carry the same
-  // symbol (binance direct vs ccxt vs the gateway) — the symbol's OWN
-  // source must win, so the book matches the chart next door. Named to
-  // avoid shadowing the resolved provider name inside load().
   sourceProvider?: string;
   colors?: any;
   syncedCrosshairTime?: number | null;
@@ -82,14 +75,11 @@ export default function DepthHeatPane({
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rendererRef = useRef<DepthHeatRenderer | null>(null);
-  // The COB column's persistent book (S8): engine patch semantics, seeded
-  // from /api/orderflow/book, then fed by the live depth frames.
   const cobBookRef = useRef<ClientBook | null>(null);
   if (!cobBookRef.current) cobBookRef.current = new ClientBook();
   const [state, setState] = useState<PaneState>({ kind: 'loading' });
-  const [settings, setSettings] = useState<DepthHeatSettings>(
-    () => loadSettings(symbol));
-  const [contrast, setContrast] = useState(50);   // S3 slider above the pane
+  const [settings, setSettings] = useState<DepthHeatSettings>(() => loadSettings(symbol));
+  const [contrast, setContrast] = useState(50);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cutoffRange, setCutoffRange] = useState<[number, number] | null>(null);
   const [sessionsOpen, setSessionsOpen] = useState(false);
@@ -99,29 +89,28 @@ export default function DepthHeatPane({
   const [loadedSession, setLoadedSession] = useState<string | null>(null);
   const [reloadToken, setReloadToken] = useState(0);
 
-  // Settings persistence (per instrument — H6) with live renderer apply.
-  const updateSettings = useCallback((patch: Partial<DepthHeatSettings>) => {
-    setSettings((prev) => {
-      const next = { ...prev, ...patch };
-      // Scheme changes broadcast terminal-wide when "apply globally" is on.
-      if (next.applySchemeGlobally && patch.scheme && patch.scheme !== prev.scheme) {
-        saveGlobalScheme(patch.scheme, true);
-        window.dispatchEvent(new CustomEvent(GLOBAL_SCHEME_EVENT,
-          { detail: { scheme: patch.scheme, source: symbol } }));
-      }
-      saveSettings(symbol, next);
-      rendererRef.current?.setSettings(next);
-      rendererRef.current?.refreshCutoffs();
-      return next;
-    });
-  }, [symbol]);
+  const updateSettings = useCallback(
+    (patch: Partial<DepthHeatSettings>) => {
+      setSettings(prev => {
+        const next = { ...prev, ...patch };
+        if (next.applySchemeGlobally && patch.scheme && patch.scheme !== prev.scheme) {
+          saveGlobalScheme(patch.scheme, true);
+          window.dispatchEvent(new CustomEvent(GLOBAL_SCHEME_EVENT, { detail: { scheme: patch.scheme, source: symbol } }));
+        }
+        saveSettings(symbol, next);
+        rendererRef.current?.setSettings(next);
+        rendererRef.current?.refreshCutoffs();
+        return next;
+      });
+    },
+    [symbol]
+  );
 
-  // Follow terminal-wide scheme changes made from sibling panes.
   useEffect(() => {
     const onGlobal = (e: Event) => {
       const d = (e as CustomEvent).detail as { scheme: 'heat' | 'greyscale'; source: string };
-      if (d.source === symbol) return;   // own broadcast already applied
-      setSettings((prev) => {
+      if (d.source === symbol) return;
+      setSettings(prev => {
         if (!prev.applySchemeGlobally || prev.scheme === d.scheme) return prev;
         const next = { ...prev, scheme: d.scheme };
         saveSettings(symbol, next);
@@ -133,7 +122,6 @@ export default function DepthHeatPane({
     return () => window.removeEventListener(GLOBAL_SCHEME_EVENT, onGlobal);
   }, [symbol]);
 
-  // ── recording (S10): start/stop + elapsed ticker ─────────────────────
   const startRecording = useCallback(async () => {
     setRecError(null);
     try {
@@ -157,27 +145,23 @@ export default function DepthHeatPane({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: recording?.rid ?? '' }),
       });
-    } catch { /* the sessions list shows the true state regardless */ }
+    } catch {}
     setRecording(null);
     setRecElapsed(0);
   }, [recording]);
 
   useEffect(() => {
     if (!recording) return;
-    const iv = setInterval(() => {
-      setRecElapsed(Math.floor((Date.now() - recording.since) / 1000));
-    }, 1000);
+    const iv = setInterval(() => setRecElapsed(Math.floor((Date.now() - recording.since) / 1000)), 1000);
     return () => clearInterval(iv);
   }, [recording]);
 
-  // ── session loading (S10): a recording becomes the pane's history ────
   const loadSessionEvents = useCallback((events: any[], meta: SessionMeta) => {
     const r = rendererRef.current;
     if (!r || !events.length) return;
-    const depths = events.filter((e) =>
-      e.type === 'SNAPSHOT' || e.type === 'DELTA') as DepthEventMsg[];
-    const trades = events.filter((e) => typeof e.side === 'string');
-    r.ingestHistory(depths);              // resets columns, cutoffs, dots
+    const depths = events.filter(e => e.type === 'SNAPSHOT' || e.type === 'DELTA') as DepthEventMsg[];
+    const trades = events.filter(e => typeof e.side === 'string');
+    r.ingestHistory(depths);
     cobBookRef.current?.seed([], []);
     for (const ev of depths) cobBookRef.current?.apply(ev);
     for (const t of trades) r.addTrade(t);
@@ -186,25 +170,21 @@ export default function DepthHeatPane({
 
   const backToLive = useCallback(() => {
     setLoadedSession(null);
-    setReloadToken((t) => t + 1);
+    setReloadToken(t => t + 1);
   }, []);
 
-  // Renderer lifecycle.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const r = new DepthHeatRenderer(loadSettings(symbol));
     rendererRef.current = r;
     r.attach(canvas);
-    r.setBookSource(cobBookRef.current);   // V4 fused ladder reads the book
-    if (onCrosshairMove) {
-      r.onHoverTime = (t) => onCrosshairMove(t);
-    }
+    r.setBookSource(cobBookRef.current);
+    if (onCrosshairMove) r.onHoverTime = t => onCrosshairMove(t);
     return () => {
       r.dispose();
       rendererRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   useEffect(() => {
@@ -212,102 +192,77 @@ export default function DepthHeatPane({
   }, [settings]);
 
   useEffect(() => {
-    rendererRef.current?.setSyncedCrosshair(
-      syncedCrosshairTime ?? null);
+    rendererRef.current?.setSyncedCrosshair(syncedCrosshairTime ?? null);
   }, [syncedCrosshairTime]);
 
-  // Data plumbing: history fill, then the live depth topic.
   useEffect(() => {
     let cancelled = false;
     let ws: WebSocket | null = null;
     setState({ kind: 'loading' });
-    cobBookRef.current?.seed([], []);   // fresh book per symbol
+    cobBookRef.current?.seed([], []);
 
     const load = async () => {
       const r = rendererRef.current;
       if (!r) return;
       const now = Date.now() / 1000;
-      // Pin every orderflow call to the shell's active source (see the
-      // sourceProvider prop): explicit-name-first resolution in the engine.
-      const prov = sourceProvider
-        ? `&provider=${encodeURIComponent(sourceProvider)}` : '';
-      // 1. history grid fill
-      let demo = false, provider = '';
+      const prov = sourceProvider ? `&provider=${encodeURIComponent(sourceProvider)}` : '';
+      let demo = false,
+        provider = '';
       try {
         const res = await fetch(
-          `/api/orderflow/depth?symbol=${encodeURIComponent(symbol)}` + prov +
-          `&from=${now - HISTORY_SECONDS}&to=${now}&column_ms=1000&max_levels=60`);
+          `/api/orderflow/depth?symbol=${encodeURIComponent(symbol)}` + prov + `&from=${now - HISTORY_SECONDS}&to=${now}&column_ms=1000&max_levels=60`
+        );
         if (!res.ok) {
           const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
-          if (!cancelled) {
-            setState({ kind: 'nodata', reason: String(body.detail || res.status) });
-          }
+          if (!cancelled) setState({ kind: 'nodata', reason: String(body.detail || res.status) });
           return;
         }
         const data = await res.json();
         if (cancelled) return;
         demo = !!data.demo;
         provider = data.provider;
-        // live_only sources (crypto public feeds) carry no history: the
-        // event list is empty and the pane paints from the live topic,
-        // showing its honest range (plan §2.3).
         r.ingestHistory((data.events || []) as DepthEventMsg[]);
-        // V3: deterministic print history — bubbles, path and the context
-        // strips render on open instead of waiting for live warm-up.
-        for (const t of (data.trades || []) as TradeEventMsg[]) {
-          r.addTrade(t);
-        }
+        for (const t of (data.trades || []) as TradeEventMsg[]) r.addTrade(t);
       } catch (e) {
-        if (!cancelled) {
-          setState({ kind: 'nodata', reason: `engine unreachable: ${e}` });
-        }
+        if (!cancelled) setState({ kind: 'nodata', reason: `engine unreachable: ${e}` });
         return;
       }
-      // 2. current book for the BBO lines / COB context (honours the
-      //    pane's active-range override + depth-reset policy — S6/S11)
       try {
         const st = loadSettings(symbol);
         const q = new URLSearchParams({ symbol });
         if (sourceProvider) q.set('provider', sourceProvider);
         if (st.activeRange > 0) q.set('active_levels', String(st.activeRange));
         q.set('reset', st.resetPolicy);
-        if (st.resetPolicy === 'interval') {
-          q.set('reset_interval_min', String(st.resetIntervalMin));
-        }
+        if (st.resetPolicy === 'interval') q.set('reset_interval_min', String(st.resetIntervalMin));
         const res = await fetch(`/api/orderflow/book?${q.toString()}`);
         if (res.ok) {
           const b = await res.json();
           r.setBook(b.best_bid ?? null, b.best_ask ?? null);
           cobBookRef.current?.seed(b.bids ?? [], b.asks ?? []);
         }
-      } catch { /* BBO lines simply stay off */ }
+      } catch {}
       if (!cancelled) setState({ kind: 'live', demo, provider });
 
-      // 3. live depth topic: SNAPSHOT on subscribe, coalesced DELTAs, trades
       const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-      ws = new WebSocket(
-        `${proto}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(symbol)}${prov}`);
-      ws.onmessage = (m) => {
+      ws = new WebSocket(`${proto}://${location.host}/api/orderflow/ws?symbol=${encodeURIComponent(symbol)}${prov}`);
+      ws.onmessage = m => {
         if (cancelled) return;
         let frame: DepthWsFrame;
-        try { frame = JSON.parse(m.data); } catch { return; }
+        try {
+          frame = JSON.parse(m.data);
+        } catch {
+          return;
+        }
         const rr = rendererRef.current;
         if (!rr) return;
         if (frame.type === 'depth') {
           rr.applyDepth(frame.event);
-          cobBookRef.current?.apply(frame.event);   // S8 ladder live feed
-          // The subscribe-time SNAPSHOT carries the full transmitted book:
-          // derive the BBO lines from it. (Live-only sources like the crypto
-          // public feeds have no /api/orderflow/book to seed them from; the
-          // proper live BBO tracking arrives with the COB column, H7.)
+          cobBookRef.current?.apply(frame.event);
           if (frame.event.type === 'SNAPSHOT') {
-            let bb: number | null = null, ba: number | null = null;
-            for (const [p] of frame.event.bids) {
-              if (bb === null || p > bb) bb = p;
-            }
-            for (const [p] of frame.event.asks) {
-              if (ba === null || p < ba) ba = p;
-            }
+            let bb: number | null = null,
+              ba: number | null = null;
+            for (const [p] of frame.event.bids) if (bb === null || p > bb) bb = p;
+            for (const [p] of frame.event.asks) if (ba === null || p < ba) ba = p;
             rr.setBook(bb, ba);
           }
         } else if (frame.type === 'trade') {
@@ -316,27 +271,23 @@ export default function DepthHeatPane({
           setState({ kind: 'nodata', reason: frame.message });
         }
       };
-      ws.onclose = () => { /* pane shows the last painted field; reconnect is
-                              the user's refresh — a dead engine is visible */ };
     };
     load();
     return () => {
       cancelled = true;
-      try { ws?.close(); } catch { /* already closed */ }
+      try {
+        ws?.close();
+      } catch {}
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol, reloadToken]);
+  }, [symbol, reloadToken, sourceProvider]);
 
-  // Contrast slider (S3): re-centres the cut-off window around the session
-  // percentiles — left widens (more of the gradient in use), right narrows.
   useEffect(() => {
     const base = settings.cutoffMode === 'percentile';
     if (!base) return;
-    const span = 90 - contrast * 0.8;      // 50 -> 50pp window
+    const span = 90 - contrast * 0.8;
     const lo = Math.max(0, 50 - span / 2);
     const hi = Math.min(100, 50 + span / 2);
     updateSettings({ cutoffLower: lo, cutoffUpper: hi });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contrast]);
 
   const status = useMemo(() => {
@@ -345,7 +296,6 @@ export default function DepthHeatPane({
     return '';
   }, [state]);
 
-  // interaction handlers
   const onWheel = useCallback((e: React.WheelEvent) => {
     rendererRef.current?.wheel(e.deltaX, e.deltaY, e.shiftKey);
   }, []);
@@ -356,13 +306,14 @@ export default function DepthHeatPane({
   const onMouseMove = useCallback((e: React.MouseEvent) => {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     if (dragRef.current && e.buttons & 1) {
-      rendererRef.current?.drag(
-        e.clientX - dragRef.current.x, e.clientY - dragRef.current.y);
+      rendererRef.current?.drag(e.clientX - dragRef.current.x, e.clientY - dragRef.current.y);
       dragRef.current = { x: e.clientX, y: e.clientY };
     }
     rendererRef.current?.setHover(e.clientX - rect.left, e.clientY - rect.top);
   }, []);
-  const onMouseUp = useCallback(() => { dragRef.current = null; }, []);
+  const onMouseUp = useCallback(() => {
+    dragRef.current = null;
+  }, []);
   const onMouseLeave = useCallback(() => {
     dragRef.current = null;
     rendererRef.current?.setHover(null, null);
@@ -372,163 +323,123 @@ export default function DepthHeatPane({
   }, []);
 
   return (
-    <div style={{
-      position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-      background: '#0b0e11', color: '#d1d4dc', fontSize: 11,
-    }}>
-      {/* contrast slider above the pane + header (S3 placement) */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, padding: '2px 8px',
-        borderBottom: '1px solid var(--edge, #2a2e39)', flex: '0 0 auto',
-      }}>
-        <span style={{ opacity: 0.75 }}>DEPTH HEAT</span>
-        <span style={{ fontWeight: 600 }}>{symbol}</span>
-        {/* view mode: liquidity heat vs classic footprint */}
-        <span style={{
-          display: 'inline-flex', border: '1px solid #2a2e39', borderRadius: 4,
-          overflow: 'hidden',
-        }}>
-          {(['heat', 'footprint'] as const).map((v) => (
+    <div className="absolute inset-0 flex flex-col bg-[#1c1c1c] text-[#e8e8e8] select-none">
+      {/* Professional top bar — own zinc design */}
+      <div className="flex items-center gap-2 px-3 h-10 border-b border-[#2a2a2a] bg-[#1c1c1c] text-[12px] shrink-0">
+        <span className="font-bold tracking-wider text-[11px] text-[#e8e8e8]">DEPTH HEAT</span>
+        <span className="font-mono font-semibold text-[13px] text-[#e8e8e8]">{symbol}</span>
+        <div className="flex items-center gap-0.5 ml-2 p-0.5 rounded-lg bg-[#262626] border border-[#3a3a3a]">
+          {(['heat', 'footprint'] as const).map(v => (
             <button
               key={v}
               onClick={() => updateSettings({ view: v })}
-              title={v === 'heat'
-                ? 'Resting liquidity heat field'
-                : 'Footprint: bid×ask executed volume per price and time bucket'}
-              style={{
-                background: settings.view === v ? '#2b3547' : 'transparent',
-                color: settings.view === v ? '#eef1f6' : '#93a0b1',
-                border: 'none', fontSize: 9, letterSpacing: 0.5,
-                padding: '2px 7px', cursor: 'pointer',
-              }}
-            >{v === 'heat' ? 'HEAT' : 'FOOTPRINT'}</button>
+              title={v === 'heat' ? 'Resting liquidity heat field' : 'Footprint: bid×ask executed volume'}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                settings.view === v ? 'bg-[#e8e8e8] text-[#1c1c1c] shadow-sm' : 'bg-transparent text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'
+              }`}
+            >
+              {v === 'heat' ? 'HEAT' : 'FOOTPRINT'}
+            </button>
           ))}
-        </span>
+        </div>
         {status && (
-          <span style={{
-            padding: '0 6px', borderRadius: 3, fontSize: 9, letterSpacing: 0.5,
-            background: state.kind === 'live' && state.demo
-              ? 'rgba(255, 152, 0, 0.25)' : 'rgba(120, 144, 156, 0.25)',
-            color: state.kind === 'live' && state.demo ? '#ffb74d' : '#b0bec5',
-          }}>{status}</span>
-        )}
-        <span style={{
-          marginLeft: 'auto', fontSize: 9, letterSpacing: 0.6, opacity: 0.55,
-        }}>CUT-OFF</span>
-        <input
-          type="range" min={0} max={100} value={contrast}
-          onChange={(e) => setContrast(Number(e.target.value))}
-          title="Cut-off window — narrows/widens where the gradient saturates (S3)"
-          style={{ width: 90, accentColor: '#78909c' }}
-        />
-        {/* recording controls (S10) */}
-        {recording ? (
-          <button
-            onClick={stopRecording}
-            title="Stop recording this symbol's depth to MY DATA"
-            style={{
-              background: 'rgba(239, 83, 80, 0.14)', border: '1px solid rgba(239, 83, 80, 0.6)',
-              color: '#ef9a9a', borderRadius: 4, fontSize: 10, padding: '1px 7px',
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5,
-            }}
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+              state.kind === 'live' && (state as any).demo
+                ? 'bg-[#f59e0b]/10 border-[#f59e0b]/20 text-[#f59e0b]'
+                : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9]'
+            }`}
           >
-            <span style={{
-              width: 7, height: 7, borderRadius: '50%', background: '#ef5350',
-              boxShadow: '0 0 6px rgba(239,83,80,0.9)', animation: 'dh-pulse 1.1s infinite',
-            }} />
-            REC {Math.floor(recElapsed / 60)}:{String(recElapsed % 60).padStart(2, '0')} — stop
-          </button>
-        ) : (
-          <button
-            onClick={startRecording}
-            title="Record live depth + trades to workspace/MY DATA (S10)"
-            style={{
-              background: 'transparent', border: '1px solid #2a2e39', color: '#9aa4b2',
-              borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
-            }}
-          >● REC</button>
-        )}
-        <button
-          onClick={() => setSessionsOpen(true)}
-          title="Recorded sessions (workspace/MY DATA)"
-          style={{
-            background: 'transparent', border: '1px solid #2a2e39', color: '#9aa4b2',
-            borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
-          }}
-        >🗂 sessions</button>
-        <button
-          onClick={() => updateSettings({ showTsPanel: !settings.showTsPanel })}
-          title="Time & sales drawer: every executed print with min-size and side filters (V4)"
-          style={{
-            background: settings.showTsPanel ? '#1d232e' : 'transparent',
-            border: '1px solid #2a2e39', color: '#9aa4b2',
-            borderRadius: 4, fontSize: 10, padding: '1px 7px', cursor: 'pointer',
-          }}
-        >T&amp;S</button>
-        {loadedSession && (
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9,
-            padding: '1px 6px', borderRadius: 3, letterSpacing: 0.4,
-            background: 'rgba(120, 144, 156, 0.18)', color: '#a7b4c2',
-          }}>
-            SESSION LOADED
-            <button
-              onClick={backToLive}
-              title="Return to the live feed"
-              style={{
-                background: 'transparent', border: 'none', color: '#c8cfda',
-                cursor: 'pointer', fontSize: 10, padding: 0,
-              }}
-            >✕</button>
+            {status}
           </span>
         )}
-        {recError && (
-          <span title={recError} style={{
-            fontSize: 9, color: '#ef9a9a', maxWidth: 150,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>rec: {recError}</span>
-        )}
-        <button
-          onClick={() => {
-            setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
-            setSettingsOpen(true);
-          }}
-          title="Depth Heat settings (or right-click the heatmap)"
-          style={{
-            background: settingsOpen ? '#1d232e' : 'transparent',
-            border: '1px solid #2a2e39', color: '#c8cfda',
-            borderRadius: 4, fontSize: 11, padding: '1px 7px', cursor: 'pointer',
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-          }}
-        >⚙<span style={{ fontSize: 10, opacity: 0.8 }}>settings</span></button>
-        {onToggleKind && (
+        <div className="flex items-center gap-2 ml-auto">
+          <span className="text-[10px] tracking-wider text-[#6a6a6a] hidden lg:block">CUT-OFF</span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={contrast}
+            onChange={e => setContrast(Number(e.target.value))}
+            title="Cut-off window — narrows/widens where gradient saturates"
+            className="w-[90px] accent-[#e8e8e8]"
+          />
+          {recording ? (
+            <button
+              onClick={stopRecording}
+              title="Stop recording"
+              className="px-3 py-1 rounded-full border text-[11px] font-medium flex items-center gap-1.5 bg-[#f0426c]/10 border-[#f0426c]/30 text-[#f0426c] hover:bg-[#f0426c]/20 transition-colors"
+            >
+              <span className="w-2 h-2 rounded-full bg-[#f0426c] animate-pulse" /> REC {Math.floor(recElapsed / 60)}:{String(recElapsed % 60).padStart(2, '0')}
+            </button>
+          ) : (
+            <button
+              onClick={startRecording}
+              title="Record live depth to MY DATA"
+              className="px-2.5 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8] transition-colors"
+            >
+              ● REC
+            </button>
+          )}
           <button
-            onClick={onToggleKind}
-            title="Switch pane back to the chart"
-            style={{
-              background: 'transparent', border: '1px solid #2a2e39', color: '#9aa4b2',
-              borderRadius: 3, fontSize: 10, padding: '1px 6px', cursor: 'pointer',
+            onClick={() => setSessionsOpen(true)}
+            title="Recorded sessions"
+            className="px-2.5 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8] transition-colors"
+          >
+            Sessions
+          </button>
+          <button
+            onClick={() => updateSettings({ showTsPanel: !settings.showTsPanel })}
+            title="Time & sales drawer"
+            className={`px-2.5 py-1 rounded-md border text-[11px] transition-colors ${
+              settings.showTsPanel ? 'bg-[#e8e8e8] border-[#e8e8e8] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'
+            }`}
+          >
+            T&S
+          </button>
+          {loadedSession && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#262626] border border-[#3a3a3a] text-[10px] text-[#b9b9b9]">
+              SESSION
+              <button onClick={backToLive} className="ml-1 w-4 h-4 rounded-full bg-[#1c1c1c] border border-[#3a3a3a] flex items-center justify-center hover:text-[#e8e8e8]">
+                ×
+              </button>
+            </span>
+          )}
+          <button
+            onClick={() => {
+              setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
+              setSettingsOpen(true);
             }}
-          >chart ⇄</button>
-        )}
+            title="Depth Heat settings"
+            className={`w-8 h-8 rounded-md border flex items-center justify-center transition-colors ${
+              settingsOpen ? 'bg-[#e8e8e8] border-[#e8e8e8] text-[#1c1c1c]' : 'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'
+            }`}
+          >
+            ⚙
+          </button>
+          {onToggleKind && (
+            <button
+              onClick={onToggleKind}
+              className="px-3 py-1.5 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] font-medium text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8] transition-colors"
+            >
+              Chart ⇄
+            </button>
+          )}
+        </div>
       </div>
 
       <div
-        style={{
-          position: 'relative', flex: 1, minHeight: 0,
-          display: 'flex', flexDirection: 'row',
-        }}
-        onContextMenu={(e) => {
-          // Right-click = pane settings (matches chart conventions, §5.2).
+        className="relative flex-1 min-h-0 flex flex-row bg-[#1c1c1c]"
+        onContextMenu={e => {
           e.preventDefault();
           setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
           setSettingsOpen(true);
         }}
       >
-        <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+        <div className="relative flex-1 min-w-0">
           <canvas
             ref={canvasRef}
-            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }}
+            className="absolute inset-0 w-full h-full block"
             onWheel={onWheel}
             onMouseDown={onMouseDown}
             onMouseMove={onMouseMove}
@@ -537,56 +448,42 @@ export default function DepthHeatPane({
             onDoubleClick={onDblClick}
           />
           {state.kind === 'loading' && (
-            <div style={overlay}>Loading depth history…</div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-[#1c1c1c]/80 backdrop-blur-sm">
+              <div className="text-[12px] font-mono text-[#e8e8e8]">Loading depth history…</div>
+              <div className="text-[10px] text-[#6a6a6a] mt-1">{symbol} • 4h buffer</div>
+            </div>
           )}
           {state.kind === 'nodata' && (
-            <div style={overlay}>
-              <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                No depth data for {symbol}
-              </div>
-              <div style={{ opacity: 0.7, maxWidth: 340, textAlign: 'center' }}>
-                {state.reason}
-              </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1c1c1c] text-center p-6">
+              <div className="w-12 h-12 rounded-full bg-[#262626] border border-[#3a3a3a] flex items-center justify-center text-[20px] mb-3">◧</div>
+              <div className="text-[13px] font-semibold text-[#e8e8e8]">No depth data for {symbol}</div>
+              <div className="text-[11px] text-[#6a6a6a] mt-2 max-w-[360px]">{state.reason}</div>
+              <button onClick={() => setReloadToken(t => t + 1)} className="mt-4 px-4 py-1.5 rounded-md bg-[#262626] border border-[#3a3a3a] text-[12px] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]">
+                Retry
+              </button>
             </div>
           )}
         </div>
-        {/* COB column (S8): numeric ladder, pixel-aligned with the heat.
-            In fused ladder mode (V4) the figures live in the axis gutter
-            instead, so the panel stays hidden. */}
         {settings.cob && settings.ladderMode === 'panel' && state.kind === 'live' && (
-          <DepthHeatCob
-            rendererRef={rendererRef}
-            book={cobBookRef.current!}
-            settings={settings}
-          />
+          <DepthHeatCob rendererRef={rendererRef} book={cobBookRef.current!} settings={settings} />
         )}
         {settingsOpen && (
           <DepthHeatSettingsWindow
             symbol={symbol}
             settings={settings}
             cutoffRange={cutoffRange}
-            onChange={(patch) => {
+            onChange={patch => {
               updateSettings(patch);
-              // keep the resolved cut-off readout honest while editing
               setCutoffRange(rendererRef.current?.getCutoffs() ?? null);
             }}
             onClose={() => setSettingsOpen(false)}
           />
         )}
-        {sessionsOpen && (
-          <DepthHeatSessions
-            symbol={symbol}
-            onLoad={loadSessionEvents}
-            onClose={() => setSessionsOpen(false)}
-          />
-        )}
+        {sessionsOpen && <DepthHeatSessions symbol={symbol} onLoad={loadSessionEvents} onClose={() => setSessionsOpen(false)} />}
       </div>
+      {recError && (
+        <div className="px-3 py-1.5 text-[10px] text-[#f0426c] bg-[#f0426c]/5 border-t border-[#f0426c]/10 truncate">rec: {recError}</div>
+      )}
     </div>
   );
 }
-
-const overlay: React.CSSProperties = {
-  position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-  alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
-  color: '#9aa4b2', fontSize: 12,
-};

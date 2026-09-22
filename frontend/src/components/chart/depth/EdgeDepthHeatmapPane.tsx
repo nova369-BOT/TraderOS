@@ -92,6 +92,17 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColorm
   const [book, setBook] = useState<{ bid: number | null; ask: number | null }>({ bid: null, ask: null });
   const [useFallback, setUseFallback] = useState(false);
   const [follow, setFollow] = useState(true);
+  const [modePickerOpen, setModePickerOpen] = useState(false);
+  // Close mode picker on outside click
+  useEffect(() => {
+    if (!modePickerOpen) return;
+    const h = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('[data-mode-picker]')) setModePickerOpen(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [modePickerOpen]);
 
   const flushMs = useMemo(() => {
     if (providerState === 'hyperliquid') return 15;
@@ -485,10 +496,30 @@ export function EdgeDepthHeatmapPane({ symbol, provider, onToggleKind, liqColorm
             </div>
           </>
         )}
-        <div className="flex items-center gap-1.5 ml-2">
-          <select value={mode} onChange={e => setMode(e.target.value as HeatmapMode)} className="appearance-none pl-3 pr-7 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] font-medium text-[#e8e8e8] hover:bg-[#343434] focus:outline-none cursor-pointer">
-            {HEATMAP_TYPES.map(ht => <option key={ht.id} value={ht.id}>{ht.label}</option>)}
-          </select>
+        <div className="relative ml-2" data-mode-picker>
+          <button
+            onClick={() => setModePickerOpen((v: boolean) => !v)}
+            className="flex items-center gap-2 pl-3 pr-7 py-1 rounded-md border border-[#3a3a3a] bg-[#262626] text-[11px] font-medium text-[#e8e8e8] hover:bg-[#343434] hover:border-[#4a4a4a] transition-colors"
+          >
+            {HEATMAP_TYPES.find(h => h.id === mode)?.label || mode}
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-[#6a6a6a]">{modePickerOpen ? '▲' : '▼'}</span>
+          </button>
+          {modePickerOpen && (
+            <div className="absolute top-full left-0 mt-2 z-30 w-[220px] rounded-xl border border-[#3a3a3a] bg-[#1c1c1c] shadow-2xl overflow-hidden">
+              <div className="px-3 py-2 border-b border-[#2a2a2a] bg-[#222222] text-[10px] font-semibold tracking-wider text-[#b9b9b9]">HEATMAP MODE</div>
+              <div className="p-1.5 grid gap-1">
+                {HEATMAP_TYPES.map(ht => (
+                  <button
+                    key={ht.id}
+                    onClick={() => { setMode(ht.id); setModePickerOpen(false); }}
+                    className={`px-3 py-2 rounded-md text-left text-[12px] font-medium transition-colors ${mode === ht.id ? 'bg-[#e8e8e8] text-[#1c1c1c]' : 'bg-[#262626] text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}
+                  >
+                    {ht.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <button onClick={() => setFollow(v => !v)} className={`px-3 py-1 rounded-full border text-[11px] font-medium ${follow?'bg-[#21b3a4]/10 border-[#21b3a4]/30 text-[#21b3a4]':'bg-[#262626] border-[#3a3a3a] text-[#6a6a6a] hover:text-[#b9b9b9]'}`}>{follow?'● FOLLOW':'○ FREE'}</button>
