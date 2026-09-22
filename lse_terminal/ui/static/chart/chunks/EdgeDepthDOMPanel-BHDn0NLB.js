@@ -131,5 +131,6 @@ function W({ symbol: p, provider: u = "binance" }) {
   ] });
 }
 export {
-  W as EdgeDepthDOMPanel
+  W as EdgeDepthDOMPanel,
+  W as default
 };

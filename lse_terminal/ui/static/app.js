@@ -2,19 +2,32 @@
    types, OHLC legend. Vanilla JS on purpose; the richer React workspace
    replaces this later, speaking to exactly the same /api endpoints. */
 
-const TF_SECONDS = { "1s": 1, "15s": 15, "30s": 30,
-                     "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
-                     "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400,
-                     "1w": 604800 };
+const TF_SECONDS = { "tick": 0,
+                     "1s": 1, "5s": 5, "15s": 15, "30s": 30,
+                     "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
+                     "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "8h": 28800, "12h": 43200,
+                     "1d": 86400, "1D": 86400, "3d": 259200, "1w": 604800, "1W": 604800, "1M": 2592000,
+                     "6H": 21600, "8H": 28800, "12H": 43200, "3D": 259200 };
+/* Normalized lookup for chart reload cadence and custom detection */
+const TF_SECONDS_NORM = Object.fromEntries(Object.entries(TF_SECONDS).map(([k,v])=>[k.toLowerCase(),v]));
 /* Custom crypto timeframes ("45s", "3m", "2h"…) parse to their step in
    seconds; unknown strings fall back to the 1h step — the providers
    themselves validate what they can honestly serve and the chart tells
    the user their words when a custom entry is not served. */
 function tfSecondsOf(tf) {
-  if (TF_SECONDS[tf] !== undefined) return TF_SECONDS[tf];
-  const m = /^(\d+)([smhdw])$/.exec(String(tf || ""));
+  const raw = String(tf || "");
+  if (TF_SECONDS[raw] !== undefined) return TF_SECONDS[raw];
+  const low = raw.toLowerCase();
+  if (TF_SECONDS[low] !== undefined) return TF_SECONDS[low];
+  if (low === "tick") return 0;
+  if (low === "1m" || raw === "1M") { /* 1M is month, handle separately */ }
+  // custom like 7m, 90s, 3h, 2D, 1W, 1M
+  if (raw === "1M" || low === "1mth" || low === "1mo") return 2592000;
+  const m = /^(\d+)([smhdw])$/i.exec(raw);
   if (!m) return 3600;
-  const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[m[2]] || 1;
+  const unit = m[2].toLowerCase();
+  if (unit === "m" && raw.endsWith("M")) return parseInt(m[1],10)*2592000; // months
+  const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] || 1;
   return parseInt(m[1], 10) * mult;
 }
 // A tick chart appends one bar per trade; big liquid pairs print ~24/s, so
@@ -2529,26 +2542,42 @@ function renderTimeframes() {
   // tape buckets). A Custom… entry reaches them without crowding the
   // rail; the provider's own error words answer anything it cannot
   // serve (e.g. Coinbase has no 4h and no 1w).
-  if (state.provider === "binance" || state.provider === "coinbase" || state.provider === "hyperliquid") {
+  if (state.provider === "binance" || state.provider === "coinbase" || state.provider === "hyperliquid" || true) {
     const c = document.createElement("button");
     c.textContent = "Custom…";
-    const isCustomTf = !TF_SECONDS[state.timeframe] &&
-                       state.timeframe !== "tick";
+    const tfLow = String(state.timeframe||"").toLowerCase();
+    const isCustomTf = !(TF_SECONDS[state.timeframe] !== undefined || TF_SECONDS[tfLow] !== undefined) &&
+                       tfLow !== "tick" && state.timeframe !== "1M";
     c.className = isCustomTf ? "active" : "";
     c.title = "Any <n>s second bucket from the real trade tape (45s, 90s…), " +
-      "or a venue-native interval (Binance: 3m/2h/6h/8h/12h/3d; Coinbase: 2h/6h)";
+      "or a venue-native interval (Binance: 3m/2h/6h/8h/12h/3d; Coinbase: 2h/6h) — exact EdgeDepth full list";
     c.onclick = () => {
       const v = prompt(
         "Custom timeframe — <n>s from the trade tape (e.g. 15s, 45s), " +
         "or native: Binance 1m/3m/5m/15m/30m/1h/2h/4h/6h/8h/12h/1d/3d/1w · " +
         "Coinbase 1m/5m/15m/30m/1h/2h/6h/1d (no 4h/1w) · " +
-        "Hyperliquid 1m/3m/5m/15m/30m/1h/2h/4h/8h/12h/1d/3d/1w/1M (ultra-fast 15ms)",
+        "Hyperliquid tick 1s 15s 30s 1m 3m 5m 15m 30m 1h 2h 4h 8h 12h 1d 3d 1w 1M (ultra-fast 15ms) · Custom e.g. 7m 90s 3h",
         isCustomTf ? state.timeframe : "45s");
       if (!v) return;
-      const tf = v.trim().toLowerCase();
-      if (!/^(tick|\d+[smhdw])$/.test(tf)) {
-        status(`"${tf}" is not a timeframe shape — try 45s, 3m, 2h, 1d…`);
-        return;
+      const raw = v.trim();
+      if (!raw) return;
+      // preserve 1M case, else lowercase
+      let tf = raw;
+      if (raw !== "1M" && raw !== "1m") {
+        // allow 1M stays 1M, else normalize to lower for seconds/minutes etc but keep original case for check
+        const low = raw.toLowerCase();
+        if (/^(tick|\d+[smhdw]|1M)$/i.test(raw)) {
+          tf = low === "1m" && raw === "1M" ? "1M" : low === "tick" ? "tick" : low;
+          // keep 1M uppercase if user typed 1M
+          if (raw.toUpperCase() === "1M") tf = "1M";
+          if (raw.toLowerCase() === "tick") tf = "tick";
+        } else {
+          status(`"${raw}" is not a timeframe shape — try tick, 45s, 3m, 2h, 8h, 3d, 1M…`);
+          return;
+        }
+      } else {
+        if (raw === "1M") tf = "1M";
+        else tf = raw.toLowerCase();
       }
       state.timeframe = tf;
       renderTimeframes();
@@ -3061,6 +3090,34 @@ function setupLayouts() {
         return true;
       } catch { return false; }
     },
+    setTimeframe: (tf) => {
+      if (!tf) return false;
+      try {
+        const raw = String(tf).trim();
+        if (!raw) return false;
+        // accept TF object {label} or string
+        const label = (typeof tf === 'object' && tf.label) ? tf.label : raw;
+        const v = String(label).trim();
+        if (!v) return false;
+        // Validate shape: tick or <n><unit> or 1M, 1D, 1W etc, case-insensitive
+        // Allow exact provider strings: tick, 1s,15s,30s,1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M and any custom <n>s/m/h/d/w
+        const ok = /^(tick|1M|\d+[smhdwSMHDW]|\d+M)$/i.test(v) || TF_SECONDS[v] !== undefined || TF_SECONDS[v.toLowerCase()] !== undefined;
+        if (!ok) {
+          // Still allow custom like 7m, 90s
+          if (!/^(\d+)([smhdwSMHDW])$/i.test(v)) return false;
+        }
+        state.timeframe = v;
+        renderTimeframes();
+        loadChart();
+        saveShellState();
+        try { renderActiveSymbol(); } catch {}
+        status(`timeframe ${v} ⚡`);
+        return true;
+      } catch { return false; }
+    },
+    getTimeframe: () => state.timeframe,
+    getProvider: () => state.provider,
+    getSymbol: () => state.symbol,
   };
 
   // Toolbar Templates dropdown: the second door to the same store as the

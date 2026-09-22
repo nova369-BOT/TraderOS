@@ -137,5 +137,6 @@ function N({
   ] });
 }
 export {
-  N as EdgeDepthIndicators
+  N as EdgeDepthIndicators,
+  N as default
 };

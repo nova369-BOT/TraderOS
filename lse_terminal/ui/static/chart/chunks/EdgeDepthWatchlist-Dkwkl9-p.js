@@ -207,5 +207,6 @@ function B({
   ] });
 }
 export {
-  B as EdgeDepthWatchlist
+  B as EdgeDepthWatchlist,
+  B as default
 };

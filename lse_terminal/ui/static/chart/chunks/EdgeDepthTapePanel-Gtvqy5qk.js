@@ -78,5 +78,6 @@ function S({ symbol: i, provider: r = "binance" }) {
   ] });
 }
 export {
-  S as EdgeDepthTapePanel
+  S as EdgeDepthTapePanel,
+  S as default
 };

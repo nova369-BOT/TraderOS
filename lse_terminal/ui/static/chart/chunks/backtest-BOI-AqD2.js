@@ -12060,18 +12060,17 @@ function R0({
   ] });
 }
 const hh = {
-  // Core indicators
+  // Core indicators — EdgeDepth exact: candles with up/down wicks (columns), volume up/down columns, no straight line consuming space
   rsi: { enabled: !1, period: 14, overbought: 70, oversold: 30 },
   macd: { enabled: !1, fast: 12, slow: 26, signal: 9 },
   ema: { enabled: !1, periods: [20, 50] },
   bollinger: { enabled: !1, period: 20, stdDev: 2 },
-  // 20 EMA enabled by default so new users see a useful overlay on first chart load,
-  // even without signing up. #2962FF is a clean blue that stands out on both light and dark
-  // backgrounds without needing theme-adaptive color swapping.
-  movingAverages: { enabled: !0, lines: [{ type: "EMA", period: 20, color: "#2962FF" }] },
+  // No EMA line by default — user complained straight line consuming space, should have up/down columns (volume) instead
+  // Volume enabled by default with zinc teal/rose up/down columns exact EdgeDepth
+  movingAverages: { enabled: !1, lines: [] },
   atr: { enabled: !1, period: 14 },
   stochastic: { enabled: !1, kPeriod: 14, dPeriod: 3, smooth: 3, overbought: 80, oversold: 20 },
-  volume: { enabled: !1 },
+  volume: { enabled: !0, upColor: "#21b3a4", downColor: "#f0426c" },
   williamsR: { enabled: !1, period: 14, overbought: -20, oversold: -80 },
   cci: { enabled: !1, period: 20, overbought: 100, oversold: -100 },
   adx: { enabled: !1, period: 14 },

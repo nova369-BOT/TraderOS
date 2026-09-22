@@ -1,19 +1,19 @@
-import { r as T, j as n, g as dt } from "./react-vendor-C0yw3i6b.js";
-const st = ["deepdom", "bookmap", "heat", "greyscale"], ut = [
+import { r as T, j as n, g as ut } from "./react-vendor-C0yw3i6b.js";
+const it = ["deepdom", "bookmap", "heat", "greyscale"], ft = [
   [0, [6, 2, 5]],
   [0.3, [58, 10, 16]],
   [0.55, [126, 26, 16]],
   [0.75, [206, 64, 12]],
   [0.9, [255, 140, 0]],
   [1, [255, 214, 96]]
-], ft = [
+], mt = [
   [0, [2, 5, 11]],
   [0.3, [6, 24, 50]],
   [0.55, [10, 48, 94]],
   [0.75, [13, 92, 112]],
   [0.9, [26, 190, 92]],
   [1, [126, 255, 152]]
-], mt = [
+], pt = [
   [0, [0, 0, 0]],
   [0.35, [8, 34, 61]],
   [0.6, [14, 107, 168]],
@@ -31,16 +31,16 @@ const st = ["deepdom", "bookmap", "heat", "greyscale"], ut = [
 function Ye(t, e) {
   switch (t) {
     case "deepdom":
-      return e === "ask" ? ut : ft;
+      return e === "ask" ? ft : mt;
     case "bookmap":
-      return mt;
+      return pt;
     case "heat":
       return Ve;
     case "greyscale":
       return Ve;
   }
 }
-function pt(t, e) {
+function bt(t, e) {
   for (let i = 1; i < t.length; i++) {
     const [o, a] = t[i], [r, l] = t[i - 1];
     if (e <= o) {
@@ -58,7 +58,7 @@ function Xe(t, e, i) {
   const o = new Uint8ClampedArray(1024), a = 1 - Math.min(1, Math.max(0, e.dimming)), r = 1 + e.contrast, l = e.brightness * 255, s = i >= 2 ? Math.ceil(256 / Math.min(i, 256)) : 1, c = (h) => {
     const b = h / 255;
     let y, v, d;
-    t === null ? y = v = d = b * 255 : [y, v, d] = pt(t, b);
+    t === null ? y = v = d = b * 255 : [y, v, d] = bt(t, b);
     const g = (y + v + d) / 3;
     return y = g + (y - g) * e.intensity, v = g + (v - g) * e.intensity, d = g + (d - g) * e.intensity, y *= a, v *= a, d *= a, y = (y / 255 - 0.5) * r * 255 + 127.5 + l, v = (v / 255 - 0.5) * r * 255 + 127.5 + l, d = (d / 255 - 0.5) * r * 255 + 127.5 + l, [
       Math.min(255, Math.max(0, y)),
@@ -73,7 +73,7 @@ function Xe(t, e, i) {
   return o;
 }
 function Oe(t, e) {
-  const i = e !== void 0 ? e : t.smoothing, o = st.includes(t.scheme) ? t.scheme : "heat";
+  const i = e !== void 0 ? e : t.smoothing, o = it.includes(t.scheme) ? t.scheme : "heat";
   if (o === "greyscale") {
     const l = Xe(null, t, i);
     return { ask: l, bid: l };
@@ -81,7 +81,7 @@ function Oe(t, e) {
   const a = Xe(Ye(o, "ask"), t, i), r = o === "deepdom" ? Xe(Ye(o, "bid"), t, i) : a;
   return { ask: a, bid: r };
 }
-function bt(t) {
+function gt(t) {
   switch (t) {
     case "deepdom":
       return "DeepDom · side-aware ember/water";
@@ -93,7 +93,7 @@ function bt(t) {
       return "Greyscale";
   }
 }
-const it = {
+const nt = {
   view: "heat",
   // First open should read like the reference class (02-visual-excellence §1):
   // side-aware field + glow + path + bubbles, candles off (the heat is hero).
@@ -134,23 +134,23 @@ const it = {
   recenterTolerance: 15,
   resetPolicy: "session",
   resetIntervalMin: 60
-}, nt = "lset-depth-global-scheme", ot = "lset-depth-global-apply", Fe = "lse-depth-global-scheme";
-function gt() {
+}, ot = "lset-depth-global-scheme", at = "lset-depth-global-apply", Fe = "lse-depth-global-scheme";
+function xt() {
   let t = "heat", e = !1;
   try {
-    const i = localStorage.getItem(nt);
-    (i === "heat" || i === "greyscale" || i === "deepdom" || i === "bookmap") && (t = i), e = localStorage.getItem(ot) === "1";
+    const i = localStorage.getItem(ot);
+    (i === "heat" || i === "greyscale" || i === "deepdom" || i === "bookmap") && (t = i), e = localStorage.getItem(at) === "1";
   } catch {
   }
   return { scheme: t, apply: e };
 }
 function qe(t, e) {
   try {
-    localStorage.setItem(nt, t), localStorage.setItem(ot, e ? "1" : "0");
+    localStorage.setItem(ot, t), localStorage.setItem(at, e ? "1" : "0");
   } catch {
   }
 }
-function xt(t, e, i, o) {
+function Tt(t, e, i, o) {
   if (e === "exact") {
     let c = i, h = o;
     return h <= c && (h = c + Math.max(Math.abs(c) * 1e-6, 1e-9)), [c, h];
@@ -167,13 +167,13 @@ function xt(t, e, i, o) {
   let l = r(i), s = r(o);
   return s <= l && (s = l + Math.max(Math.abs(l) * 1e-6, 1e-9)), [l, s];
 }
-function Tt(t, e, i, o = 1) {
+function yt(t, e, i, o = 1) {
   i <= e && (i = e + Math.max(Math.abs(e) * 1e-6, 1e-9));
   const a = Math.min(1, Math.max(0, (t - e) / (i - e)));
   return Math.round(Math.pow(a, o) * 255);
 }
 const Le = "9px ui-monospace, Menlo, Consolas, monospace";
-function yt(t, e = 7) {
+function vt(t, e = 7) {
   const i = t / Math.max(1, e), o = Math.pow(10, Math.floor(Math.log10(Math.max(i, 1e-12))));
   for (const a of [1, 2, 2.5, 5, 10])
     if (i <= a * o) return a * o;
@@ -193,10 +193,10 @@ function Ke(t, e, i, o, a, r, l) {
   }
   t.stroke(), t.restore();
 }
-function vt(t, e) {
+function _t(t, e) {
   const { fieldW: i, cssW: o, cssH: a, centre: r, ppu: l, pLo: s, pHi: c } = e, h = (d) => a / 2 - (d - r) * l;
   t.fillStyle = "#0c0f14", t.fillRect(i, 0, o - i, a), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(i + 0.5, 0), t.lineTo(i + 0.5, a), t.stroke();
-  const b = yt(c - s), y = Math.ceil(s / b) * b;
+  const b = vt(c - s), y = Math.ceil(s / b) * b;
   t.font = Le, t.textAlign = "right", t.save(), t.setLineDash([1, 3]);
   for (let d = y; d <= c; d += b) {
     const g = Math.round(h(d)) + 0.5;
@@ -213,11 +213,11 @@ function vt(t, e) {
   }
   t.textAlign = "left";
 }
-const _t = "9px ui-monospace, Menlo, Consolas, monospace", at = "#26a69a", rt = "#ef5350";
+const Mt = "9px ui-monospace, Menlo, Consolas, monospace", rt = "#26a69a", lt = "#ef5350";
 function Be(t) {
   return t >= 1e4 ? `${(t / 1e3).toFixed(0)}k` : t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 || t >= 10 ? t.toFixed(0) : t.toFixed(1);
 }
-function Mt(t, e, i, o, a, r, l, s) {
+function wt(t, e, i, o, a, r, l, s) {
   const c = (h, b) => {
     t.strokeStyle = b, t.lineWidth = 1, t.beginPath();
     let y = null, v = 0;
@@ -234,7 +234,7 @@ function Mt(t, e, i, o, a, r, l, s) {
   };
   c((h) => h.bb, "rgba(38, 166, 154, 0.85)"), c((h) => h.ba, "rgba(239, 83, 80, 0.85)");
 }
-function wt(t, e, i, o, a, r, l, s, c) {
+function St(t, e, i, o, a, r, l, s, c) {
   if (c.alpha <= 0) return;
   t.save(), t.globalAlpha = c.alpha;
   const h = [];
@@ -259,7 +259,7 @@ function wt(t, e, i, o, a, r, l, s, c) {
       });
   for (const b of h) {
     const y = Math.min(16, Math.max(2.5, Math.sqrt(b.size) * 0.9 * c.scale)), v = b.buy + b.sell, d = v > 0 ? b.buy / v : 0.5, g = -Math.PI / 2;
-    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, g, g + d * Math.PI * 2), t.closePath(), t.fillStyle = at, t.fill(), d < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, g + d * Math.PI * 2, g + Math.PI * 2), t.closePath(), t.fillStyle = rt, t.fill()), c.mode !== "solid") {
+    if (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, g, g + d * Math.PI * 2), t.closePath(), t.fillStyle = rt, t.fill(), d < 1 && (t.beginPath(), t.moveTo(b.x, b.y), t.arc(b.x, b.y, y, g + d * Math.PI * 2, g + Math.PI * 2), t.closePath(), t.fillStyle = lt, t.fill()), c.mode !== "solid") {
       const w = t.createRadialGradient(
         b.x - y * 0.35,
         b.y - y * 0.42,
@@ -274,7 +274,7 @@ function wt(t, e, i, o, a, r, l, s, c) {
       const w = b.buy >= b.sell;
       t.beginPath(), t.arc(b.x, b.y, y + 3, 0, Math.PI * 2), t.lineWidth = 1.5, t.strokeStyle = w ? "rgba(38, 166, 154, 0.95)" : "rgba(239, 83, 80, 0.95)", t.stroke();
       const m = `${w ? "+" : "−"}${Be(b.size)}`;
-      t.font = `700 ${_t}`;
+      t.font = `700 ${Mt}`;
       const x = t.measureText(m).width + 8;
       let M = b.x + y + 6;
       M + x > c.fieldW - 2 && (M = b.x - y - 6 - x);
@@ -284,7 +284,7 @@ function wt(t, e, i, o, a, r, l, s, c) {
   }
   t.restore();
 }
-function St(t, e, i, o, a, r, l, s, c, h) {
+function kt(t, e, i, o, a, r, l, s, c, h) {
   const y = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((g) => g / c >= 18) ?? 36e5, v = /* @__PURE__ */ new Map();
   for (const g of e) {
     if (g.tsMs < i || g.tsMs > o || g.price < a || g.price > r) continue;
@@ -297,17 +297,17 @@ function St(t, e, i, o, a, r, l, s, c, h) {
   for (const [g, w] of v) {
     const m = l(g * y + y / 2);
     if (m < -d || m > h + d) continue;
-    const M = w.c >= w.o ? at : rt;
+    const M = w.c >= w.o ? rt : lt;
     t.strokeStyle = M, t.fillStyle = M, t.lineWidth = 1, t.beginPath(), t.moveTo(Math.round(m) + 0.5, s(w.h)), t.lineTo(Math.round(m) + 0.5, s(w.l)), t.stroke();
     const p = s(w.o), C = s(w.c), u = Math.min(p, C);
     t.fillRect(m - d / 2, u, d, Math.max(1, Math.abs(p - C)));
   }
   t.restore();
 }
-const kt = 78, Et = 16, lt = "9px ui-monospace, Menlo, Consolas, monospace";
-function Rt(t, e, i, o, a, r, l, s, c) {
+const Et = 78, Rt = 16, ct = "9px ui-monospace, Menlo, Consolas, monospace";
+function Ct(t, e, i, o, a, r, l, s, c) {
   t.fillStyle = "#0a0d12", t.fillRect(0, l, c, s - l), t.strokeStyle = "#232a35", t.beginPath(), t.moveTo(0, Math.round(l) + 0.5), t.lineTo(c, Math.round(l) + 0.5), t.stroke();
-  const h = s - Et - 2, b = h - l - 14;
+  const h = s - Rt - 2, b = h - l - 14;
   if (b < 8) return;
   const v = [1e3, 5e3, 15e3, 3e4, 6e4, 3e5, 9e5, 36e5].find((u) => u / r >= 5) ?? 36e5, d = /* @__PURE__ */ new Map();
   let g = 0;
@@ -339,20 +339,20 @@ function Rt(t, e, i, o, a, r, l, s, c) {
     P === 0 ? t.moveTo(I, U) : t.lineTo(I, U);
   }), t.stroke()), m !== 0) {
     const u = `CVD ${m > 0 ? "+" : "−"}${Be(Math.abs(m))}`;
-    t.font = `700 ${lt}`;
+    t.font = `700 ${ct}`;
     const E = t.measureText(u).width + 8;
     t.fillStyle = "rgba(10, 13, 18, 0.85)", t.fillRect(c - E - 4, l + 3, E, 13), t.fillStyle = m > 0 ? "#26a69a" : "#ef5350", t.fillText(u, c - E, l + 13);
   }
   t.textAlign = "left";
 }
-function Ct(t, e, i, o) {
+function Pt(t, e, i, o) {
   let a = 0, r = 0;
   for (const g of e)
     g.tsMs < i || g.tsMs > o || (g.buy ? a += g.size : r += g.size);
   const l = a + r, s = l > 0 ? (a - r) / l : 0, c = l > 0 ? (a - r) / l : 0, h = 178, b = 44, y = 8, v = 8;
   t.save(), t.fillStyle = "rgba(10, 13, 18, 0.78)", t.fillRect(y, v, h, b), t.strokeStyle = "#232a35", t.strokeRect(y + 0.5, v + 0.5, h - 1, b - 1);
   const d = (g, w, m, x) => {
-    t.font = `700 ${lt}`, t.fillStyle = "#8b96a5", t.fillText(g, y + 8, x + 7);
+    t.font = `700 ${ct}`, t.fillStyle = "#8b96a5", t.fillText(g, y + 8, x + 7);
     const M = y + 40, p = 92, C = 6;
     t.fillStyle = "rgba(239, 83, 80, 0.55)", t.fillRect(M, x, p / 2, C), t.fillStyle = "rgba(38, 166, 154, 0.55)", t.fillRect(M + p / 2, x, p / 2, C);
     const u = M + p / 2 + (m ? w * (p / 2 - 2) : 0);
@@ -360,16 +360,16 @@ function Ct(t, e, i, o) {
   };
   d("IMB", s, l > 0, v + 8), d("CVD", c, l > 0, v + 26), t.restore();
 }
-function Pt(t) {
+function jt(t) {
   return t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 ? t.toFixed(0) : t >= 1 ? t.toFixed(1) : t.toPrecision(2);
 }
-function jt(t) {
-  return t >= 1e3 ? t.toFixed(1) : t >= 1 ? t.toFixed(2) : Dt(t);
-}
 function Dt(t) {
+  return t >= 1e3 ? t.toFixed(1) : t >= 1 ? t.toFixed(2) : At(t);
+}
+function At(t) {
   return t.toPrecision(4);
 }
-function At(t, e, i, o) {
+function Nt(t, e, i, o) {
   const { bids: a, asks: r } = i.sorted();
   if (!a.length && !r.length) return;
   const l = (M) => e.fH / 2 - (M - e.centre) * e.ppu, s = o.activeRange > 0, c = [...a, ...r].filter(([M]) => M >= e.lo && M <= e.hi).map(([M]) => M).sort((M, p) => M - p);
@@ -387,7 +387,7 @@ function At(t, e, i, o) {
     const P = l(M);
     if (P < -h || P > e.fH + h) return;
     const I = P - h / 2, U = b > 0 ? Math.max(1.5, p / b * d) : 1.5;
-    t.fillStyle = C === "bid" ? u ? "rgba(38,166,154,0.18)" : "rgba(38, 166, 154, 0.68)" : u ? "rgba(239,83,80,0.18)" : "rgba(239, 83, 80, 0.68)", t.fillRect(v, I, U, Math.max(1, h - 1)), t.font = E ? "700 9px ui-monospace, Menlo, monospace" : "9px ui-monospace, Menlo, monospace", t.textAlign = "left", t.fillStyle = u ? "#4a5260" : E ? C === "bid" ? "#26a69a" : "#ef5350" : "#8b96a5", t.fillText(jt(M), y, P + 3), t.textAlign = "right", t.fillStyle = u ? "#4a5260" : C === "bid" ? "#9fd6cd" : "#f4b3ae", t.fillText(Pt(p), g, P + 3);
+    t.fillStyle = C === "bid" ? u ? "rgba(38,166,154,0.18)" : "rgba(38, 166, 154, 0.68)" : u ? "rgba(239,83,80,0.18)" : "rgba(239, 83, 80, 0.68)", t.fillRect(v, I, U, Math.max(1, h - 1)), t.font = E ? "700 9px ui-monospace, Menlo, monospace" : "9px ui-monospace, Menlo, monospace", t.textAlign = "left", t.fillStyle = u ? "#4a5260" : E ? C === "bid" ? "#26a69a" : "#ef5350" : "#8b96a5", t.fillText(Dt(M), y, P + 3), t.textAlign = "right", t.fillStyle = u ? "#4a5260" : C === "bid" ? "#9fd6cd" : "#f4b3ae", t.fillText(jt(p), g, P + 3);
   }, m = a.length ? a[0][0] : null, x = r.length ? r[0][0] : null;
   if (a.forEach(([M, p], C) => {
     w(M, p, "bid", s && C >= o.activeRange, M === m);
@@ -403,8 +403,8 @@ function At(t, e, i, o) {
   }
   t.textAlign = "left";
 }
-const Je = 14400, Nt = 220, Lt = 58, Ut = 96, zt = 228;
-class Ft {
+const Je = 14400, Lt = 220, Ut = 58, zt = 96, Ft = 228;
+class It {
   // data
   cols = [];
   state = /* @__PURE__ */ new Map();
@@ -495,7 +495,7 @@ class Ft {
   /** The heat field's right edge: the price axis gutter is permanent; in
    * fused ladder mode (V4) it widens to carry the ladder figures. */
   fieldW() {
-    const e = this.settings.ladderMode === "fused" ? Ut : Lt;
+    const e = this.settings.ladderMode === "fused" ? zt : Ut;
     return Math.max(50, this.cssW - e);
   }
   /** V4: the pane's ClientBook feeds the fused ladder (same data as the
@@ -510,7 +510,7 @@ class Ft {
   /** V3: the bottom context stack (volume + CVD) reserves real height so
    * the field and the strips never fight for pixels. */
   subH() {
-    return this.settings.subpanes ? kt : 0;
+    return this.settings.subpanes ? Et : 0;
   }
   /** The field's drawable height (full canvas minus the context stack). */
   fieldH() {
@@ -631,7 +631,7 @@ class Ft {
     }), this.cols.length > Je && this.cols.splice(0, this.cols.length - Je);
   }
   recalcCutoffs() {
-    [this.lo, this.hi] = xt(
+    [this.lo, this.hi] = Tt(
       this.sizeSample,
       this.settings.cutoffMode,
       this.settings.cutoffLower,
@@ -727,7 +727,7 @@ class Ft {
       b,
       y,
       this.niceTimeStep(c * this.msPerPx)
-    )) : this.paintHeatField(e, v, d, b, y, i, o, s, c, a, g), h && (Rt(
+    )) : this.paintHeatField(e, v, d, b, y, i, o, s, c, a, g), h && (Ct(
       e,
       this.dots,
       b,
@@ -737,7 +737,7 @@ class Ft {
       a,
       this.cssH,
       c
-    ), this.settings.view === "heat" && Ct(e, this.dots, b, y));
+    ), this.settings.view === "heat" && Pt(e, this.dots, b, y));
     const w = (p, C) => {
       if (p === null || p < i || p > o) return;
       const u = s(p);
@@ -764,7 +764,7 @@ class Ft {
       e.fillText(u.toISOString().slice(11, 19), C + 2, this.cssH - 4), e.fillRect(C, this.cssH - 14, 1, 4);
     }
     const M = this.settings.ladderMode === "fused";
-    vt(e, {
+    _t(e, {
       fieldW: c,
       cssW: this.cssW,
       cssH: this.cssH,
@@ -777,7 +777,7 @@ class Ft {
       lastPrice: this.lastTradePrice,
       lastBuy: this.lastTradeBuy,
       fused: M
-    }), M && this.bookSource && At(e, {
+    }), M && this.bookSource && Nt(e, {
       fieldW: c,
       cssW: this.cssW,
       fH: a,
@@ -791,7 +791,7 @@ class Ft {
    * colourise → blit → glow → time grid → path → candles → bubbles →
    * volume strip. */
   paintHeatField(e, i, o, a, r, l, s, c, h, b, y) {
-    const v = this.settings, d = Math.max(1, o - i), g = Nt, w = (s - l) / g;
+    const v = this.settings, d = Math.max(1, o - i), g = Lt, w = (s - l) / g;
     (this.off.width !== d || this.off.height !== g) && (this.off.width = d, this.off.height = g, this.glow.width = d, this.glow.height = g);
     const m = Math.min(1, Math.max(0.25, v.gamma || 1)), x = new Uint8ClampedArray(d * g), M = new Uint8Array(d * g).fill(255);
     for (let L = 0; L < d; L++) {
@@ -801,7 +801,7 @@ class Ft {
         if (Y < l || Y > s) continue;
         const Q = H[ee];
         if (Q <= 0) continue;
-        const le = Math.min(g - 1, Math.max(0, Math.floor((s - Y) / w))) * d + L, k = Tt(Q, this.lo, this.hi, m);
+        const le = Math.min(g - 1, Math.max(0, Math.floor((s - Y) / w))) * d + L, k = yt(Q, this.lo, this.hi, m);
         k > x[le] && (x[le] = k, M[le] = Z[ee]);
       }
     }
@@ -810,7 +810,7 @@ class Ft {
       const F = M[L];
       if (F === 255) continue;
       const $ = F === 1 ? this.luts.ask : this.luts.bid, H = x[L] * 4, Z = L * 4;
-      u[Z] = $[H], u[Z + 1] = $[H + 1], u[Z + 2] = $[H + 2], u[Z + 3] = 255, x[L] >= zt && (E[Z] = $[H], E[Z + 1] = $[H + 1], E[Z + 2] = $[H + 2], E[Z + 3] = 255);
+      u[Z] = $[H], u[Z + 1] = $[H + 1], u[Z + 2] = $[H + 2], u[Z + 3] = 255, x[L] >= Ft && (E[Z] = $[H], E[Z + 1] = $[H + 1], E[Z + 2] = $[H + 2], E[Z + 3] = 255);
     }
     this.offCtx.putImageData(p, 0, 0), this.glowCtx.putImageData(C, 0, 0);
     const P = this.tsToX(this.cols[i].tsMs), I = this.tsToX(this.cols[i].tsMs + d * this.columnMs()), U = c(s), q = c(l);
@@ -822,7 +822,7 @@ class Ft {
       a,
       r,
       this.niceTimeStep(h * this.msPerPx)
-    ), v.showPath && Mt(e, this.cols, i, o, (L) => this.tsToX(L), c, l, s), v.showCandles && St(
+    ), v.showPath && wt(e, this.cols, i, o, (L) => this.tsToX(L), c, l, s), v.showCandles && kt(
       e,
       this.dots,
       a,
@@ -835,7 +835,7 @@ class Ft {
       h
     ), v.dots) {
       const L = v.dotType === "pie" ? "pie" : v.dotType === "solid" ? "solid" : "sphere";
-      wt(
+      St(
         e,
         this.dots,
         a,
@@ -1005,7 +1005,7 @@ function we({ on: t, onChange: e, label: i }) {
   );
 }
 function Ue({ value: t, onCommit: e, min: i, max: o, disabled: a, suffix: r }) {
-  const [l, s] = dt.useState(String(t));
+  const [l, s] = ut.useState(String(t));
   T.useEffect(() => {
     s(String(t));
   }, [t]);
@@ -1034,7 +1034,7 @@ function Ue({ value: t, onCommit: e, min: i, max: o, disabled: a, suffix: r }) {
     r && /* @__PURE__ */ n.jsx("span", { className: "dh-hint", children: r })
   ] });
 }
-function It({ settings: t }) {
+function Ot({ settings: t }) {
   const e = T.useRef(null);
   return T.useEffect(() => {
     const i = e.current;
@@ -1056,7 +1056,7 @@ function It({ settings: t }) {
     t.gamma
   ]), /* @__PURE__ */ n.jsx("canvas", { ref: e });
 }
-function Ot({
+function Bt({
   symbol: t,
   settings: e,
   cutoffRange: i,
@@ -1083,11 +1083,11 @@ function Ot({
     /* @__PURE__ */ n.jsxs("div", { className: "dh-body", children: [
       /* @__PURE__ */ n.jsxs("div", { className: "dh-section", children: [
         /* @__PURE__ */ n.jsx("div", { className: "dh-section-title", children: "COLOUR" }),
-        /* @__PURE__ */ n.jsx("div", { className: "dh-schemes", children: st.map((s) => /* @__PURE__ */ n.jsxs(
+        /* @__PURE__ */ n.jsx("div", { className: "dh-schemes", children: it.map((s) => /* @__PURE__ */ n.jsxs(
           "button",
           {
             className: `dh-scheme${r.scheme === s ? " on" : ""}`,
-            title: bt(s),
+            title: gt(s),
             onClick: () => {
               o({ scheme: s }), r.applySchemeGlobally && (qe(s, !0), window.dispatchEvent(new CustomEvent(
                 Fe,
@@ -1096,7 +1096,7 @@ function Ot({
             },
             children: [
               /* @__PURE__ */ n.jsx("div", { className: "dh-scheme-name", children: s === "deepdom" ? "DEEPDOM" : s === "bookmap" ? "BOOKMAP" : s === "heat" ? "HEAT" : "GREYSCALE" }),
-              /* @__PURE__ */ n.jsx(It, { settings: { ...r, scheme: s } })
+              /* @__PURE__ */ n.jsx(Ot, { settings: { ...r, scheme: s } })
             ]
           },
           s
@@ -1578,7 +1578,7 @@ function Ot({
         "button",
         {
           className: "dh-btn",
-          onClick: () => o({ ...it }),
+          onClick: () => o({ ...nt }),
           children: "Reset to defaults"
         }
       ),
@@ -1632,13 +1632,13 @@ class De {
     };
   }
 }
-function Bt(t) {
+function $t(t) {
   return t >= 1e3 ? `${(t / 1e3).toFixed(1)}k` : t >= 100 ? t.toFixed(0) : t >= 1 ? t.toFixed(1) : t.toPrecision(2);
 }
-function $t(t) {
+function Xt(t) {
   return t >= 1e3 ? t.toFixed(1) : t >= 1 ? t.toFixed(2) : t.toPrecision(4);
 }
-function Xt({
+function Ht({
   rendererRef: t,
   book: e,
   settings: i,
@@ -1693,7 +1693,7 @@ function Xt({
           s.fillStyle = X === "bid" ? "rgba(38, 166, 154, 0.14)" : "rgba(239, 83, 80, 0.14)", s.fillRect(p - 20, Se, 18, F - 1), s.fillStyle = X === "bid" ? "rgba(38, 166, 154, 0.45)" : "rgba(239, 83, 80, 0.45)", s.fillRect(p - 20, Se, se, F - 1);
         }
         const R = $ > 0 ? Math.max(1.5, A / $ * Z) : 1.5;
-        s.fillStyle = X === "bid" ? S ? "rgba(38,166,154,0.16)" : "rgba(38, 166, 154, 0.62)" : S ? "rgba(239,83,80,0.16)" : "rgba(239, 83, 80, 0.62)", s.fillRect(Y + 40 - R, Se, R, F - 1), s.font = "9px monospace", s.textAlign = "right", s.fillStyle = S ? "#4a5260" : X === "bid" ? "#9fd6cd" : "#f4b3ae", s.fillText(Bt(A), Y + 38, Ee + 3);
+        s.fillStyle = X === "bid" ? S ? "rgba(38,166,154,0.16)" : "rgba(38, 166, 154, 0.62)" : S ? "rgba(239,83,80,0.16)" : "rgba(239, 83, 80, 0.62)", s.fillRect(Y + 40 - R, Se, R, F - 1), s.font = "9px monospace", s.textAlign = "right", s.fillStyle = S ? "#4a5260" : X === "bid" ? "#9fd6cd" : "#f4b3ae", s.fillText($t(A), Y + 38, Ee + 3);
       };
       let W = 0;
       for (let k = 0; k < u.length; k++) {
@@ -1712,7 +1712,7 @@ function Xt({
       if (I !== null && le(I, "rgba(38, 166, 154, 0.95)"), U !== null && le(U, "rgba(239, 83, 80, 0.95)"), I !== null && U !== null && U > I) {
         const k = (x.yOf(I) + x.yOf(U)) / 2;
         if (k > 10 && k < C - 10) {
-          const A = `Δ ${$t(U - I)}`;
+          const A = `Δ ${Xt(U - I)}`;
           s.font = "9px monospace";
           const X = s.measureText(A).width + 10;
           s.fillStyle = "rgba(20, 24, 31, 0.95)", s.fillRect(2, k - 8, X, 16), s.strokeStyle = "#2a3140", s.strokeRect(2.5, k - 7.5, X - 1, 15), s.fillStyle = "#c8cfda", s.textAlign = "left", s.fillText(A, 7, k + 3);
@@ -1757,10 +1757,10 @@ function Xt({
     )
   ] });
 }
-function Ht(t) {
+function Wt(t) {
   return t >= 1e6 ? `${(t / 1e6).toFixed(1)} MB` : t >= 1e3 ? `${(t / 1e3).toFixed(0)} KB` : `${t} B`;
 }
-function Wt(t) {
+function Gt(t) {
   const e = new Date(t * 1e3);
   return e.toLocaleDateString(void 0, { month: "short", day: "numeric" }) + " " + e.toLocaleTimeString(void 0, {
     hour: "2-digit",
@@ -1769,11 +1769,11 @@ function Wt(t) {
     hour12: !1
   });
 }
-function Gt(t, e) {
+function qt(t, e) {
   const i = Math.max(0, Math.round((e ?? Date.now() / 1e3) - t)), o = Math.floor(i / 3600), a = Math.floor(i % 3600 / 60);
   return o ? `${o}h ${a}m` : a ? `${a}m ${i % 60}s` : `${i}s`;
 }
-function qt({
+function Vt({
   symbol: t,
   onLoad: e,
   onClose: i
@@ -1862,11 +1862,11 @@ function qt({
             /* @__PURE__ */ n.jsx("span", { className: "dh-chip", children: m.source || "live" })
           ] }),
           /* @__PURE__ */ n.jsxs("div", { className: "dh-hint", style: { marginTop: 2 }, children: [
-            Wt(m.started),
+            Gt(m.started),
             " · ",
-            Gt(m.started, m.stopped),
+            qt(m.started, m.stopped),
             " · ",
-            Ht(m.bytes),
+            Wt(m.bytes),
             " · ",
             m.rows.toLocaleString(),
             " rows",
@@ -1903,28 +1903,28 @@ function qt({
     ] })
   ] }) });
 }
-const Vt = 4 * 3600;
-function ct(t) {
+const Yt = 4 * 3600;
+function ht(t) {
   return `lset-depth-settings:${t}`;
 }
 function We(t) {
-  let e = { ...it }, i = null;
+  let e = { ...nt }, i = null;
   try {
-    const a = localStorage.getItem(ct(t));
+    const a = localStorage.getItem(ht(t));
     a && (i = JSON.parse(a), e = { ...e, ...i });
   } catch {
   }
   i && i.subpanes === void 0 && i.showVolumeStrip === !1 && (e.subpanes = !1);
-  const o = gt();
+  const o = xt();
   return o.apply && (e = { ...e, scheme: o.scheme, applySchemeGlobally: !0 }), e;
 }
 function Ze(t, e) {
   try {
-    localStorage.setItem(ct(t), JSON.stringify(e));
+    localStorage.setItem(ht(t), JSON.stringify(e));
   } catch {
   }
 }
-function Yt({
+function Kt({
   symbol: t,
   sourceProvider: e,
   colors: i,
@@ -2001,7 +2001,7 @@ function Yt({
   T.useEffect(() => {
     const S = l.current;
     if (!S) return;
-    const R = new Ft(We(t));
+    const R = new It(We(t));
     return s.current = R, R.attach(S), R.setBookSource(c.current), a && (R.onHoverTime = (se) => a(se)), () => {
       R.dispose(), s.current = null;
     };
@@ -2020,7 +2020,7 @@ function Yt({
       let Ae = !1, ke = "";
       try {
         const ue = await fetch(
-          `/api/orderflow/depth?symbol=${encodeURIComponent(t)}` + me + `&from=${Te - Vt}&to=${Te}&column_ms=1000&max_levels=60`
+          `/api/orderflow/depth?symbol=${encodeURIComponent(t)}` + me + `&from=${Te - Yt}&to=${Te}&column_ms=1000&max_levels=60`
         );
         if (!ue.ok) {
           const ge = await ue.json().catch(() => ({ detail: `HTTP ${ue.status}` }));
@@ -2374,7 +2374,7 @@ function Yt({
             ] })
           ] }),
           y.cob && y.ladderMode === "panel" && h.kind === "live" && /* @__PURE__ */ n.jsx(
-            Xt,
+            Ht,
             {
               rendererRef: s,
               book: c.current,
@@ -2382,7 +2382,7 @@ function Yt({
             }
           ),
           w && /* @__PURE__ */ n.jsx(
-            Ot,
+            Bt,
             {
               symbol: t,
               settings: y,
@@ -2394,7 +2394,7 @@ function Yt({
             }
           ),
           p && /* @__PURE__ */ n.jsx(
-            qt,
+            Vt,
             {
               symbol: t,
               onLoad: Q,
@@ -2416,10 +2416,10 @@ const et = {
   pointerEvents: "none",
   color: "#9aa4b2",
   fontSize: 12
-}, Kt = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
+}, Jt = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  default: Yt
-}, Symbol.toStringTag, { value: "Module" })), de = 8192, fe = 1024, Jt = [
+  default: Kt
+}, Symbol.toStringTag, { value: "Module" })), de = 8192, fe = 1024, Qt = [
   { t: 0, r: 0, g: 0, b: 0 },
   { t: 0.06, r: 6, g: 4, b: 15 },
   { t: 0.14, r: 14, g: 9, b: 34 },
@@ -2435,14 +2435,14 @@ const et = {
   { t: 0.975, r: 252, g: 158, b: 28 },
   { t: 0.992, r: 253, g: 201, b: 62 },
   { t: 1, r: 252, g: 235, b: 140 }
-], Qt = [
+], Zt = [
   { t: 0, r: 68, g: 1, b: 84 },
   { t: 0.2, r: 65, g: 68, b: 135 },
   { t: 0.4, r: 42, g: 120, b: 142 },
   { t: 0.6, r: 34, g: 168, b: 132 },
   { t: 0.8, r: 122, g: 209, b: 81 },
   { t: 1, r: 253, g: 231, b: 37 }
-], Zt = [
+], es = [
   { t: 0, r: 0, g: 0, b: 4 },
   { t: 0.25, r: 81, g: 18, b: 124 },
   { t: 0.5, r: 183, g: 55, b: 121 },
@@ -2463,7 +2463,7 @@ function ze(t, e) {
   const i = t[t.length - 1];
   return [i.r, i.g, i.b];
 }
-function es(t) {
+function ts(t) {
   if (t < 0.05) {
     const i = t / 0.05;
     return [i * 3, 0, i * 4];
@@ -2507,7 +2507,7 @@ function es(t) {
   const e = (t - 0.95) / 0.05;
   return [250 + e * 2, 210 + e * 45, 52 + e * 112];
 }
-function ts(t) {
+function ss(t) {
   if (t < 0.01) return [15, 25, 45];
   if (t < 0.15) {
     const i = (t - 0.01) / 0.14;
@@ -2528,7 +2528,7 @@ function ts(t) {
   const e = (t - 0.75) / 0.25;
   return [245 + e * 10, 180 + e * 75, 80 + e * 175];
 }
-function ss(t) {
+function is(t) {
   if (t < 0.08) {
     const i = t / 0.08;
     return [8 + i * 4, 13 + i * 14, 18 + i * 18];
@@ -2553,7 +2553,7 @@ function tt(t, e = 1) {
   for (let o = 0; o < 256; o++) {
     const a = o / 255;
     let r, l, s, c;
-    if (t === "ember" ? [r, l, s] = ze(Jt, a) : t === "viridis" ? [r, l, s] = ze(Qt, a) : t === "magma" ? [r, l, s] = ze(Zt, a) : t === "inferno" ? [r, l, s] = es(a) : t === "deepdom" || t === "bookmap" ? [r, l, s] = ss(a) : t === "realtime" ? [r, l, s] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.08, r: 12, g: 27, b: 36 }, { t: 0.25, r: 22, g: 83, b: 108 }, { t: 0.5, r: 48, g: 182, b: 201 }, { t: 0.75, r: 218, g: 217, b: 95 }, { t: 1, r: 255, g: 250, b: 220 }], a) : t === "realtime_warm" ? [r, l, s] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.15, r: 15, g: 30, b: 64 }, { t: 0.4, r: 28, g: 92, b: 153 }, { t: 0.65, r: 75, g: 181, b: 190 }, { t: 0.8, r: 240, g: 205, b: 75 }, { t: 0.94, r: 248, g: 108, b: 40 }, { t: 1, r: 255, g: 55, b: 35 }], a) : [r, l, s] = ts(a), t === "inferno" || t === "ember" || t === "viridis" || t === "magma") {
+    if (t === "ember" ? [r, l, s] = ze(Qt, a) : t === "viridis" ? [r, l, s] = ze(Zt, a) : t === "magma" ? [r, l, s] = ze(es, a) : t === "inferno" ? [r, l, s] = ts(a) : t === "deepdom" || t === "bookmap" ? [r, l, s] = is(a) : t === "realtime" ? [r, l, s] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.08, r: 12, g: 27, b: 36 }, { t: 0.25, r: 22, g: 83, b: 108 }, { t: 0.5, r: 48, g: 182, b: 201 }, { t: 0.75, r: 218, g: 217, b: 95 }, { t: 1, r: 255, g: 250, b: 220 }], a) : t === "realtime_warm" ? [r, l, s] = ze([{ t: 0, r: 8, g: 13, b: 18 }, { t: 0.15, r: 15, g: 30, b: 64 }, { t: 0.4, r: 28, g: 92, b: 153 }, { t: 0.65, r: 75, g: 181, b: 190 }, { t: 0.8, r: 240, g: 205, b: 75 }, { t: 0.94, r: 248, g: 108, b: 40 }, { t: 1, r: 255, g: 55, b: 35 }], a) : [r, l, s] = ss(a), t === "inferno" || t === "ember" || t === "viridis" || t === "magma") {
       if (a < 0.05) c = 0;
       else if (a < 0.15) {
         const h = (a - 0.05) / 0.1;
@@ -2573,12 +2573,12 @@ function tt(t, e = 1) {
   }
   return i;
 }
-const is = `#version 300 es
+const ns = `#version 300 es
 void main() {
   vec2 pos = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
   gl_Position = vec4(pos * 2.0 - 1.0, 0.0, 1.0);
 }
-`, ns = `#version 300 es
+`, os = `#version 300 es
 precision highp float;
 precision highp sampler2D;
 uniform sampler2D u_data;
@@ -2691,7 +2691,7 @@ void main() {
   fragColor.a *= u_opacity;
 }
 `;
-class os {
+class as {
   gl = null;
   program = null;
   vao = null;
@@ -2745,12 +2745,12 @@ class os {
   }
   initGL() {
     const e = this.gl, i = e.createShader(e.VERTEX_SHADER);
-    if (e.shaderSource(i, is), e.compileShader(i), !e.getShaderParameter(i, e.COMPILE_STATUS)) {
+    if (e.shaderSource(i, ns), e.compileShader(i), !e.getShaderParameter(i, e.COMPILE_STATUS)) {
       console.error("VS compile", e.getShaderInfoLog(i));
       return;
     }
     const o = e.createShader(e.FRAGMENT_SHADER);
-    if (e.shaderSource(o, ns), e.compileShader(o), !e.getShaderParameter(o, e.COMPILE_STATUS)) {
+    if (e.shaderSource(o, os), e.compileShader(o), !e.getShaderParameter(o, e.COMPILE_STATUS)) {
       console.error("FS compile", e.getShaderInfoLog(o));
       return;
     }
@@ -2914,7 +2914,7 @@ class os {
     e && (this.dataTex && e.deleteTexture(this.dataTex), this.metaTex && e.deleteTexture(this.metaTex), this.reachTex && e.deleteTexture(this.reachTex), this.colormapTex && e.deleteTexture(this.colormapTex), this.colormapWarmTex && e.deleteTexture(this.colormapWarmTex), this.program && e.deleteProgram(this.program), this.vao && e.deleteVertexArray(this.vao), this.gl = null);
   }
 }
-const as = T.lazy(() => Promise.resolve().then(() => Kt).then((t) => ({ default: t.DepthHeatPane }))), Ge = [
+const rs = T.lazy(() => Promise.resolve().then(() => Jt).then((t) => ({ default: t.DepthHeatPane }))), Ge = [
   // SECONDS PRO locked
   { label: "1s", ms: 1e3, sec: 1, pro: !0 },
   { label: "5s", ms: 5e3, sec: 5, pro: !0 },
@@ -2935,14 +2935,14 @@ const as = T.lazy(() => Promise.resolve().then(() => Kt).then((t) => ({ default:
   // DAYS
   { label: "1D", ms: 864e5, sec: 86400 },
   { label: "1W", ms: 6048e5, sec: 604800 }
-], rs = [
+], ls = [
   { id: "orderbook", label: "Orderbook" },
   { id: "liquidation", label: "Liquidations" },
   { id: "volume_delta", label: "Volume Delta" },
   { id: "trade_intensity", label: "Trade Intensity" },
   { id: "flow", label: "Flow & Positioning" }
 ];
-function ls({ symbol: t, provider: e, onToggleKind: i }) {
+function st({ symbol: t, provider: e, onToggleKind: i }) {
   const o = T.useRef(null), a = T.useRef(null), r = T.useRef(null), l = T.useRef(null), s = T.useRef(0), c = T.useRef(null), [h, b] = T.useState(Ge[4]), [y, v] = T.useState(() => {
     try {
       const f = localStorage.getItem("ed_fav_tf");
@@ -2974,7 +2974,7 @@ function ls({ symbol: t, provider: e, onToggleKind: i }) {
   T.useEffect(() => {
     const f = o.current, O = r.current;
     if (!f || !O) return;
-    const K = new os();
+    const K = new as();
     if (!K.attach(f)) {
       console.warn("WebGL2 not available, fallback to Canvas2D DepthHeatPane"), Te(!0);
       return;
@@ -3218,8 +3218,8 @@ function ls({ symbol: t, provider: e, onToggleKind: i }) {
     }
   }, [R]);
   if (he)
-    return /* @__PURE__ */ n.jsx(T.Suspense, { fallback: /* @__PURE__ */ n.jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-[var(--panel)] text-[var(--dim)] text-[11px]", children: "Loading fallback depth..." }), children: /* @__PURE__ */ n.jsx(as, { symbol: t, sourceProvider: te, onToggleKind: i }) });
-  const $e = Ge.filter((f) => y.has(f.label)), ht = Ge.filter((f) => !y.has(f.label));
+    return /* @__PURE__ */ n.jsx(T.Suspense, { fallback: /* @__PURE__ */ n.jsx("div", { className: "absolute inset-0 flex items-center justify-center bg-[var(--panel)] text-[var(--dim)] text-[11px]", children: "Loading fallback depth..." }), children: /* @__PURE__ */ n.jsx(rs, { symbol: t, sourceProvider: te, onToggleKind: i }) });
+  const $e = Ge.filter((f) => y.has(f.label)), dt = Ge.filter((f) => !y.has(f.label));
   return /* @__PURE__ */ n.jsxs("div", { className: "absolute inset-0 flex flex-col bg-[#1c1c1c] text-[#e8e8e8] select-none", children: [
     /* @__PURE__ */ n.jsxs("div", { className: "flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] text-[11px] flex-wrap shrink-0 bg-[#2a2a2a]", children: [
       /* @__PURE__ */ n.jsx("span", { className: "font-bold opacity-80 tracking-wider", children: "EDGEDEPTH HEATMAP" }),
@@ -3262,7 +3262,7 @@ function ls({ symbol: t, provider: e, onToggleKind: i }) {
           "/6"
         ] })
       ] }),
-      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: ht.slice(0, 8).map((f) => /* @__PURE__ */ n.jsx(
+      /* @__PURE__ */ n.jsx("div", { className: "flex items-center gap-0.5 ml-1 border border-[#3a3a3a] rounded overflow-hidden", children: dt.slice(0, 8).map((f) => /* @__PURE__ */ n.jsx(
         "button",
         {
           onClick: () => b(f),
@@ -3275,7 +3275,7 @@ function ls({ symbol: t, provider: e, onToggleKind: i }) {
         },
         f.label
       )) }),
-      /* @__PURE__ */ n.jsx("select", { value: d, onChange: (f) => g(f.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: rs.map((f) => /* @__PURE__ */ n.jsx("option", { value: f.id, children: f.label }, f.id)) }),
+      /* @__PURE__ */ n.jsx("select", { value: d, onChange: (f) => g(f.target.value), className: "ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]", children: ls.map((f) => /* @__PURE__ */ n.jsx("option", { value: f.id, children: f.label }, f.id)) }),
       /* @__PURE__ */ n.jsxs("div", { className: "ml-auto flex items-center gap-1", children: [
         /* @__PURE__ */ n.jsx("button", { onClick: () => Ae((f) => !f), className: `px-1.5 py-0.5 rounded border text-[10px] ${me ? "bg-[#d0d0d0] text-[#1c1c1c] border-[#d0d0d0]" : "border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]"}`, children: me ? "FOLLOW" : "FREE" }),
         /* @__PURE__ */ n.jsx("button", { onClick: () => H((f) => !f), className: `px-1.5 py-0.5 rounded border text-[10px] ${$ ? "bg-[#343434] border-[#d0d0d0]/50 text-[#e8e8e8]" : "border-[#3a3a3a] text-[#b9b9b9]"}`, children: "Bubbles" }),
@@ -3361,10 +3361,11 @@ function ls({ symbol: t, provider: e, onToggleKind: i }) {
 }
 const hs = /* @__PURE__ */ Object.freeze(/* @__PURE__ */ Object.defineProperty({
   __proto__: null,
-  EdgeDepthHeatmapPane: ls
+  EdgeDepthHeatmapPane: st,
+  default: st
 }, Symbol.toStringTag, { value: "Module" }));
 export {
-  Yt as D,
+  Kt as D,
   hs as E,
-  Kt as a
+  Jt as a
 };

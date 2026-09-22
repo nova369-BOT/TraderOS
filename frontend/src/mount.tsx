@@ -99,10 +99,12 @@ interface TerminalChartProps extends ChartProps {
 }
 
 const TF_MS: Record<string, number> = {
-  '1s': 1000, '5s': 5000, '10s': 10000, '30s': 30000,
-  '1m': 60000, '5m': 300000, '15m': 900000, '30m': 1800000,
-  '1h': 3600000, '2h': 7200000, '4h': 14400000, '1d': 86400000,
-  '1w': 604800000, '1M': 2592000000,
+  'tick': 0,
+  '1s': 1000, '5s': 5000, '10s': 10000, '15s': 15000, '30s': 30000,
+  '1m': 60000, '3m': 180000, '5m': 300000, '15m': 900000, '30m': 1800000,
+  '1h': 3600000, '2h': 7200000, '4h': 14400000, '6h': 21600000, '8h': 28800000, '12h': 43200000,
+  '1d': 86400000, '1D': 86400000, '3d': 259200000, '3D': 259200000,
+  '1w': 604800000, '1W': 604800000, '1M': 2592000000,
 };
 
 const ctxRow: React.CSSProperties = {
@@ -206,10 +208,46 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
   const [drawingsLocked, setDrawingsLocked] = useState(false);
   const [drawingsHidden, setDrawingsHidden] = useState(false);
   const [edChartType, setEdChartType] = useState<ChartTypeED>('candles');
-  const [edTf, setEdTf] = useState<EDTF>(ED_ALL_TF[4]);
+  const [edTf, setEdTf] = useState<EDTF>(() => {
+    // init from real chart timeframe prop if possible, else 1m
+    try {
+      const tfProp = (typeof timeframe === 'string' ? timeframe : '1m') as string;
+      const found = ED_ALL_TF.find(t => t.label.toLowerCase() === tfProp.toLowerCase() || t.label === tfProp);
+      if (found) return found;
+    } catch {}
+    return ED_ALL_TF.find(t => t.label === '1m') || ED_ALL_TF[5] || ED_ALL_TF[0];
+  });
   const [edFavs, setEdFavs] = useState<Set<string>>(() => {
     try { const s = localStorage.getItem('ed_fav_tf'); return new Set(s ? JSON.parse(s) : ['1m','5m','15m','1h','4h','1D']); } catch { return new Set(['1m','5m','15m','1h','4h','1D']); }
   });
+  // Sync edTf from real chart timeframe (upper bar is source of truth, lower must follow)
+  useEffect(() => {
+    try {
+      const tfProp = String(timeframe || '1m');
+      const found = ED_ALL_TF.find(t => t.label.toLowerCase() === tfProp.toLowerCase() || t.label === tfProp);
+      if (found && found.label.toLowerCase() !== edTf.label.toLowerCase()) {
+        setEdTf(found);
+      } else if (!found) {
+        // custom timeframe: create synthetic TF for display
+        const m = tfProp.match(/^(\d+)([smhdwM])$/i);
+        if (m) {
+          const n = parseInt(m[1],10);
+          const unit = m[2];
+          let ms = 0;
+          const low = unit.toLowerCase();
+          if (unit === 'M') ms = n*2592000000;
+          else if (low==='s') ms=n*1000;
+          else if (low==='m') ms=n*60000;
+          else if (low==='h') ms=n*3600000;
+          else if (low==='d') ms=n*86400000;
+          else if (low==='w') ms=n*604800000;
+          if (ms>0) setEdTf({ label: tfProp, ms, sec: Math.floor(ms/1000) });
+        } else if (tfProp.toLowerCase()==='tick') {
+          setEdTf({ label: 'tick', ms: 0, sec: 0 });
+        }
+      }
+    } catch {}
+  }, [timeframe]);
   const [edAppearance, setEdAppearance] = useState<AppearanceSettings>(defaultAppearance);
   const [edAppearanceOpen, setEdAppearanceOpen] = useState(false);
   const [edFindOpen, setEdFindOpen] = useState(false);
@@ -537,9 +575,9 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
   }
 
   return (
-    <div className="relative h-full w-full flex flex-col bg-[#1c1c1c]">
-      {/* EdgeDepth topbar — exact UI but zinc */}
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] bg-[#2a2a2a] text-[11px] shrink-0 flex-wrap">
+    <div className="relative h-full w-full flex flex-col bg-[#1c1c1c]" style={{ overflow: 'visible' }}>
+      {/* EdgeDepth topbar — exact UI but zinc — fixed overflow so dropdown drops */}
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] bg-[#2a2a2a] text-[11px] shrink-0 flex-wrap overflow-visible relative z-[60]">
         <span className="font-bold tracking-wider opacity-80 text-[#e8e8e8]">EDGEDEPTH</span>
         <span className="font-mono font-semibold text-[#e8e8e8] ml-1">{symbol}</span>
         <div className="flex items-center gap-0.5 ml-2">
@@ -548,8 +586,18 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           ))}
         </div>
         <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡15ms':provider==='binance'?'20ms':provider==='coinbase'?'50ms':''} • {timeframe} • LIVE</span>
-        <div className="ml-2">
-          <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => { if ((tf as any).pro) { setEdProFeature('SECONDS PRO'); setEdProOpen(true); } else setEdTf(tf); }} favs={edFavs} onToggleFav={toggleEdFav} />
+        <div className="ml-2" style={{ overflow: 'visible', position: 'relative', zIndex: 50 }}>
+          <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => {
+            if ((tf as any).pro) { setEdProFeature('SECONDS PRO'); setEdProOpen(true); return; }
+            setEdTf(tf);
+            // Wire lower bar to real chart — upper is in control, so lower must drive upper via shell
+            try {
+              const shell: any = (window as any).__lseShell;
+              if (shell?.setTimeframe) {
+                shell.setTimeframe(tf.label);
+              }
+            } catch {}
+          }} favs={edFavs} onToggleFav={toggleEdFav} />
         </div>
         <div className="ml-1">
           <EdgeDepthChartTypePicker value={edChartType} onChange={setEdChartType} />
