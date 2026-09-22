@@ -1,9 +1,15 @@
-// EdgeDepthTimeframeBar.tsx — exact EdgeDepth TF segmented control
-// SECONDS PRO locked 1s/5s/15s/30s, MINUTES 1m/3m/5m/15m/30m, HOURS 1h/2h/4h/6h/12h, DAYS 1D/1W
-// FAVOURITES 6/6 FULL BAR, Custom Add, CLICK SETS RIGHT-CLICK PINS MAX 6
-// Chrome zinc #2a2a2a/#3a3a3a #e8e8e8/#b9b9b9 #f0426c for PRO
+// EdgeDepthTimeframeBar.tsx — exact EdgeDepth TF bar from screenshot
+// Top: 1m 5m 15m 1h 4h 1D ▲ with Real-time toggle
+// Then TIMEFRAME header with FAVOURITES 6/6 FULL BAR
+// SECONDS PRO locked 1s 5s 15s 30s
+// MINUTES 1m 3m 5m 15m 30m with stars, 1m underlined
+// HOURS 1h 2h 4h 6h 12h
+// DAYS 1D 1W
+// Bottom: CLICK SETS THE CHART - RIGHT-CLICK PINS IT TO THE BAR (MAX 6)
+// Custom e.g. 7m, 90s, 3h Add
+// Chrome zinc #1c1c1c/#2a2a2a/#3a3a3a #e8e8e8/#b9b9b9 #21b3a4/#f0426c
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 export interface TF { label: string; ms: number; sec: number; pro?: boolean }
 
@@ -37,11 +43,7 @@ export function EdgeDepthTimeframeBar({
   favs: Set<string>;
   onToggleFav: (label: string) => void;
 }) {
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customVal, setCustomVal] = useState('2m');
-
-  const favList = ALL_TF.filter(t => favs.has(t.label));
-  const nonFav = ALL_TF.filter(t => !favs.has(t.label));
+  const [customVal, setCustomVal] = useState('7m');
 
   const parseCustom = (s: string): TF | null => {
     const m = s.match(/^(\d+)(s|m|h|D|W)$/);
@@ -58,78 +60,172 @@ export function EdgeDepthTimeframeBar({
     return { label: s, ms, sec: Math.floor(ms / 1000) };
   };
 
+  const isFav = (label: string) => favs.has(label);
+  const favList = ALL_TF.filter(t => favs.has(t.label));
+  // Top bar: 1m 5m 15m 1h 4h 1D as per screenshot
+  const topBar = ['1m', '5m', '15m', '1h', '4h', '1D'];
+
   return (
-    <div className="flex items-center gap-0.5 border border-[#3a3a3a] rounded overflow-hidden bg-[#262626]">
-      {/* FAV bar */}
-      <div className="flex items-center gap-0">
-        {favList.map(t => (
-          <button
-            key={t.label}
-            onClick={() => onChange(t)}
-            onContextMenu={e => { e.preventDefault(); onToggleFav(t.label); }}
-            className={`px-1.5 py-0.5 text-[10px] border-r border-[#3a3a3a]/50 last:border-0
-              ${value.label === t.label ? 'bg-[#414141] text-[#e8e8e8]' : 'text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}
-              ${t.pro ? 'text-[#f0426c]' : ''}`}
-            title={t.pro ? 'SECONDS PRO — locked' : `Right-click to unpin (fav ${favList.length}/6)`}
-          >
-            {t.label}{t.pro ? ' PRO' : ''}
-          </button>
-        ))}
-        <span className="text-[8px] px-1 text-[#b9b9b9] border-l border-[#3a3a3a] ml-0.5">FAV {favList.length}/6</span>
+    <div className="w-[280px] bg-[#0a0a0a] border border-[#2a2a2a] rounded-[4px] shadow-2xl text-[11px] font-mono overflow-hidden">
+      {/* Top quick bar — 1m 5m 15m 1h 4h 1D ▲ • Real-time */}
+      <div className="flex items-center gap-3 px-3 py-1.5 border-b border-[#1e1e1e] bg-[#0a0a0a]">
+        {topBar.map(l => {
+          const tf = ALL_TF.find(t => t.label === l);
+          const active = value.label === l;
+          return (
+            <button
+              key={l}
+              onClick={() => tf && onChange(tf)}
+              className={`text-[11px] pb-0.5 border-b-[2px] ${active ? 'border-[#e8e8e8] text-[#e8e8e8]' : 'border-transparent text-[#b9b9b9] hover:text-[#e8e8e8]'}`}
+            >
+              {l}
+            </button>
+          );
+        })}
+        <span className="text-[#b9b9b9] ml-1">▲</span>
+        <span className="ml-auto flex items-center gap-1 text-[10px] text-[#b9b9b9]">
+          <span className="w-1.5 h-1.5 rounded-full border border-[#b9b9b9] inline-block"></span> Real-time
+          <span className="ml-1">e</span>
+        </span>
       </div>
 
-      {/* All TF dropdown trigger */}
-      <div className="relative ml-1">
-        <button
-          onClick={() => setCustomOpen(v => !v)}
-          className="px-1.5 py-0.5 text-[10px] text-[#b9b9b9] hover:text-[#e8e8e8] hover:bg-[#343434] border-l border-[#3a3a3a]"
-        >
-          ▾ {value.label}
-        </button>
-        {customOpen && (
-          <div className="absolute top-full left-0 mt-1 z-30 w-[320px] bg-[#262626] border border-[#3a3a3a] rounded shadow-xl p-2">
-            <div className="text-[9px] text-[#b9b9b9] uppercase tracking-wider mb-1">Seconds PRO locked</div>
-            <div className="flex flex-wrap gap-1 mb-2">
-              {ALL_TF.filter(t => t.pro).map(t => (
-                <button key={t.label} onClick={() => { onChange(t); setCustomOpen(false); }} onContextMenu={e => { e.preventDefault(); onToggleFav(t.label); }}
-                  className={`px-2 py-1 text-[10px] rounded border ${value.label===t.label?'bg-[#414141] text-[#e8e8e8] border-[#414141]':'bg-[#2a2a2a] text-[#f0426c] border-[#3a3a3a] hover:bg-[#343434]'}`}>
-                  {t.label} PRO
-                </button>
-              ))}
-            </div>
-            <div className="text-[9px] text-[#b9b9b9] uppercase tracking-wider mb-1">Minutes</div>
-            <div className="flex flex-wrap gap-1 mb-2">
-              {ALL_TF.filter(t => !t.pro && t.sec < 3600).map(t => (
-                <button key={t.label} onClick={() => { onChange(t); setCustomOpen(false); }} onContextMenu={e => { e.preventDefault(); onToggleFav(t.label); }}
-                  className={`px-2 py-1 text-[10px] rounded border ${value.label===t.label?'bg-[#414141] text-[#e8e8e8] border-[#414141]':'bg-[#2a2a2a] text-[#b9b9b9] border-[#3a3a3a] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="text-[9px] text-[#b9b9b9] uppercase tracking-wider mb-1">Hours / Days</div>
-            <div className="flex flex-wrap gap-1 mb-3">
-              {ALL_TF.filter(t => !t.pro && t.sec >= 3600).map(t => (
-                <button key={t.label} onClick={() => { onChange(t); setCustomOpen(false); }} onContextMenu={e => { e.preventDefault(); onToggleFav(t.label); }}
-                  className={`px-2 py-1 text-[10px] rounded border ${value.label===t.label?'bg-[#414141] text-[#e8e8e8] border-[#414141]':'bg-[#2a2a2a] text-[#b9b9b9] border-[#3a3a3a] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="border-t border-[#3a3a3a] pt-2 flex items-center gap-2">
-              <span className="text-[10px] text-[#b9b9b9]">Custom</span>
-              <input value={customVal} onChange={e => setCustomVal(e.target.value)} placeholder="e.g. 2m"
-                className="flex-1 px-2 py-1 bg-[#1c1c1c] border border-[#3a3a3a] rounded text-[10px] text-[#e8e8e8]" />
-              <button onClick={() => {
-                const tf = parseCustom(customVal);
-                if (tf) { onChange(tf); setCustomOpen(false); }
-              }} className="px-2 py-1 bg-[#d0d0d0] text-[#1c1c1c] rounded text-[10px]">Add</button>
-            </div>
-            <div className="text-[8px] text-[#b9b9b9] mt-1 opacity-60">Click sets, right-click pins max 6. PRO seconds locked behind upsell.</div>
+      {/* TIMEFRAME header */}
+      <div className="flex items-center justify-between px-3 py-2 bg-[#0a0a0a]">
+        <span className="text-[10px] tracking-[0.15em] text-[#b9b9b9] font-bold">TIMEFRAME</span>
+        <span className="text-[10px] text-[#b9b9b9] flex items-center gap-1">
+          <span className="text-[#e8e8e8]">★</span> FAVOURITES {favList.length}/6 · FULL BAR
+        </span>
+      </div>
+
+      <div className="px-3 py-2 space-y-3 bg-[#0a0a0a]">
+        {/* SECONDS PRO */}
+        <div>
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] text-[#b9b9b9] tracking-wider">SECONDS</span>
+            <span className="text-[9px] px-1 py-0.5 bg-[#1e2a2a] border border-[#21b3a4]/30 text-[#21b3a4] rounded flex items-center gap-0.5">
+              <span className="text-[8px]">🔒</span> PRO
+            </span>
           </div>
-        )}
+          <div className="flex gap-4 text-[11px]">
+            {['1s', '5s', '15s', '30s'].map(l => (
+              <button
+                key={l}
+                onClick={() => {
+                  const tf = ALL_TF.find(t => t.label === l);
+                  if (tf) onChange(tf);
+                }}
+                onContextMenu={e => { e.preventDefault(); onToggleFav(l); }}
+                className="text-[#4a4a4a] hover:text-[#b9b9b9] flex items-center gap-0.5"
+                title="SECONDS PRO — locked"
+              >
+                {l} <span className="text-[8px]">🔒</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* MINUTES */}
+        <div>
+          <div className="text-[10px] text-[#b9b9b9] tracking-wider mb-1.5">MINUTES</div>
+          <div className="flex gap-3 text-[11px] flex-wrap">
+            {['1m', '3m', '5m', '15m', '30m'].map(l => {
+              const active = value.label === l;
+              const fav = isFav(l);
+              return (
+                <button
+                  key={l}
+                  onClick={() => {
+                    const tf = ALL_TF.find(t => t.label === l);
+                    if (tf) onChange(tf);
+                  }}
+                  onContextMenu={e => { e.preventDefault(); onToggleFav(l); }}
+                  className={`flex flex-col items-center gap-0.5 pb-0.5 border-b-[2px] ${active ? 'border-[#e8e8e8] text-[#e8e8e8]' : 'border-transparent text-[#b9b9b9] hover:text-[#e8e8e8]'}`}
+                >
+                  <span className="flex items-center gap-0.5">
+                    {l} {fav && <span className="text-[8px] text-[#e8e8e8]">★</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* HOURS */}
+        <div>
+          <div className="text-[10px] text-[#b9b9b9] tracking-wider mb-1.5">HOURS</div>
+          <div className="flex gap-4 text-[11px] flex-wrap">
+            {['1h', '2h', '4h', '6h', '12h'].map(l => {
+              const fav = isFav(l);
+              const active = value.label === l;
+              return (
+                <button
+                  key={l}
+                  onClick={() => {
+                    const tf = ALL_TF.find(t => t.label === l);
+                    if (tf) onChange(tf);
+                  }}
+                  onContextMenu={e => { e.preventDefault(); onToggleFav(l); }}
+                  className={`flex items-center gap-0.5 ${active ? 'text-[#e8e8e8] border-b-[2px] border-[#e8e8e8]' : 'text-[#b9b9b9] hover:text-[#e8e8e8]'}`}
+                >
+                  {l} {fav && <span className="text-[8px]">★</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* DAYS */}
+        <div>
+          <div className="text-[10px] text-[#b9b9b9] tracking-wider mb-1.5">DAYS</div>
+          <div className="flex gap-4 text-[11px]">
+            {['1D', '1W'].map(l => {
+              const fav = isFav(l);
+              const active = value.label === l;
+              return (
+                <button
+                  key={l}
+                  onClick={() => {
+                    const tf = ALL_TF.find(t => t.label === l);
+                    if (tf) onChange(tf);
+                  }}
+                  onContextMenu={e => { e.preventDefault(); onToggleFav(l); }}
+                  className={`flex items-center gap-0.5 ${active ? 'text-[#e8e8e8] border-b-[2px] border-[#e8e8e8]' : 'text-[#b9b9b9] hover:text-[#e8e8e8]'}`}
+                >
+                  {l} {fav && <span className="text-[8px]">★</span>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bottom text */}
+        <div className="text-[8px] text-[#5a5a5a] tracking-wider pt-2 border-t border-[#1e1e1e]">
+          CLICK SETS THE CHART · RIGHT-CLICK PINS IT TO THE BAR (MAX 6)
+        </div>
+
+        {/* Custom */}
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[11px] text-[#b9b9b9]">Custom</span>
+          <input
+            value={customVal}
+            onChange={e => setCustomVal(e.target.value)}
+            placeholder="e.g. 7m, 90s, 3h"
+            className="flex-1 px-2 py-1.5 bg-[#1a1a1a] border border-[#2a2a2a] rounded text-[11px] text-[#b9b9b9] placeholder:text-[#4a4a4a]"
+          />
+          <button
+            onClick={() => {
+              const tf = parseCustom(customVal);
+              if (tf) onChange(tf);
+            }}
+            className="px-3 py-1.5 bg-[#2a2a2a] border border-[#3a3a3a] rounded text-[11px] text-[#e8e8e8] hover:bg-[#3a3a3a]"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
+export const defaultTF = ALL_TF[4];
 export default EdgeDepthTimeframeBar;
