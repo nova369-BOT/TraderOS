@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react';
 import { type LayoutType, type SyncSettings } from '@/components/chart/MultiTimeframeLayoutSelector';
 
-export type PanelKind = 'chart' | 'depth' | 'edgedepth' | 'orderflow' | 'dom' | 'tape' | 'footprint' | 'vpvr' | 'tpo' | 'cvd' | 'liquidations' | 'watchlist' | 'indicators';
+export type PanelKind = 'chart' | 'depth' | 'edgedepth' | 'orderflow' | 'dom' | 'tape' | 'footprint' | 'vpvr' | 'tpo' | 'cvd' | 'liquidations' | 'watchlist' | 'indicators' | 'ed_liquidations' | 'ed_vpvr' | 'ed_footprint' | 'ed_tpo';
 
 export type LayoutState = {
   layout: LayoutType;

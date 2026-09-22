@@ -49,6 +49,10 @@ const EdgeDepthTapePanel = lazy(() => import('@/components/chart/edgedepth/EdgeD
 const EdgeDepthWatchlist = lazy(() => import('@/components/chart/edgedepth/EdgeDepthWatchlist'));
 const EdgeDepthIndicatorsPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthIndicators'));
 const EdgeDepthLayers = lazy(() => import('@/components/chart/edgedepth/EdgeDepthLayers'));
+const EdgeDepthLiquidationPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthLiquidationPanel'));
+const EdgeDepthVolumeProfilePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthVolumeProfilePanel'));
+const EdgeDepthFootprintPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthFootprintPanel'));
+const EdgeDepthTPOPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTPOPanel'));
 const BacktestingPage = lazy(() => import('@/pages/Backtesting'));
 const BacktestingSetupDialog = lazy(() => import('@/components/backtesting/BacktestingSetupDialog'));
 const EconomicCalendarPage = lazy(() => import('@/pages/EconomicCalendar'));
@@ -539,6 +543,10 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           <option value="tpo">TPO</option>
           <option value="cvd">CVD</option>
           <option value="liquidations">Liquidations</option>
+          <option value="ed_liquidations">Edge Liqs Heatmap</option>
+          <option value="ed_vpvr">Edge VPVR POC/VAH/VAL</option>
+          <option value="ed_footprint">Edge Footprint</option>
+          <option value="ed_tpo">Edge TPO 30m</option>
           <option value="watchlist">Watchlist 1503</option>
           <option value="indicators">Indicators</option>
         </select>
@@ -635,7 +643,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
             />
           </Suspense>
-        ) : (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'].includes(layoutState.panelKinds[0] as string) ? (
+        ) : (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','ed_liquidations','ed_vpvr','ed_footprint','ed_tpo','watchlist','indicators'].includes(layoutState.panelKinds[0] as string) ? (
           <Suspense fallback={<Fallback />}>
             {(() => {
               const kind = layoutState.panelKinds[0] as string;
@@ -647,6 +655,10 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               if (kind === 'tpo') return <TPOPanel symbol={symbol} provider={provider} />;
               if (kind === 'cvd') return <CVDPanel symbol={symbol} provider={provider} />;
               if (kind === 'liquidations') return <LiquidationPanel symbol={symbol} provider={provider} />;
+              if (kind === 'ed_liquidations') return <EdgeDepthLiquidationPanel symbol={symbol} provider={provider} />;
+              if (kind === 'ed_vpvr') return <EdgeDepthVolumeProfilePanel symbol={symbol} provider={provider} />;
+              if (kind === 'ed_footprint') return <EdgeDepthFootprintPanel symbol={symbol} provider={provider} />;
+              if (kind === 'ed_tpo') return <EdgeDepthTPOPanel symbol={symbol} provider={provider} />;
               if (kind === 'watchlist') return <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />;
               if (kind === 'indicators') return <EdgeDepthIndicatorsPanel symbol={symbol} provider={provider} />;
               return <OrderflowPanel symbol={symbol} provider={provider} colors={colors} />;
