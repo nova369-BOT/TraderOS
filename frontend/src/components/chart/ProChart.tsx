@@ -15,8 +15,8 @@ import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMe
 import { useUserPref } from '@/hooks/useUserPref';
 import { getAssetType, isMarketOpenForPair, isUSEarlyClose, isCommodityEarlyClose, getExchangeFromSymbol, getExchangeInfo, getUKTime } from '@/lib/marketHours';
 import ReactDOM from 'react-dom';
-import { calculateEMA, calculateSMA, calculateSMMA, calculateBollingerBands, calculateRSI, calculateMACD, calculateATR, calculateStochastic, calculateWilliamsR, calculateCCI, calculateADX, calculateROC, calculateVWAP, calculateIchimoku, calculateParabolicSAR, calculateKeltnerChannels, calculateDailyPivots, calculateSupertrend, calculateDonchian, calculateAroon, calculateEnvelopes, calculateDEMA, calculateTEMA, calculateHMA, calculateMomentum, calculateAwesomeOscillator, calculateMFI, calculateTSI, calculateTRIX, calculateUltimateOscillator, calculateDPO, calculateKST, calculateStochRSI, calculateBBPercent, calculateBBWidth, calculateHistoricalVolatility, calculateChaikinVolatility, calculateStdDev, calculateOBV, calculateCMF, calculateADL, calculateForceIndex, calculateEOM, calculateVolumeSMA, calculateFibRetracement, calculateDailyCamarilla, calculateDailyWoodie, calculateCorrelation, calculateLinearRegression, calculateCoppock, calculateALMA, calculateKAMA, calculateZLEMA, calculateT3, calculateLSMA, calculateMcGinley, calculateVortex, calculateChoppiness, calculateElderRay, calculateMassIndex, calculateChandeKrollStop, calculateLinRegSlope, calculateWMA, calculatePriceChannel, calculateAlligator, calculatePPO, calculatePVO, calculateCMO, calculateFisherTransform, calculateSTC, calculateRVI, calculateKlingerOscillator, calculateConnorsRSI, calculateAPO, calculateQStick, calculateBOP, calculatePsychologicalLine, calculatePFE, calculateUlcerIndex, calculateNATR, calculateTrueRange, calculateSqueeze, calculateChandelierExit, calculateRelativeVolIndex, calculateVHF, calculateAccBands, calculateVWMA, calculateVolumeOsc, calculateNVI, calculatePVI, calculatePVT, calculateVROC, calculateNetVolume, calculateTwiggsMF, calculateLinRegRSquared, calculateMedianPrice, calculateTypicalPrice, calculateWeightedClose, calculateDeMarkPivots, calculateZigZag, calculateFractals, calculateGator, calculateSMI } from '@/lib/indicators';
-import { evaluateFormula, type CustomIndicator } from '@/lib/formulaEngine';
+import { type CustomIndicator } from '@/lib/formulaEngine';
+import { useIndicatorWorker } from './hooks/useIndicatorWorker';
 import { MAType, IndicatorConfig } from './IndicatorSettings';
 import IndicatorPanelSettings, { IndicatorType } from './IndicatorPanelSettings';
 // Registry-driven legend metadata. Replaces the hand-typed overlayOrder /
@@ -70,29 +70,6 @@ export type { ChartType } from './core/types';
 // Generic so it handles all 80+ indicator shapes (number[], { data: number[] },
 // number[][], arrays-of-{ data, color, name } for moving averages, etc.).
 // Strings, booleans, numbers, null pass through unchanged.
-function prependNaNToIndicators(obj: any, n: number): any {
-  if (obj === null || obj === undefined) return obj;
-  if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) {
-    if (obj.length === 0) return obj;
-    const first = obj[0];
-    // number[] (also accept null entries which some indicators emit before warmup)
-    if (typeof first === 'number' || first === null) {
-      const out = new Array(n + obj.length);
-      for (let i = 0; i < n; i++) out[i] = NaN;
-      for (let i = 0; i < obj.length; i++) out[n + i] = obj[i];
-      return out;
-    }
-    // Array of objects/sub-arrays: recurse into each element
-    return obj.map((item: any) => prependNaNToIndicators(item, n));
-  }
-  // Plain object: recurse on each key
-  const out: any = {};
-  for (const k of Object.keys(obj)) {
-    out[k] = prependNaNToIndicators(obj[k], n);
-  }
-  return out;
-}
 
 const ProChart: React.FC<ProChartProps> = ({
   candles,
@@ -318,6 +295,28 @@ const ProChart: React.FC<ProChartProps> = ({
   // Ref to store the draw function for stable access during scroll
   const drawChartRef = useRef<((fastMode?: boolean) => void) | null>(null);
   const drawCrosshairRef = useRef<(() => void) | null>(null);
+  // ── Ultra-fast draw scheduling: coalesce multiple draw requests into one RAF ──
+  const drawRafRef = useRef<number | null>(null);
+  const pendingFastModeRef = useRef<boolean>(false);
+  const scheduleDraw = useCallback((fastMode: boolean = false) => {
+    if (drawRafRef.current !== null) {
+      if (!fastMode) pendingFastModeRef.current = false;
+      return;
+    }
+    pendingFastModeRef.current = fastMode;
+    drawRafRef.current = requestAnimationFrame(() => {
+      drawRafRef.current = null;
+      const fm = pendingFastModeRef.current;
+      if (drawChartRef.current) drawChartRef.current(fm);
+    });
+  }, []);
+  const scheduleDrawImmediate = useCallback((fastMode: boolean = false) => {
+    if (drawRafRef.current !== null) {
+      cancelAnimationFrame(drawRafRef.current);
+      drawRafRef.current = null;
+    }
+    if (drawChartRef.current) drawChartRef.current(fastMode);
+  }, []);
 
   // Ref to store the converter update function for calling during scroll
   const updateConverterRef = useRef<(() => void) | null>(null);
@@ -563,64 +562,18 @@ const ProChart: React.FC<ProChartProps> = ({
     return () => clearInterval(interval);
   }, [viewState.autoFollowLatest]);
 
-  // D15 glide driver: fires on every candle flush; when the forming bar
-  // moved, ease the painted bar toward it, redrawing with fastMode (the
-  // same cheap frame path live scrolling already uses), then stop. The
-  // cleanup cancels a pending glide the moment the next flush re-aims it.
+  // MT5 MAX: instant forming bar - no glide, moves per tick exactly like MT5
   useEffect(() => {
     candlesLiveRef.current = candles;
     const last = candles[candles.length - 1];
     if (!last) return;
-    const m = formingMorphRef.current;
-    if (!m || m.time !== last.time || !viewState.autoFollowLatest) {
-      // New bucket (or first paint, or scrolled back through history):
-      // seed/paint the real bar as-is. A new bar's open IS the previous
-      // close, so the tape stays continuous without pretending a price
-      // that never printed.
-      formingMorphRef.current = { time: last.time, open: last.open,
-                                  high: last.high, low: last.low,
-                                  close: last.close };
-      return;
+    // Always instant for MT5 speed - no easing, no RAF loop, direct assignment
+    formingMorphRef.current = { time: last.time, open: last.open,
+                                high: last.high, low: last.low,
+                                close: last.close };
+    if (viewState.autoFollowLatest && drawChartRef.current) {
+      drawChartRef.current(true); // fastMode cheap frame - instant like MT5
     }
-    if (m.close === last.close && m.high === last.high &&
-        m.low === last.low) return;
-    if (formingMorphRafRef.current != null) {
-      cancelAnimationFrame(formingMorphRafRef.current);
-    }
-    const ease = () => {
-      const cur = formingMorphRef.current;
-      const arr = candlesLiveRef.current;
-      const tgt = arr[arr.length - 1];
-      formingMorphRafRef.current = null;
-      if (!cur || !tgt || cur.time !== tgt.time) return;
-      const K = 0.35;                     // ease-out: ≈96% in 4 frames
-      const eps = Math.max(1e-9, Math.abs(tgt.close) * 1e-9);
-      let dirty = false;
-      const move = (key: 'close' | 'high' | 'low', target: number) => {
-        const d = target - cur[key];
-        if (Math.abs(d) <= eps) {
-          if (cur[key] !== target) { cur[key] = target; dirty = true; }
-          return;
-        }
-        cur[key] += d * K;
-        dirty = true;
-      };
-      move('close', tgt.close);
-      move('high', tgt.high);
-      move('low', tgt.low);
-      if (!dirty) return;                 // converged: stop, zero cost
-      if (drawChartRef.current) drawChartRef.current(true);
-      formingMorphRafRef.current = requestAnimationFrame(ease);
-    };
-    formingMorphRafRef.current = requestAnimationFrame(ease);
-    return () => {
-      if (formingMorphRafRef.current != null) {
-        cancelAnimationFrame(formingMorphRafRef.current);
-        formingMorphRafRef.current = null;
-      }
-    };
-    // `candles` identity changes on every tick flush; autoFollow gates
-    // the glide so panned-back users see exact history.
   }, [candles, viewState.autoFollowLatest]);
 
   // Fetch predicted price data for heatmap overlay (all 55 tracked US stocks)
@@ -1195,300 +1148,12 @@ const ProChart: React.FC<ProChartProps> = ({
   // RAF and causing stutter. By returning the cached result during scroll, we keep
   // scroll at 60fps. The indicators catch up when scrolling stops (debounce fires
   // setViewState -> re-render -> useMemo runs with isScrollingRef.current = false).
-  const indicatorDataCacheRef = useRef<any>(null);
   // Track which candles array the cached indicators were computed from, so we know
   // when a real recompute is needed (symbol switch vs. history append during scroll)
-  const indicatorCandlesIdRef = useRef<number>(0);
 
   // Calculate indicator data once
-  const indicatorData = useMemo(() => {
-    if (!indicators || candles.length === 0) return null;
-
-    // DEFER during active scroll: recomputing indicators on a 50K+ candle array
-    // takes 30-50ms which blocks the scroll RAF and causes visible stutter.
-    // Return the cached result instead; indicators will recompute when scrolling
-    // stops and the 150ms debounce fires setViewState -> re-render.
-    // BUT: never return stale cache after a symbol switch. Use first candle's
-    // close price as a fingerprint: if it changed, the data is for a different
-    // symbol and the cache is stale. Without this check, switching from BTC to
-    // GBP while mid-scroll would render BTC's EMA (price ~70K) on GBP's chart
-    // (price ~1.35), making the indicator invisible (drawn off-screen).
-    const candleFingerprint = candles.length > 0 ? candles[0].close : 0;
-    if (isScrollingRef.current && indicatorDataCacheRef.current
-        && indicatorCandlesIdRef.current === candleFingerprint) {
-      return indicatorDataCacheRef.current;
-    }
-
-    // Reuse cached price arrays when possible. Full rebuild only when the candles
-    // array is a completely different dataset (symbol switch, history prepend).
-    // When just a few new ticks arrive (same base, larger length), we append
-    // only the new values to the existing arrays, avoiding O(n) .map() calls.
-    const cache = priceArrayCacheRef.current;
-    let closes: number[];
-    let highs: number[];
-    let lows: number[];
-    let opens: number[];
-    let volumes: number[];
-    let timestamps: number[];
-
-    const canAppend = cache
-      && cache.candles !== candles                        // reference changed (new data arrived)
-      && candles.length >= cache.closes.length            // dataset grew (not shrunk/replaced)
-      && candles.length > 0 && cache.closes.length > 0
-      && candles[0].time === cache.timestamps[0]          // same starting point (no prepend/symbol switch)
-      && cache.closes.length > 10;                        // enough data to make append worthwhile
-
-    // #PREPEND-FAST-PATH - Detect a clean prepend: dataset grew at
-    // the head, the cache's old first timestamp now appears at index N where
-    // N = candles.length - cache.closes.length. This is what loadMoreHistory
-    // produces (newCandles + prevCandles, no append concurrent with prepend).
-    // Without this fast path, every silent background fetch lagged the chart
-    // ~200-1000ms because the `else` branch below rebuilds all six price
-    // arrays AND runs every active indicator across the full new dataset.
-    let prependN = 0;
-    const canPrepend = !canAppend && cache
-      && cache.candles !== candles
-      && candles.length > cache.closes.length
-      && cache.closes.length > 10
-      && (candles.length - cache.closes.length) > 0
-      && candles[candles.length - cache.closes.length]?.time === cache.timestamps[0];
-    if (canPrepend) prependN = candles.length - cache!.closes.length;
-
-    if (canAppend) {
-      // Incremental append: only extract the new tail candles
-      const prevLen = cache!.closes.length;
-      // Re-copy the last candle too in case it was updated in-place (live tick)
-      const startIdx = Math.max(0, prevLen - 1);
-      closes = cache!.closes;
-      highs = cache!.highs;
-      lows = cache!.lows;
-      opens = cache!.opens;
-      volumes = cache!.volumes;
-      timestamps = cache!.timestamps;
-      // Trim to startIdx and append new values
-      closes.length = startIdx;
-      highs.length = startIdx;
-      lows.length = startIdx;
-      opens.length = startIdx;
-      volumes.length = startIdx;
-      timestamps.length = startIdx;
-      for (let i = startIdx; i < candles.length; i++) {
-        const c = candles[i];
-        closes.push(c.close);
-        highs.push(c.high);
-        lows.push(c.low);
-        opens.push(c.open);
-        volumes.push(c.volume || 0);
-        timestamps.push(c.time);
-      }
-    } else if (canPrepend && indicatorDataCacheRef.current) {
-      // #PREPEND-FAST-PATH - Build only the prepended N entries,
-      // then concat with the existing cache arrays. Skip every indicator
-      // recompute below; instead, prepend N NaN values to each indicator
-      // result array via prependNaNToIndicators(). Net cost: ~10-30ms (six
-      // length-N allocations + concat + NaN-prepend across cached results)
-      // vs the ~200-1000ms full rebuild it replaces.
-      const newCloses = new Array(prependN);
-      const newHighs = new Array(prependN);
-      const newLows = new Array(prependN);
-      const newOpens = new Array(prependN);
-      const newVolumes = new Array(prependN);
-      const newTimestamps = new Array(prependN);
-      for (let i = 0; i < prependN; i++) {
-        const c = candles[i];
-        newCloses[i] = c.close;
-        newHighs[i] = c.high;
-        newLows[i] = c.low;
-        newOpens[i] = c.open;
-        newVolumes[i] = c.volume || 0;
-        newTimestamps[i] = c.time;
-      }
-      closes = newCloses.concat(cache!.closes);
-      highs = newHighs.concat(cache!.highs);
-      lows = newLows.concat(cache!.lows);
-      opens = newOpens.concat(cache!.opens);
-      volumes = newVolumes.concat(cache!.volumes);
-      timestamps = newTimestamps.concat(cache!.timestamps);
-
-      // Reuse cached indicator data; just shift every embedded array right by N
-      const shifted = prependNaNToIndicators(indicatorDataCacheRef.current, prependN);
-      priceArrayCacheRef.current = { candles, closes, highs, lows, opens, volumes, timestamps };
-      indicatorDataCacheRef.current = shifted;
-      indicatorCandlesIdRef.current = candles.length > 0 ? candles[0].close : 0;
-      return shifted;
-    } else {
-      // Full rebuild: new symbol, history prepend without prior cache, or first load
-      closes = candles.map(c => c.close);
-      highs = candles.map(c => c.high);
-      lows = candles.map(c => c.low);
-      opens = candles.map(c => c.open);
-      volumes = candles.map(c => c.volume || 0);
-      timestamps = candles.map(c => c.time);
-    }
-
-    // Store in cache for next invocation
-    priceArrayCacheRef.current = { candles, closes, highs, lows, opens, volumes, timestamps };
-
-    // Calculate moving averages from new combined config
-    let maLines: { data: number[]; color: string; name: string }[] | null = null;
-    if (indicators.movingAverages?.enabled && indicators.movingAverages.lines?.length > 0) {
-      maLines = indicators.movingAverages.lines.map((line: { type: MAType; period: number; color: string }) => {
-        let data: number[];
-        switch (line.type) {
-          case 'SMA':
-            data = calculateSMA(closes, line.period);
-            break;
-          case 'SMMA':
-            data = calculateSMMA(closes, line.period);
-            break;
-          case 'EMA':
-          default:
-            data = calculateEMA(closes, line.period);
-            break;
-        }
-        return { data, color: line.color, name: `${line.type} ${line.period}` };
-      });
-    }
-
-    const result = {
-      rsi: indicators.rsi?.enabled ? calculateRSI(closes, indicators.rsi.period) : null,
-      macd: indicators.macd?.enabled ? calculateMACD(closes, indicators.macd.fast, indicators.macd.slow, indicators.macd.signal) : null,
-      ema: indicators.ema?.enabled ? indicators.ema.periods.map((p: number) => calculateEMA(closes, p)) : null,
-      bollinger: indicators.bollinger?.enabled ? calculateBollingerBands(closes, indicators.bollinger.period, indicators.bollinger.stdDev) : null,
-      movingAverages: maLines,
-      atr: indicators.atr?.enabled ? calculateATR(highs, lows, closes, indicators.atr.period) : null,
-      stochastic: indicators.stochastic?.enabled ? calculateStochastic(highs, lows, closes, indicators.stochastic.kPeriod, indicators.stochastic.dPeriod, indicators.stochastic.smooth) : null,
-      williamsR: indicators.williamsR?.enabled ? calculateWilliamsR(highs, lows, closes, indicators.williamsR.period) : null,
-      cci: indicators.cci?.enabled ? calculateCCI(highs, lows, closes, indicators.cci.period) : null,
-      adx: indicators.adx?.enabled ? calculateADX(highs, lows, closes, indicators.adx.period) : null,
-      roc: indicators.roc?.enabled ? calculateROC(closes, indicators.roc.period) : null,
-      vwap: indicators.vwap?.enabled ? calculateVWAP(highs, lows, closes, volumes, timestamps) : null,
-      ichimoku: indicators.ichimoku?.enabled ? calculateIchimoku(highs, lows, closes, indicators.ichimoku.tenkanPeriod, indicators.ichimoku.kijunPeriod, indicators.ichimoku.senkouBPeriod, indicators.ichimoku.displacement) : null,
-      parabolicSAR: indicators.parabolicSAR?.enabled ? calculateParabolicSAR(highs, lows, indicators.parabolicSAR.afStart, indicators.parabolicSAR.afStep, indicators.parabolicSAR.afMax) : null,
-      keltner: indicators.keltner?.enabled ? calculateKeltnerChannels(highs, lows, closes, indicators.keltner.emaPeriod, indicators.keltner.atrPeriod, indicators.keltner.multiplier) : null,
-      pivotPoints: indicators.pivotPoints?.enabled ? calculateDailyPivots(timestamps, highs, lows, closes) : null,
-      // ── Expanded indicators ──
-      supertrend: indicators.supertrend?.enabled ? calculateSupertrend(highs, lows, closes, indicators.supertrend.period, indicators.supertrend.multiplier) : null,
-      donchian: indicators.donchian?.enabled ? calculateDonchian(highs, lows, indicators.donchian.period) : null,
-      aroon: indicators.aroon?.enabled ? calculateAroon(highs, lows, indicators.aroon.period) : null,
-      envelopes: indicators.envelopes?.enabled ? calculateEnvelopes(closes, indicators.envelopes.period, indicators.envelopes.percent) : null,
-      dema: indicators.dema?.enabled ? calculateDEMA(closes, indicators.dema.period) : null,
-      tema: indicators.tema?.enabled ? calculateTEMA(closes, indicators.tema.period) : null,
-      hma: indicators.hma?.enabled ? calculateHMA(closes, indicators.hma.period) : null,
-      momentum: indicators.momentum?.enabled ? calculateMomentum(closes, indicators.momentum.period) : null,
-      ao: indicators.ao?.enabled ? calculateAwesomeOscillator(highs, lows) : null,
-      mfi: indicators.mfi?.enabled ? calculateMFI(highs, lows, closes, volumes, indicators.mfi.period) : null,
-      tsi: indicators.tsi?.enabled ? calculateTSI(closes, indicators.tsi.longPeriod, indicators.tsi.shortPeriod, indicators.tsi.signalPeriod) : null,
-      trix: indicators.trix?.enabled ? calculateTRIX(closes, indicators.trix.period, indicators.trix.signalPeriod) : null,
-      ultimateOsc: indicators.ultimateOsc?.enabled ? calculateUltimateOscillator(highs, lows, closes, indicators.ultimateOsc.fast, indicators.ultimateOsc.med, indicators.ultimateOsc.slow) : null,
-      dpo: indicators.dpo?.enabled ? calculateDPO(closes, indicators.dpo.period) : null,
-      kst: indicators.kst?.enabled ? calculateKST(closes) : null,
-      stochRsi: indicators.stochRsi?.enabled ? calculateStochRSI(closes, indicators.stochRsi.rsiPeriod, indicators.stochRsi.kPeriod, indicators.stochRsi.dPeriod) : null,
-      bbPercent: indicators.bbPercent?.enabled ? calculateBBPercent(closes, indicators.bbPercent.period, indicators.bbPercent.stdDev) : null,
-      bbWidth: indicators.bbWidth?.enabled ? calculateBBWidth(closes, indicators.bbWidth.period, indicators.bbWidth.stdDev) : null,
-      histVol: indicators.histVol?.enabled ? calculateHistoricalVolatility(closes, indicators.histVol.period) : null,
-      chaikinVol: indicators.chaikinVol?.enabled ? calculateChaikinVolatility(highs, lows, indicators.chaikinVol.emaPeriod, indicators.chaikinVol.rocPeriod) : null,
-      stdDev: indicators.stdDev?.enabled ? calculateStdDev(closes, indicators.stdDev.period) : null,
-      obv: indicators.obv?.enabled ? calculateOBV(closes, volumes) : null,
-      cmf: indicators.cmf?.enabled ? calculateCMF(highs, lows, closes, volumes, indicators.cmf.period) : null,
-      adl: indicators.adl?.enabled ? calculateADL(highs, lows, closes, volumes) : null,
-      forceIndex: indicators.forceIndex?.enabled ? calculateForceIndex(closes, volumes, indicators.forceIndex.period) : null,
-      eom: indicators.eom?.enabled ? calculateEOM(highs, lows, volumes, indicators.eom.period) : null,
-      volumeSma: indicators.volumeSma?.enabled ? calculateVolumeSMA(volumes, indicators.volumeSma.period) : null,
-      fibRetracement: indicators.fibRetracement?.enabled ? calculateFibRetracement(highs, lows, indicators.fibRetracement.lookback) : null,
-      camarillaPivots: indicators.camarillaPivots?.enabled ? calculateDailyCamarilla(timestamps, highs, lows, closes) : null,
-      woodiePivots: indicators.woodiePivots?.enabled ? calculateDailyWoodie(timestamps, highs, lows, closes) : null,
-      correlation: indicators.correlation?.enabled ? calculateCorrelation(closes, volumes, indicators.correlation.period) : null,
-      linearReg: indicators.linearReg?.enabled ? calculateLinearRegression(closes, indicators.linearReg.period, indicators.linearReg.deviations) : null,
-      coppock: indicators.coppock?.enabled ? calculateCoppock(closes, indicators.coppock.longROC, indicators.coppock.shortROC, indicators.coppock.wmaPeriod) : null,
-      // ── Phase 2: New Indicator Computations ──
-      // Trend overlays
-      alma: indicators.alma?.enabled ? calculateALMA(closes, indicators.alma.period, indicators.alma.offset, indicators.alma.sigma) : null,
-      kama: indicators.kama?.enabled ? calculateKAMA(closes, indicators.kama.period, indicators.kama.fastPeriod, indicators.kama.slowPeriod) : null,
-      zlema: indicators.zlema?.enabled ? calculateZLEMA(closes, indicators.zlema.period) : null,
-      t3: indicators.t3?.enabled ? calculateT3(closes, indicators.t3.period, indicators.t3.vFactor) : null,
-      lsma: indicators.lsma?.enabled ? calculateLSMA(closes, indicators.lsma.period) : null,
-      mcginley: indicators.mcginley?.enabled ? calculateMcGinley(closes, indicators.mcginley.period) : null,
-      wma: indicators.wma?.enabled ? calculateWMA(closes, indicators.wma.period) : null,
-      smmaOverlay: indicators.smmaOverlay?.enabled ? calculateSMMA(closes, indicators.smmaOverlay.period) : null,
-      alligator: indicators.alligator?.enabled ? calculateAlligator(closes) : null,
-      priceChannel: indicators.priceChannel?.enabled ? calculatePriceChannel(highs, lows, indicators.priceChannel.period) : null,
-      chandeKroll: indicators.chandeKroll?.enabled ? calculateChandeKrollStop(highs, lows, closes, indicators.chandeKroll.p, indicators.chandeKroll.q, indicators.chandeKroll.x) : null,
-      chandelierExit: indicators.chandelierExit?.enabled ? calculateChandelierExit(highs, lows, closes, indicators.chandelierExit.period, indicators.chandelierExit.multiplier) : null,
-      accBands: indicators.accBands?.enabled ? calculateAccBands(highs, lows, closes, indicators.accBands.period) : null,
-      // Trend subplots
-      vortex: indicators.vortex?.enabled ? calculateVortex(highs, lows, closes, indicators.vortex.period) : null,
-      choppiness: indicators.choppiness?.enabled ? calculateChoppiness(highs, lows, closes, indicators.choppiness.period) : null,
-      elderRay: indicators.elderRay?.enabled ? calculateElderRay(highs, lows, closes, indicators.elderRay.period) : null,
-      massIndex: indicators.massIndex?.enabled ? calculateMassIndex(highs, lows, indicators.massIndex.period) : null,
-      linRegSlope: indicators.linRegSlope?.enabled ? calculateLinRegSlope(closes, indicators.linRegSlope.period) : null,
-      // Oscillators
-      ppo: indicators.ppo?.enabled ? calculatePPO(closes, indicators.ppo.fast, indicators.ppo.slow, indicators.ppo.signal) : null,
-      pvo: indicators.pvo?.enabled ? calculatePVO(volumes, indicators.pvo.fast, indicators.pvo.slow, indicators.pvo.signal) : null,
-      cmo: indicators.cmo?.enabled ? calculateCMO(closes, indicators.cmo.period) : null,
-      fisher: indicators.fisher?.enabled ? calculateFisherTransform(highs, lows, indicators.fisher.period) : null,
-      stc: indicators.stc?.enabled ? calculateSTC(closes, indicators.stc.fast, indicators.stc.slow, indicators.stc.cycle) : null,
-      rviOsc: indicators.rviOsc?.enabled ? calculateRVI(opens, highs, lows, closes, indicators.rviOsc.period) : null,
-      klinger: indicators.klinger?.enabled ? calculateKlingerOscillator(highs, lows, closes, volumes, indicators.klinger.fast, indicators.klinger.slow, indicators.klinger.signal) : null,
-      connorsRsi: indicators.connorsRsi?.enabled ? calculateConnorsRSI(closes, indicators.connorsRsi.rsiPeriod, indicators.connorsRsi.streakPeriod, indicators.connorsRsi.rankPeriod) : null,
-      apo: indicators.apo?.enabled ? calculateAPO(closes, indicators.apo.fast, indicators.apo.slow) : null,
-      qstick: indicators.qstick?.enabled ? calculateQStick(opens, closes, indicators.qstick.period) : null,
-      bop: indicators.bop?.enabled ? calculateBOP(opens, highs, lows, closes, indicators.bop.period) : null,
-      psychLine: indicators.psychLine?.enabled ? calculatePsychologicalLine(closes, indicators.psychLine.period) : null,
-      pfe: indicators.pfe?.enabled ? calculatePFE(closes, indicators.pfe.period, indicators.pfe.smoothing) : null,
-      smi: indicators.smi?.enabled ? calculateSMI(highs, lows, closes, indicators.smi.period, indicators.smi.smoothK, indicators.smi.smoothD) : null,
-      // Volatility
-      ulcerIndex: indicators.ulcerIndex?.enabled ? calculateUlcerIndex(closes, indicators.ulcerIndex.period) : null,
-      natr: indicators.natr?.enabled ? calculateNATR(highs, lows, closes, indicators.natr.period) : null,
-      trueRange: indicators.trueRange?.enabled ? calculateTrueRange(highs, lows, closes) : null,
-      squeeze: indicators.squeeze?.enabled ? calculateSqueeze(highs, lows, closes, indicators.squeeze.bbPeriod, indicators.squeeze.bbMult, indicators.squeeze.kcPeriod, indicators.squeeze.kcMult) : null,
-      relVolIndex: indicators.relVolIndex?.enabled ? calculateRelativeVolIndex(closes, indicators.relVolIndex.period, indicators.relVolIndex.smoothing) : null,
-      vhf: indicators.vhf?.enabled ? calculateVHF(closes, indicators.vhf.period) : null,
-      // Volume
-      vwma: indicators.vwma?.enabled ? calculateVWMA(closes, volumes, indicators.vwma.period) : null,
-      volumeOsc: indicators.volumeOsc?.enabled ? calculateVolumeOsc(volumes, indicators.volumeOsc.fast, indicators.volumeOsc.slow) : null,
-      nvi: indicators.nvi?.enabled ? calculateNVI(closes, volumes) : null,
-      pvi: indicators.pvi?.enabled ? calculatePVI(closes, volumes) : null,
-      pvt: indicators.pvt?.enabled ? calculatePVT(closes, volumes) : null,
-      vroc: indicators.vroc?.enabled ? calculateVROC(volumes, indicators.vroc.period) : null,
-      netVolume: indicators.netVolume?.enabled ? calculateNetVolume(closes, volumes, indicators.netVolume.period) : null,
-      twiggsMF: indicators.twiggsMF?.enabled ? calculateTwiggsMF(highs, lows, closes, volumes, indicators.twiggsMF.period) : null,
-      // Statistics
-      linRegRSquared: indicators.linRegRSquared?.enabled ? calculateLinRegRSquared(closes, indicators.linRegRSquared.period) : null,
-      medianPrice: indicators.medianPrice?.enabled ? calculateMedianPrice(highs, lows) : null,
-      typicalPrice: indicators.typicalPrice?.enabled ? calculateTypicalPrice(highs, lows, closes) : null,
-      weightedClose: indicators.weightedClose?.enabled ? calculateWeightedClose(highs, lows, closes) : null,
-      demarkPivots: indicators.demarkPivots?.enabled ? calculateDeMarkPivots(timestamps, highs, lows, opens, closes) : null,
-      zigzag: indicators.zigzag?.enabled ? calculateZigZag(highs, lows, closes, indicators.zigzag.deviation) : null,
-      fractals: indicators.fractals?.enabled ? calculateFractals(highs, lows) : null,
-      gator: indicators.gator?.enabled ? calculateGator(closes) : null,
-      // ── Custom formula indicators ──
-      customIndicators: (indicators.customIndicators || []).filter(ci => ci.enabled).map(ci => {
-        // Brue-emitted plots arrive with expression="brue:<id>" and ci.data
-        // already populated by the Brue runtime. Their expression is opaque to
-        // the formula engine, so re-evaluating returns errors and overwrites
-        // the precomputed series with NaN, the line goes invisible and the
-        // legend shows "--". Pass them through unchanged.
-        // "local:" is the terminal's equivalent: indicators computed in Python
-        // by the local engine (including the user's own scripts) arrive with
-        // their series already populated, for exactly the same reason - the
-        // expression is not a formula this engine can evaluate.
-        if (typeof ci.expression === 'string' && (ci.expression.startsWith('brue:') || ci.expression.startsWith('local:')) && Array.isArray((ci as any).data) && (ci as any).data.length > 0) {
-          return ci;
-        }
-        const ctx = { closes, highs, lows, opens, volumes, timestamps };
-        const result = evaluateFormula(ci.expression, ctx);
-        return { ...ci, data: result.errors.length === 0 ? result.data : new Array(closes.length).fill(NaN) };
-      }),
-    };
-
-    // Cache the computed result so scroll-deferred frames can reuse it.
-    // Also store the candle fingerprint so we can detect symbol switches
-    // and invalidate the cache instead of returning stale indicator data.
-    indicatorDataCacheRef.current = result;
-    indicatorCandlesIdRef.current = candles.length > 0 ? candles[0].close : 0;
-    return result;
-  }, [candles, indicators]);
+  // ── Indicator calculation: offloaded to Web Worker for heavy datasets ──
+  const { indicatorData, isComputing: isIndicatorComputing } = useIndicatorWorker(candles, indicators, isScrollingRef);
 
   const drawChart = useCallback((fastMode: boolean = false) => {
     const canvas = canvasRef.current;
@@ -1871,11 +1536,6 @@ const ProChart: React.FC<ProChartProps> = ({
        morphBar.time === c.time) ? morphBar : c;
 
     if (chartType === 'candlestick') {
-      // Candlesticks paint through the batched pure renderer (MT5-feel
-      // directive, 2026-09-21): per-candle stroke()/fillRect()/strokeRect()
-      // state churn collapsed into 6 canvas draw calls per frame, pixels
-      // unchanged (geometry/color/width parity pinned in
-      // tests/chart_pure_entry.ts against the verbatim legacy loop).
       paintCandleBodies({
         ctx,
         candles: visible.candles,
@@ -1895,42 +1555,25 @@ const ProChart: React.FC<ProChartProps> = ({
         },
       });
     } else if (chartType === 'line') {
-      // Draw line chart
       ctx.strokeStyle = colors.bullish;
       ctx.lineWidth = 2;
       ctx.beginPath();
-
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        const y = mainPriceToY(morphAt(i, candle).close);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
     } else if (chartType === 'area') {
-      // Draw area chart with gradient fill
       const gradient = ctx.createLinearGradient(0, 0, 0, mainChartHeight);
       gradient.addColorStop(0, 'rgba(34, 197, 94, 0.4)');
       gradient.addColorStop(1, 'rgba(34, 197, 94, 0.02)');
-
-      // First draw the filled area
       ctx.beginPath();
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        const y = mainPriceToY(morphAt(i, candle).close);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
-
-      // Close the path along the bottom
       if (visible.candles.length > 0) {
         const lastX = indexToX(visible.startIndex + visible.candles.length - 1, visible.startIndex);
         const firstX = indexToX(visible.startIndex, visible.startIndex);
@@ -1940,22 +1583,156 @@ const ProChart: React.FC<ProChartProps> = ({
         ctx.fillStyle = gradient;
         ctx.fill();
       }
-
-      // Then draw the line on top
       ctx.strokeStyle = colors.bullish;
       ctx.lineWidth = 2;
       ctx.beginPath();
       visible.candles.forEach((candle, i) => {
         const x = indexToX(visible.startIndex + i, visible.startIndex);
-        const y = mainPriceToY(morphAt(i, candle).close);  // D15 glide
-
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
+        const y = mainPriceToY(morphAt(i, candle).close);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
       });
       ctx.stroke();
+    } else if (chartType === 'heikin_ashi') {
+      let prevHaOpen = visible.candles[0]?.open || 0;
+      let prevHaClose = visible.candles[0]?.close || 0;
+      const haCandles = visible.candles.map((c, idx) => {
+        const haClose = (c.open + c.high + c.low + c.close) / 4;
+        const haOpen = idx === 0 ? (c.open + c.close) / 2 : (prevHaOpen + prevHaClose) / 2;
+        const haHigh = Math.max(c.high, haOpen, haClose);
+        const haLow = Math.min(c.low, haOpen, haClose);
+        const res = { time: c.time, open: haOpen, high: haHigh, low: haLow, close: haClose, volume: c.volume };
+        prevHaOpen = haOpen;
+        prevHaClose = haClose;
+        return res;
+      });
+      paintCandleBodies({
+        ctx,
+        candles: haCandles as any,
+        startIndex: visible.startIndex,
+        indexToX,
+        priceToY: mainPriceToY,
+        morphAt: (i: number, _c: any) => haCandles[i] as any,
+        candleBodyWidth,
+        wickWidth,
+        colors: {
+          bullish: colors.bullish,
+          bearish: colors.bearish,
+          bullishWick: colors.bullishWick,
+          bearishWick: colors.bearishWick,
+          bullishBorder: colors.bullishBorder,
+          bearishBorder: colors.bearishBorder,
+        },
+      });
+    } else if (chartType === 'tpo') {
+      const blockMs = 30 * 60 * 1000;
+      const blocks = new Map<number, { high: number; low: number; count: number }>();
+      visible.candles.forEach(c => {
+        const b = Math.floor(c.time / blockMs) * blockMs;
+        const existing = blocks.get(b);
+        if (!existing) blocks.set(b, { high: c.high, low: c.low, count: 1 });
+        else {
+          existing.high = Math.max(existing.high, c.high);
+          existing.low = Math.min(existing.low, c.low);
+          existing.count++;
+        }
+      });
+      let blockIdx = 0;
+      blocks.forEach((blk) => {
+        const x = indexToX(visible.startIndex + blockIdx, visible.startIndex);
+        const yTop = mainPriceToY(blk.high);
+        const yBottom = mainPriceToY(blk.low);
+        ctx.fillStyle = '#21b3a4';
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(x - candleBodyWidth/2, yTop, candleBodyWidth, Math.max(2, yBottom - yTop));
+        ctx.globalAlpha = 1;
+        blockIdx++;
+      });
+      ctx.globalAlpha = 0.3;
+      paintCandleBodies({
+        ctx,
+        candles: visible.candles,
+        startIndex: visible.startIndex,
+        indexToX,
+        priceToY: mainPriceToY,
+        morphAt,
+        candleBodyWidth,
+        wickWidth,
+        colors: {
+          bullish: colors.bullish,
+          bearish: colors.bearish,
+          bullishWick: colors.bullishWick,
+          bearishWick: colors.bearishWick,
+          bullishBorder: colors.bullishBorder,
+          bearishBorder: colors.bearishBorder,
+        },
+      });
+      ctx.globalAlpha = 1;
+    } else if (chartType === 'footprint_cluster' || chartType === 'footprint_profile') {
+      paintCandleBodies({
+        ctx,
+        candles: visible.candles,
+        startIndex: visible.startIndex,
+        indexToX,
+        priceToY: mainPriceToY,
+        morphAt,
+        candleBodyWidth,
+        wickWidth,
+        colors: {
+          bullish: colors.bullish,
+          bearish: colors.bearish,
+          bullishWick: colors.bullishWick,
+          bearishWick: colors.bearishWick,
+          bullishBorder: colors.bullishBorder,
+          bearishBorder: colors.bearishBorder,
+        },
+      });
+      ctx.font = '8px monospace';
+      ctx.fillStyle = '#e8e8e8';
+      visible.candles.forEach((c, i) => {
+        const x = indexToX(visible.startIndex + i, visible.startIndex);
+        const y = mainPriceToY(c.close);
+        const vol = c.volume || 0;
+        if (vol > 0) {
+          const buy = Math.round(vol * 0.55);
+          const sell = Math.round(vol * 0.45);
+          ctx.fillText(`${buy}/${sell}`, x - 12, y - 8);
+        }
+      });
+    } else if (chartType === 'flow_positioning') {
+      paintCandleBodies({
+        ctx,
+        candles: visible.candles,
+        startIndex: visible.startIndex,
+        indexToX,
+        priceToY: mainPriceToY,
+        morphAt,
+        candleBodyWidth,
+        wickWidth,
+        colors: {
+          bullish: colors.bullish,
+          bearish: colors.bearish,
+          bullishWick: colors.bullishWick,
+          bearishWick: colors.bearishWick,
+          bullishBorder: colors.bullishBorder,
+          bearishBorder: colors.bearishBorder,
+        },
+      });
+      ctx.strokeStyle = '#d0d0d0';
+      ctx.lineWidth = 1;
+      visible.candles.forEach((c, i) => {
+        if (i % 5 !== 0) return;
+        const x = indexToX(visible.startIndex + i, visible.startIndex);
+        const isUp = c.close > c.open;
+        const y = mainPriceToY(c.close);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + (isUp ? -12 : 12));
+        ctx.stroke();
+        ctx.fillStyle = isUp ? '#21b3a4' : '#f0426c';
+        ctx.beginPath();
+        ctx.arc(x, y + (isUp ? -14 : 14), 2, 0, Math.PI*2);
+        ctx.fill();
+      });
     } else if (chartType === 'renko') {
       // Calculate Renko bricks
       const renkoSize = priceRange.range * 0.02; // 2% of visible range as brick size
@@ -5092,7 +4869,7 @@ const ProChart: React.FC<ProChartProps> = ({
   useEffect(() => {
     if (requestRedrawRef) {
       requestRedrawRef.current = () => {
-        if (drawChartRef.current) drawChartRef.current(true);
+        scheduleDraw(true);
       };
     }
   }, [requestRedrawRef]);
@@ -5565,7 +5342,7 @@ const ProChart: React.FC<ProChartProps> = ({
         // RAF-batched redraw for silk-smooth animation
         if (sltpDragRAFRef.current === null) {
           sltpDragRAFRef.current = requestAnimationFrame(() => {
-            if (drawChartRef.current) drawChartRef.current(false);
+            scheduleDraw(false);
             sltpDragRAFRef.current = null;
           });
         }
@@ -5625,11 +5402,11 @@ const ProChart: React.FC<ProChartProps> = ({
             if (overlayCanvasRef.current) overlayCanvasRef.current.style.cursor = sltpGrabCursor;
             // Store which line is hovered for visual highlight
             hoveredSLTPRef.current = nearSL ? 'sl' : 'tp';
-            if (drawChartRef.current) drawChartRef.current(false);
+            scheduleDraw(false);
           } else {
             if (hoveredSLTPRef.current) {
               hoveredSLTPRef.current = null;
-              if (drawChartRef.current) drawChartRef.current(false);
+              scheduleDraw(false);
             }
             if (overlayCanvasRef.current) {
               const bc = crosshairStyleRef.current !== 'standard' ? 'none' : 'crosshair';
@@ -5683,9 +5460,7 @@ const ProChart: React.FC<ProChartProps> = ({
       // Schedule RAF redraw in fast mode if not already pending
       if (mouseDragRAFRef.current === null) {
         mouseDragRAFRef.current = requestAnimationFrame(() => {
-          if (drawChartRef.current) {
-            drawChartRef.current(true); // Fast mode - skip expensive indicator drawing
-          }
+          scheduleDraw(true);
           // Also draw crosshair during drag
           drawCrosshair();
           // Notify drawing overlay to re-render with new scroll position
@@ -6299,7 +6074,7 @@ const ProChart: React.FC<ProChartProps> = ({
               tpDraftRef.current = null;
               draggingHandleRef.current = null;
               forceRender(n => n + 1);
-              if (drawChartRef.current) drawChartRef.current(false);
+              scheduleDraw(false);
               return;
             }
 
@@ -6310,7 +6085,7 @@ const ProChart: React.FC<ProChartProps> = ({
               tpDraftRef.current = null;
               draggingHandleRef.current = null;
               forceRender(n => n + 1);
-              if (drawChartRef.current) drawChartRef.current(false);
+              scheduleDraw(false);
               return;
             }
 
@@ -6324,7 +6099,7 @@ const ProChart: React.FC<ProChartProps> = ({
               tpDraftRef.current = null;
               draggingHandleRef.current = null;
               forceRender(n => n + 1);
-              if (drawChartRef.current) drawChartRef.current(false);
+              scheduleDraw(false);
               return;
             }
           }
@@ -6376,7 +6151,7 @@ const ProChart: React.FC<ProChartProps> = ({
           }
           draggingHandleRef.current = null;
           forceRender(n => n + 1);
-          if (drawChartRef.current) drawChartRef.current(false);
+          scheduleDraw(false);
           return; // Don't start chart drag
         }
 
@@ -6393,7 +6168,7 @@ const ProChart: React.FC<ProChartProps> = ({
     if (draggingHandleRef.current && selectedPositionRef.current) {
       draggingHandleRef.current = null;
       if (overlayCanvasRef.current) overlayCanvasRef.current.style.cursor = crosshairStyleRef.current !== 'standard' ? 'none' : 'crosshair';
-      if (drawChartRef.current) drawChartRef.current(false);
+      scheduleDraw(false);
       return; // Don't process chart drag end
     }
 
@@ -6402,9 +6177,7 @@ const ProChart: React.FC<ProChartProps> = ({
       setScrolling(false);
       const finalState = scrollStateRef.current;
       // Do a full redraw with indicators
-      if (drawChartRef.current) {
-        drawChartRef.current(false);
-      }
+      scheduleDraw(false);
       // In replay mode: if user scrolled back to the right edge (latest candle visible),
       // reset the flag so auto-follow resumes. Otherwise mark as user-scrolled to
       // prevent auto-scroll from pulling the view back during playback.
@@ -6462,7 +6235,7 @@ const ProChart: React.FC<ProChartProps> = ({
         tpDraftRef.current = null;
         draggingHandleRef.current = null;
         forceRender(n => n + 1);
-        if (drawChartRef.current) drawChartRef.current(false);
+        scheduleDraw(false);
       } else if (e.key === 'Escape' || e.key === 'Backspace') {
         e.preventDefault();
         selectedPositionRef.current = null;
@@ -6470,7 +6243,7 @@ const ProChart: React.FC<ProChartProps> = ({
         tpDraftRef.current = null;
         draggingHandleRef.current = null;
         forceRender(n => n + 1);
-        if (drawChartRef.current) drawChartRef.current(false);
+        scheduleDraw(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -6557,9 +6330,7 @@ const ProChart: React.FC<ProChartProps> = ({
       priceScaleRef.current = newScale;
 
       // Immediate redraw using ref
-      if (drawChartRef.current) {
-        drawChartRef.current(true);
-      }
+      scheduleDraw(true);
       // Sync drawings immediately - no lag
       notifyScrollSync();
 
@@ -6589,9 +6360,7 @@ const ProChart: React.FC<ProChartProps> = ({
       const newScale = Math.max(0.1, Math.min(10.0, yAxisScaleStartRef.current.scale + scaleDelta));
       priceScaleRef.current = newScale;
 
-      if (drawChartRef.current) {
-        drawChartRef.current(true);
-      }
+      scheduleDraw(true);
       notifyScrollSync();
 
       if (yAxisDebounceRef.current) {
@@ -6725,7 +6494,7 @@ const ProChart: React.FC<ProChartProps> = ({
                 tpDraftRef.current = null;
                 draggingHandleRef.current = null;
                 forceRender(n => n + 1);
-                if (drawChartRef.current) drawChartRef.current(false);
+                scheduleDraw(false);
                 return;
               }
 
@@ -6735,7 +6504,7 @@ const ProChart: React.FC<ProChartProps> = ({
                 tpDraftRef.current = null;
                 draggingHandleRef.current = null;
                 forceRender(n => n + 1);
-                if (drawChartRef.current) drawChartRef.current(false);
+                scheduleDraw(false);
                 return;
               }
 
@@ -6749,7 +6518,7 @@ const ProChart: React.FC<ProChartProps> = ({
                 tpDraftRef.current = null;
                 draggingHandleRef.current = null;
                 forceRender(n => n + 1);
-                if (drawChartRef.current) drawChartRef.current(false);
+                scheduleDraw(false);
                 return;
               }
             }
@@ -6804,7 +6573,7 @@ const ProChart: React.FC<ProChartProps> = ({
             draggingHandleRef.current = null;
             if (longPressTimerRef.current) { clearTimeout(longPressTimerRef.current); longPressTimerRef.current = null; }
             forceRender(n => n + 1);
-            if (drawChartRef.current) drawChartRef.current(false);
+            scheduleDraw(false);
             return; // Don't start chart pan
           }
         }
@@ -6858,7 +6627,7 @@ const ProChart: React.FC<ProChartProps> = ({
           scrollStateRef.current = { startIndex: newStartIndex, candleWidth: newCandleWidth };
 
           // Trigger immediate redraw and sync, pure imperative, no React state
-          if (drawChartRef.current) drawChartRef.current(true);
+          scheduleDraw(true);
           notifyScrollSync();
 
           // ROOT CAUSE FIX (React #185 on iPhone pinch-zoom):
@@ -6938,7 +6707,7 @@ const ProChart: React.FC<ProChartProps> = ({
           // RAF-batched redraw for silk-smooth touch animation
           if (sltpDragRAFRef.current === null) {
             sltpDragRAFRef.current = requestAnimationFrame(() => {
-              if (drawChartRef.current) drawChartRef.current(false);
+              scheduleDraw(false);
               sltpDragRAFRef.current = null;
             });
           }
@@ -6981,9 +6750,7 @@ const ProChart: React.FC<ProChartProps> = ({
         // Schedule RAF redraw in fast mode if not already pending
         if (touchPanRAFRef.current === null) {
           touchPanRAFRef.current = requestAnimationFrame(() => {
-            if (drawChartRef.current) {
-              drawChartRef.current(true); // Fast mode
-            }
+            scheduleDraw(true); // Fast mode
             // Notify drawing overlay to re-render with new scroll position
             notifyScrollSync();
             touchPanRAFRef.current = null;
@@ -7007,7 +6774,7 @@ const ProChart: React.FC<ProChartProps> = ({
     // ─── SL/TP touch drag end ──────────────────────────────────────────
     if (draggingHandleRef.current && selectedPositionRef.current) {
       draggingHandleRef.current = null;
-      if (drawChartRef.current) drawChartRef.current(false);
+      scheduleDraw(false);
       // Don't process chart drag end, just stop SL/TP drag
       isTouchDownRef.current = false;
       touchIdRef.current = 0;
@@ -7035,9 +6802,7 @@ const ProChart: React.FC<ProChartProps> = ({
       setScrolling(false);
       const finalState = scrollStateRef.current;
       // Do a full redraw with indicators
-      if (drawChartRef.current) {
-        drawChartRef.current(false);
-      }
+      scheduleDraw(false);
       // In replay mode: if user scrolled back to the right edge (latest candle visible),
       // reset the flag so auto-follow resumes. Otherwise mark as user-scrolled to
       // prevent auto-scroll from pulling the view back during playback.
@@ -7155,7 +6920,7 @@ const ProChart: React.FC<ProChartProps> = ({
 
         if (wheelRAFRef.current === null) {
           wheelRAFRef.current = requestAnimationFrame(() => {
-            if (drawChartRef.current) drawChartRef.current(true);
+            scheduleDraw(true);
             drawCrosshair();
             notifyScrollSync();
             wheelRAFRef.current = null;
@@ -7211,9 +6976,7 @@ const ProChart: React.FC<ProChartProps> = ({
       // Immediate redraw for panning
       if (wheelRAFRef.current === null) {
         wheelRAFRef.current = requestAnimationFrame(() => {
-          if (drawChartRef.current) {
-            drawChartRef.current(true);
-          }
+          scheduleDraw(true);
           drawCrosshair();
           // Notify drawing overlay to re-render with new scroll position
           notifyScrollSync();
@@ -7288,7 +7051,7 @@ const ProChart: React.FC<ProChartProps> = ({
 
       if (wheelRAFRef.current === null) {
         wheelRAFRef.current = requestAnimationFrame(() => {
-          if (drawChartRef.current) drawChartRef.current(true);
+          scheduleDraw(true);
           drawCrosshair();
           notifyScrollSync();
           wheelRAFRef.current = null;
@@ -7335,9 +7098,7 @@ const ProChart: React.FC<ProChartProps> = ({
     // Immediate redraw with sync notification in same RAF for consistency
     if (wheelRAFRef.current === null) {
       wheelRAFRef.current = requestAnimationFrame(() => {
-        if (drawChartRef.current) {
-          drawChartRef.current(true);
-        }
+        scheduleDraw(true);
         drawCrosshair();
         // Notify drawing overlay to re-render with new scroll position
         notifyScrollSync();

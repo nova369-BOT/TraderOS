@@ -5,12 +5,14 @@ Provider contract: `demo` shows the minimum viable shape (no network, no auth),
 
 from lse_terminal.providers.binance import BinanceProvider
 from lse_terminal.providers.coinbase import CoinbaseProvider
+from lse_terminal.providers.hyperliquid import HyperliquidProvider
 from lse_terminal.providers.demo import DemoProvider
 from lse_terminal.providers.lse import LseProvider
 from lse_terminal.providers.userdata import UserDataProvider
 from lse_terminal.providers.crypto_l2 import CryptoL2Provider
 from lse_terminal.providers.mbo import MboProvider
 
-__all__ = ["BinanceProvider", "CoinbaseProvider", "CryptoL2Provider", "DemoProvider",
+__all__ = ["BinanceProvider", "CoinbaseProvider", "HyperliquidProvider",
+           "CryptoL2Provider", "DemoProvider",
            "LseProvider", "MboProvider",
            "UserDataProvider"]

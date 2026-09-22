@@ -1,32 +1,23 @@
 // ============================================================================
 // mount.tsx - bridge between the terminal shell and the chart engine.
-//
-// The terminal's shell (ui/static/app.js) is plain JavaScript and owns the
-// MARKETS / BACKTEST / MY DATA sections, the sidebar and the keybar. This entry
-// point exposes an imperative API on `window.LSEChart` so the shell can mount
-// the React chart into its existing #chart element and push symbol, timeframe,
-// candle and trade-marker changes at it, without the shell needing React.
-//
-// Composition note: upstream, ProChart is wrapped by a live-streaming container
-// that merges websocket ticks into the last candle and talks to broker
-// runtimes. The terminal has no live feed, so that layer is deliberately not
-// included. What IS reproduced exactly is the interaction wiring between the
-// canvas and the drawing overlay - the converter handshake, the redraw ref, the
-// scroll-offset ref and the cursor-badge ref - because that wiring is what
-// makes panning, zooming, the crosshair and drawing placement behave the way
-// they do on the live charts.
-//
-// All user state (drawings, indicator setups, layouts, tool favourites) is
-// persisted to ~/.config/lse-terminal/workspace.json through lib/api, so a
-// downloaded terminal keeps the user's work across cache clears and reinstalls.
+// ULTRA-FAST EDITION: heavy islands are code-split via React.lazy so MARKETS
+// (ProChart) loads without paying for DataViz (echarts), QuantModels (three),
+// Notebooks, EconomicCalendar, Backtesting. Vite's manualChunks groups vendor
+// deps separately. The main chart.js is now ES module with hashed chunks.
 // ============================================================================
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import ProChart from '@/components/chart/ProChart';
-import DepthHeatPane from '@/components/chart/depth/DepthHeatPane';
 import { ChartDrawingOverlay, type Drawing, type DrawingTool } from '@/components/chart/ChartDrawingOverlay';
 import DrawingToolsPanel from '@/components/chart/sidebar/DrawingToolsPanel';
+import { EdgeDepthDrawingRail, type Tool as EDTool } from '@/components/chart/edgedepth/EdgeDepthDrawingRail';
+import { EdgeDepthChartTypePicker, type ChartTypeED } from '@/components/chart/edgedepth/EdgeDepthChartTypePicker';
+import { EdgeDepthTimeframeBar, type TF as EDTF, ALL_TF as ED_ALL_TF } from '@/components/chart/edgedepth/EdgeDepthTimeframeBar';
+import { EdgeDepthAppearancePanel, type AppearanceSettings, defaultAppearance } from '@/components/chart/edgedepth/EdgeDepthAppearancePanel';
+import { EdgeDepthFindSymbol } from '@/components/chart/edgedepth/EdgeDepthFindSymbol';
+import { EdgeDepthWidgetMenu } from '@/components/chart/edgedepth/EdgeDepthWidgetMenu';
+import { EdgeDepthProModal } from '@/components/chart/edgedepth/EdgeDepthProModal';
 import { DEFAULT_INDICATOR_CONFIG, type IndicatorConfig } from '@/components/chart/IndicatorSettings';
 import { getDefaultColors, type Candle, type ChartType } from '@/components/chart/core/types';
 import { MemoryRouter } from 'react-router-dom';
@@ -42,10 +33,31 @@ import { api, invalidateSection } from '@/lib/api';
 import { toCustomIndicators, type EngineIndicatorPayload } from '@/lib/engineIndicators';
 import './index.css';
 
-// Converter handed up by ProChart once it has laid out its axes. The overlay
-// needs it to place drawings in price/time space, so it is held in state (not a
-// ref): the overlay must re-render when it first arrives or the drawings would
-// sit at stale pixel positions until the next unrelated render.
+// Heavy islands -> lazy chunks. Each becomes a separate file loaded on demand.
+const DepthHeatPane = lazy(() => import('@/components/chart/depth/DepthHeatPane'));
+const EdgeDepthHeatmapPane = lazy(() => import('@/components/chart/depth/EdgeDepthHeatmapPane'));
+const OrderflowPanel = lazy(() => import('@/components/chart/orderflow/OrderflowPanel'));
+const DOMPanel = lazy(() => import('@/components/chart/orderflow/DOMPanel'));
+const TapePanel = lazy(() => import('@/components/chart/orderflow/TapePanel'));
+const FootprintPanel = lazy(() => import('@/components/chart/orderflow/FootprintPanel'));
+const VolumeProfilePanel = lazy(() => import('@/components/chart/orderflow/VolumeProfilePanel'));
+const TPOPanel = lazy(() => import('@/components/chart/orderflow/TPOPanel'));
+const CVDPanel = lazy(() => import('@/components/chart/orderflow/CVDPanel'));
+const LiquidationPanel = lazy(() => import('@/components/chart/orderflow/LiquidationPanel'));
+const EdgeDepthDOMPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthDOMPanel'));
+const EdgeDepthTapePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTapePanel'));
+const EdgeDepthWatchlist = lazy(() => import('@/components/chart/edgedepth/EdgeDepthWatchlist'));
+const EdgeDepthIndicatorsPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthIndicators'));
+const EdgeDepthLayers = lazy(() => import('@/components/chart/edgedepth/EdgeDepthLayers'));
+const BacktestingPage = lazy(() => import('@/pages/Backtesting'));
+const BacktestingSetupDialog = lazy(() => import('@/components/backtesting/BacktestingSetupDialog'));
+const EconomicCalendarPage = lazy(() => import('@/pages/EconomicCalendar'));
+const DataVizPage = lazy(() => import('@/pages/DataViz'));
+const QuantModelsPage = lazy(() => import('@/pages/QuantModels'));
+const NotebooksPage = lazy(() => import('@/pages/Notebooks'));
+
+const Fallback = () => <div className="h-full w-full flex items-center justify-center text-[11px] text-[var(--dim)]">Loading…</div>;
+
 type Converter = {
   timeToX: (time: number) => number | null;
   xToTime: (x: number) => number | null;
@@ -54,8 +66,6 @@ type Converter = {
   priceAxisWidth: number;
 };
 
-// A backtest fill, pushed in by the shell after a run so trades render on the
-// pro engine the same way they do on the classic view.
 export interface TradeMarker {
   time: number;
   price: number;
@@ -71,17 +81,8 @@ export interface ChartProps {
   candles: Candle[];
   chartType?: ChartType;
   trades?: TradeMarker[];
-  // Indicators computed by the local engine in Python (built-ins and the
-  // user's own), already evaluated and returned with the candles.
   engineIndicators?: EngineIndicatorPayload;
-  // Live quote for the mounted symbol; drawn as MT5-style bid/ask lines.
-  // `synthetic` marks quotes the provider inferred locally for feeds that
-  // stream trade prints only (see lse_terminal/providers/spread.py).
   quote?: { bid: number; ask: number; synthetic?: boolean } | null;
-  // Live sim positions for the mounted symbol, drawn as the engine's
-  // interactive order lines: click selects, SL/TP handles drag, the line's
-  // × closes. Distinct from `trades` (static backtest fills) so a backtest
-  // replay and a live position can coexist without id collisions.
   positions?: Array<{ id: string; price: number; side: 'buy' | 'sell';
     quantity: number; pnl?: number; stopLoss?: number; takeProfit?: number }>;
   onPositionModify?: (id: string, sl?: number, tp?: number) => void;
@@ -90,8 +91,6 @@ export interface ChartProps {
 }
 
 interface TerminalChartProps extends ChartProps {
-  // Imperative indicator overrides from the shell; merged over whatever was
-  // loaded for this instrument.
   indicatorPatch?: Record<string, any> | null;
 }
 
@@ -102,10 +101,6 @@ const TF_MS: Record<string, number> = {
   '1w': 604800000, '1M': 2592000000,
 };
 
-// One row in a context menu. Hover is a JS handler rather than a CSS class
-// because these rows are inline-styled from the shell's vars (Tailwind's
-// hover:bg-muted resolves to the component palette, not the terminal's), and
-// the two chart menus must not drift apart again.
 const ctxRow: React.CSSProperties = {
   display: 'block', width: '100%', padding: '3px 10px',
   background: 'transparent', border: 'none', cursor: 'pointer',
@@ -115,46 +110,26 @@ const onCtxRowIn = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style
 const onCtxRowOut = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.background = 'transparent'; };
 
 function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'candlestick', trades = [], engineIndicators, indicatorPatch = null, quote = null, positions = [], onPositionModify, onPositionClose, autoSelectPositionId = null }: TerminalChartProps) {
-  // ── infinite scrollback (D17) ──────────────────────────────────────────
-  // ProChart scrolls only within the candles it holds and clamps at the
-  // oldest loaded bar; upstream drives more history through onLoadMore,
-  // which this mount never used to wire - so every timeframe stopped at
-  // the first load, and sub-minute books (tape-built, shallow by venue
-  // design) hit that wall in seconds. Here: each edge-touch pages the
-  // engine once for bars strictly older than the oldest held, prepends
-  // them, and bumps prependShift so ProChart's view-shift math keeps the
-  // viewport on the same candles. The server does the venue part (klines
-  // paging, or the real trade tape for tick/<n>s); a window the venue
-  // cannot serve marks the edge exhausted instead of fabricating bars.
   const scrollKey = `${provider}|${symbol}|${timeframe}`;
   const [hist, setHist] = useState<{ key: string; older: Candle[]; shift: number }>(
     { key: scrollKey, older: [], shift: 0 });
-  // New instrument/timeframe: the older pages belong to the old base and
-  // the prepend count no longer means anything for the new one. Reset
-  // during render (React's endorsed "derived state from props" pattern),
-  // and the `key` on ProChart remounts it so its own view state resets too.
   if (hist.key !== scrollKey) setHist({ key: scrollKey, older: [], shift: 0 });
-  const olderExhaustedRef = useRef<string | null>(null);   // key whose left edge is the venue truth
+  const olderExhaustedRef = useRef<string | null>(null);
   const olderLoadingRef = useRef(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const allCandles = useMemo(() => {
     if (!hist.older.length || !candles.length) return candles;
-    // The base array is re-pushed wholesale by the shell (tail merges, full
-    // reloads), so whatever overlaps the base must not be drawn twice.
     const head = candles[0].time;
     return [...hist.older.filter((c) => c.time < head), ...candles];
   }, [hist.older, candles]);
   const handleLoadMore = useCallback(async () => {
-    // 50k bars held is the honest capacity ceiling: past it, older pages
-    // stop rather than let an unbounded tape chew the browser.
     const MAX_HELD = 50000;
     if (olderLoadingRef.current) return;
     if (olderExhaustedRef.current === scrollKey) return;
     const held = allCandles;
     if (!held.length || held.length >= MAX_HELD) return;
-    // Re-entrancy against the newest in-flight payload, not a stale closure.
     const keyNow = scrollKey;
-    const oldest = held[0].time;                            // ms (chart clock)
+    const oldest = held[0].time;
     olderLoadingRef.current = true;
     setIsLoadingMore(true);
     try {
@@ -164,9 +139,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         `&end=${encodeURIComponent(new Date(oldest).toISOString())}`;
       const res = await fetch(q);
       if (!res.ok) {
-        // Venue ran out (engine says so in words): this book's left edge is
-        // documented truth, stop paging. Anything else is transient and may
-        // retry on the next edge-touch.
         let detail = '';
         try { detail = String((await res.json()).detail || ''); } catch { /* keep */ }
         if (/no (history|prints|data)|served no|no real candles/i.test(detail)) {
@@ -180,7 +152,7 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           time: (t < 1e12 ? t * 1000 : t) as number, open: o, high: h,
           low: l, close: c, volume: v,
         }))
-        .filter((c: Candle) => c.time < oldest);   // inclusive end re-serves the seam bar
+        .filter((c: Candle) => c.time < oldest);
       if (!fresh.length) {
         olderExhaustedRef.current = keyNow;
         return;
@@ -190,7 +162,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         : { key: keyNow, older: [...fresh, ...prev.older],
             shift: prev.shift + fresh.length });
     } catch {
-      // network blip: leave history as-is; a later edge-touch retries
     } finally {
       olderLoadingRef.current = false;
       setIsLoadingMore(false);
@@ -199,56 +170,110 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
 
   const [converter, setConverter] = useState<Converter | null>(null);
   const [activeTool, setActiveTool] = useState<DrawingTool>(null);
+  const [edActiveTool, setEdActiveTool] = useState<EDTool>('cursor');
+  const [edCollapsed, setEdCollapsed] = useState(false);
+  const [edMagnet, setEdMagnet] = useState(false);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [indicators, setIndicators] = useState<IndicatorConfig>(DEFAULT_INDICATOR_CONFIG);
   const [drawingsLocked, setDrawingsLocked] = useState(false);
   const [drawingsHidden, setDrawingsHidden] = useState(false);
-  // Indicator management lives in the shell (Python registry browser +
-  // editor); the chart's settings affordances just ask the shell to open it.
+  const [edChartType, setEdChartType] = useState<ChartTypeED>('candles');
+  const [edTf, setEdTf] = useState<EDTF>(ED_ALL_TF[4]);
+  const [edFavs, setEdFavs] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem('ed_fav_tf'); return new Set(s ? JSON.parse(s) : ['1m','5m','15m','1h','4h','1D']); } catch { return new Set(['1m','5m','15m','1h','4h','1D']); }
+  });
+  const [edAppearance, setEdAppearance] = useState<AppearanceSettings>(defaultAppearance);
+  const [edAppearanceOpen, setEdAppearanceOpen] = useState(false);
+  const [edFindOpen, setEdFindOpen] = useState(false);
+  const [edProOpen, setEdProOpen] = useState(false);
+  const [edProFeature, setEdProFeature] = useState('SECONDS PRO');
+  const [edLayersOpen, setEdLayersOpen] = useState(false);
   const openIndicatorBrowser = useCallback(() => {
     window.dispatchEvent(new CustomEvent('lset:open-indicators'));
   }, []);
 
-  // Right-click context menu (site parity: template / reset / flip /
-  // settings). Flip is the site's exact trick: scaleY(-1) on the chart
-  // container. Reset reuses ProChart's own bottom-toolbar button through the
-  // DOM, so the chart's own file stays untouched.
-  // price/ref/trade are snapshotted AT the click: price is the level under
-  // the cursor, ref the live price it is compared against, trade the shell's
-  // tradeInfo. Rendering from live values instead would let a tick crossing
-  // the clicked level flip "Buy Limit" into "Buy Stop" while the user's
-  // pointer is on the row.
+  // EdgeDepth tool mapping: EDTool -> DrawingTool
+  const mapEdToDrawing = useCallback((t: EDTool): DrawingTool => {
+    const map: Record<EDTool, DrawingTool> = {
+      cursor: null,
+      trendline: 'trend',
+      arrow: 'trend',
+      ray: 'trend',
+      extended: 'trend',
+      hline: 'horizontal',
+      hray: 'horizontal',
+      vline: 'vertical',
+      cross: 'horizontal',
+      rectangle: 'rectangle',
+      channel: 'trend',
+      polyline: 'trend',
+      brush: 'brush',
+      fib: 'fibonacci',
+      long: 'long',
+      short: 'short',
+      text: 'text',
+      measure: 'measure',
+      pricerange: 'measure',
+      daterange: 'measure',
+    };
+    return map[t] ?? null;
+  }, []);
+
+  const handleEdToolSelect = useCallback((t: EDTool) => {
+    setEdActiveTool(t);
+    const dt = mapEdToDrawing(t);
+    setActiveTool(dt);
+  }, [mapEdToDrawing]);
+
+  const toggleEdFav = useCallback((label: string) => {
+    setEdFavs(prev => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else {
+        if (next.size >= 6) {
+          const first = next.values().next().value;
+          if (first) next.delete(first);
+        }
+        next.add(label);
+      }
+      try { localStorage.setItem('ed_fav_tf', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  // Sync edChartType to ProChart chartType
+  const proChartType = useMemo((): ChartType => {
+    const map: Record<ChartTypeED, ChartType> = {
+      candles: 'candlestick',
+      fp_cluster: 'footprint_cluster',
+      fp_profile: 'footprint_profile',
+      heikin_ashi: 'heikin_ashi',
+      line: 'line',
+      tpo: 'tpo',
+      renko: 'renko',
+      flow_positioning: 'flow_positioning',
+    };
+    return map[edChartType] || 'candlestick';
+  }, [edChartType]);
+
   const [ctxMenu, setCtxMenu] = useState<{
     x: number; y: number; price: number | null; ref: number | null;
     trade: { available: boolean; symbol?: string; qty?: number | null;
              pendingTypes?: string[] } | null;
   } | null>(null);
   const [tplOpen, setTplOpen] = useState(false);
-  // Template save/delete state: tplSaving shows the inline name input
-  // (window.prompt does not exist in the desktop shell), tplPendingDelete
-  // arms a row's x so deletion is a deliberate second click, tplTick
-  // re-renders after the shell's async save/delete lands so the submenu
-  // reflects the store without closing.
   const [tplSaving, setTplSaving] = useState(false);
   const [tplName, setTplName] = useState('');
   const [tplPendingDelete, setTplPendingDelete] = useState<string | null>(null);
   const [tplErr, setTplErr] = useState('');
   const [, setTplTick] = useState(0);
-  // Pending-order form: clicking "Buy Limit @ x" opens a two-field step
-  // (price and size, both prefilled and editable) instead of firing at the
-  // ticket's size, so the trader can type in the lot size themselves.
-  // Market rows stay one-click; their size is in the label.
   const [ordForm, setOrdForm] = useState<{ side: string; otype: string } | null>(null);
   const [ordPrice, setOrdPrice] = useState('');
   const [ordQty, setOrdQty] = useState('');
   const [ordErr, setOrdErr] = useState('');
   const [flipped, setFlipped] = useState(false);
   const chartAreaRef = useRef<HTMLDivElement | null>(null);
-  // The one commit path for the save row, shared by the Save button and the
-  // Enter key so the two can never drift. A refused save keeps the input
-  // open and says why: silently swallowing it is what made the feature look
-  // like it had no save at all.
   const saveTemplate = async () => {
     const name = tplName.trim();
     if (!name) { setTplErr('name the template first'); return; }
@@ -272,29 +297,17 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     };
   }, [ctxMenu]);
 
-  // The appearance/settings dialog (colours, wicks, background, crosshair,
-  // axis). The panels are the site's own InlineChartSettings panels; edits go
-  // through ChartSettingsContext, which persists to the workspace file and
-  // repaints ProChart live. Opened imperatively by the shell's gear button.
-  // Screen-layout state lives in the shared layoutStore module (the shell's
-  // top-bar Layout button drives it from its own React root).
   const layoutState = useLayoutState();
   const layout = layoutState.layout;
   const syncSettings = layoutState.sync;
 
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [appearanceView, setAppearanceView] = useState<'appearance' | 'chart'>('appearance');
-  // Refs mirror the state so the imperative opener (registered once) never
-  // reads a stale closure.
   const appearanceOpenRef = useRef(appearanceOpen);
   appearanceOpenRef.current = appearanceOpen;
   const appearanceViewRef = useRef(appearanceView);
   appearanceViewRef.current = appearanceView;
   useEffect(() => {
-    // TOGGLE, not open: the shell's buttons must also dismiss the panel on a
-    // second click; open-only felt stuck. With two toolbar doors (Chart
-    // layout -> chart tab, Appearance -> colours tab), a click for the tab
-    // NOT currently shown switches tabs in place instead of closing.
     openAppearanceFn = (view?: 'appearance' | 'chart') => {
       if (!appearanceOpenRef.current) {
         setAppearanceView(view || 'appearance');
@@ -309,24 +322,18 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     };
     return () => { openAppearanceFn = null; };
   }, []);
-  // Escape dismisses the panel like every other popover in the terminal.
   useEffect(() => {
     if (!appearanceOpen) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setAppearanceOpen(false); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [appearanceOpen]);
-  // Drag-to-move: the title strip is the handle. Position is kept in state
-  // (null = default top-right anchor) and clamped to the chart area so the
-  // panel can't be lost off-screen; it resets to the anchor on reopen.
   const appearanceRef = useRef<HTMLDivElement | null>(null);
   const [appearancePos, setAppearancePos] = useState<{ x: number; y: number } | null>(null);
   useEffect(() => { if (!appearanceOpen) setAppearancePos(null); }, [appearanceOpen]);
   const onAppearanceDrag = useCallback((e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest('button')) return;
     const panel = appearanceRef.current;
-    // left/top are relative to the panel's positioned ancestor (the mount
-    // root, which also holds the tool rail), so clamp against that same box.
     const host = panel?.offsetParent as HTMLElement | null;
     if (!host || !panel) return;
     const hr = host.getBoundingClientRect();
@@ -347,11 +354,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     window.addEventListener('pointerup', up);
   }, []);
 
-  // Pre-placement defaults for new drawings. The engine's built-in
-  // default is black, which is correct on the light web chart but almost
-  // invisible on the terminal's dark canvas, so the default here is the
-  // chart's own text colour. Persisted to the workspace file so a user's
-  // preferred colour/width/style ships with their install.
   const [toolSettings, setToolSettings] = useState({
     color: '#e6e8ea',
     strokeWidth: 2,
@@ -370,30 +372,16 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     return () => { alive = false; };
   }, []);
 
-  // Ref wiring, mirroring the upstream contract:
-  //  - requestRedrawRef : overlay -> canvas, forces a repaint in the same frame
-  //                       so drawing-preview badges appear without a React render
-  //  - scrollOffsetRef  : canvas -> overlay, CSS-transform sync while panning
-  //  - drawingCursorRef : overlay -> canvas, live cursor price/time for axis badges
-  //  - scrollSyncRef    : canvas -> overlay, called each scroll frame
   const requestRedrawRef = useRef<(() => void) | null>(null);
   const scrollOffsetRef = useRef<number>(0);
   const scrollSyncRef = useRef<() => void>(() => {});
   const drawingCursorRef = useRef<Array<{ price: number | null; time: number | null; x: number | null }>>([]);
 
-  // Keep the data adapter pointed at whatever the shell is showing, so the
-  // engine's fetch layer resolves history against the right instrument.
   useEffect(() => {
     setEngineContext({ provider, symbol });
   }, [provider, symbol]);
 
-  // Drawings and indicator setups are stored per instrument: switching symbols
-  // must not carry another instrument's trendlines across, and returning to a
-  // symbol must restore exactly what was left there.
   const instrumentKey = `${provider}:${symbol}`;
-
-  // Guards the initial load: without it the empty starting state would be
-  // written back over the saved drawings before the load resolves.
   const loadedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -415,7 +403,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
 
   const handleDrawingsChange = useCallback((next: Drawing[]) => {
     setDrawings(next);
-    // Fire-and-forget: persistence must never block the drawing interaction.
     if (loadedKeyRef.current === instrumentKey) {
       void api.setDrawings(instrumentKey, next);
     }
@@ -443,24 +430,12 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     setSelectedDrawingId(null);
   }, [drawings, handleDrawingsChange]);
 
-  // Python indicators from the engine ride in as precomputed customIndicators,
-  // so they draw alongside the chart's own registry rather than in a separate
-  // widget. Recomputed only when the candles or the payload change.
   const withEngineIndicators = useMemo(() => {
     const custom = toCustomIndicators(engineIndicators, allCandles);
     if (!custom.length) return indicators;
     return { ...indicators, customIndicators: custom } as IndicatorConfig;
   }, [indicators, engineIndicators, allCandles]);
 
-  // Candle/background/grid colours come from the user's saved chart settings
-  // (the Appearance panel edits them); without this the colors prop is static
-  // and Appearance edits repaint nothing. Two regimes, switched by
-  // hasSavedAppearance (NOT by comparing values to defaults; the old
-  // value-equals-default heuristic silently ignored any setting matching the
-  // site's light palette, which mangled a saved white-background/gray-grid
-  // theme into dark-with-wrong-grid):
-  //   - user has saved appearance: apply the saved settings VERBATIM.
-  //   - fresh profile, nothing saved: the terminal's dark base.
   const chartSettings = useChartSettings();
   const hasSavedAppearance = useHasSavedAppearance();
   const colors = useMemo(() => {
@@ -487,27 +462,13 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
       bearishWick: c.wickBearish,
     };
   }, [chartSettings, hasSavedAppearance]);
-  // The settings panel's Timezone pick (data.timezone, default "local") must
-  // be passed to ProChart explicitly: the prop's own default is 'UTC', so
-  // omitting it pinned every axis/crosshair/badge time to raw UTC and made
-  // the Timezone setting a silent no-op (AAPL bar times rendered shifted
-  // by the UTC offset).
   const chartTimezone = chartSettings?.data?.timezone || 'local';
   const timeframeMs = TF_MS[timeframe] ?? 3600000;
   const livePrice = candles.length ? candles[candles.length - 1].close : null;
 
-  // Bar-close countdown for the axis price badge: blank while the
-  // instrument's market is closed, else the remaining time in compact
-  // h:mm:ss form. The site's long "21:00 (16m 45s)" format only fits its
-  // 110px axis because the RightToolbar gap pads it; with rightOffset=0 the
-  // terminal's axis is sized to the price text alone, and ProChart draws the
-  // countdown row unclipped, so a wider string would paint over the candles.
   const [countdown, setCountdown] = useState('');
   useEffect(() => {
     const tick = () => {
-      // A tick chart has no bar interval, so there is no close to count
-      // down to; without this guard the TF_MS fallback shows a bogus
-      // 1-hour countdown on the price badge.
       if (timeframe === 'tick') { setCountdown(''); return; }
       if (!symbol || !isMarketOpenForPair(symbol)) { setCountdown(''); return; }
       const now = Date.now();
@@ -524,16 +485,11 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     return () => clearInterval(id);
   }, [symbol, timeframeMs, timeframe]);
 
-  // How many indicators are switched on, for the tool rail's badge.
   const indicatorCount = useMemo(
     () => Object.values(indicators || {}).filter((v: any) => v && v.enabled).length,
     [indicators]
   );
 
-  // Backtest fills are rendered through the chart's own position-line layer,
-  // which is what draws entry markers on the live charts. Live sim positions
-  // ride the same layer with their real ids so select/modify/close route back
-  // to the right /api/sim position.
   const positionLines = useMemo(
     () => [
       ...trades.map((t, i) => ({
@@ -549,37 +505,85 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
     [trades, positions, symbol]
   );
 
-  // The shell initialises its symbol to null, and a JS default parameter only
-  // fills `undefined` - an explicit null reaches the chart and throws inside
-  // the symbol-classification helpers. Guard here rather than editing the
-  // chart component, so it stays unmodified.
   if (!symbol) {
     return <div className="h-full w-full" />;
   }
 
   return (
-    <div className="relative h-full w-full flex">
-      {/* Tool rail: the chart's drawing-tools panel, so every one of the
-          engine's 33 drawing tools is reachable exactly as on the live chart. */}
-      {/* The rail wears the SHELL's chrome vars, not the chart palette: it
-          must follow the terminal's light/dark class like every other panel. */}
-      <div className="shrink-0 border-r border-[var(--edge)] bg-[var(--panel)] overflow-y-auto">
-        <DrawingToolsPanel
-          activeTool={activeTool}
-          onToolSelect={setActiveTool}
-          drawings={drawings}
-          onClearAllDrawings={clearAllDrawings}
-          selectedDrawingId={selectedDrawingId}
-          onDeleteSelectedDrawing={deleteDrawing}
-          drawingsLocked={drawingsLocked}
-          onToggleLock={() => setDrawingsLocked((v) => !v)}
-          drawingsHidden={drawingsHidden}
-          onToggleHide={() => setDrawingsHidden((v) => !v)}
-          indicatorCount={indicatorCount}
-          onClearIndicators={() => handleIndicatorsChange(DEFAULT_INDICATOR_CONFIG)}
-          onOpenSettings={openIndicatorBrowser}
-        />
+    <div className="relative h-full w-full flex flex-col bg-[#1c1c1c]">
+      {/* EdgeDepth topbar — exact UI but zinc */}
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-[#3a3a3a] bg-[#2a2a2a] text-[11px] shrink-0 flex-wrap">
+        <span className="font-bold tracking-wider opacity-80 text-[#e8e8e8]">EDGEDEPTH</span>
+        <span className="font-mono font-semibold text-[#e8e8e8] ml-1">{symbol}</span>
+        <div className="flex items-center gap-0.5 ml-2">
+          {(['binance','coinbase','hyperliquid'] as const).map(p => (
+            <button key={p} onClick={() => { try { (window as any).__lseShell?.setProvider?.(p); } catch {} }} className={`px-1.5 py-0.5 text-[9px] rounded border ${provider===p?'bg-[#21b3a4] text-black border-[#21b3a4] font-bold':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9] hover:bg-[#343434]'}`} title={`${p} ${p==='hyperliquid'?'15ms ⚡ ultra-fast':p==='binance'?'20ms fast':'50ms'}`}>{p==='hyperliquid'?'HL ⚡':p==='binance'?'BINANCE':'COINBASE'}</button>
+          ))}
+        </div>
+        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#262626] border border-[#3a3a3a] text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡15ms':provider==='binance'?'20ms':provider==='coinbase'?'50ms':''} • {timeframe} • LIVE</span>
+        <div className="ml-2">
+          <EdgeDepthTimeframeBar value={edTf} onChange={(tf) => { if ((tf as any).pro) { setEdProFeature('SECONDS PRO'); setEdProOpen(true); } else setEdTf(tf); }} favs={edFavs} onToggleFav={toggleEdFav} />
+        </div>
+        <div className="ml-1">
+          <EdgeDepthChartTypePicker value={edChartType} onChange={setEdChartType} />
+        </div>
+        <select value={layoutState.panelKinds[0] || 'chart'} onChange={e => layoutStore.setPanelKind(0, e.target.value as any)} className="ml-1 bg-[#262626] border border-[#3a3a3a] rounded px-1 py-0.5 text-[10px] text-[#e8e8e8]">
+          <option value="chart">Chart</option>
+          <option value="edgedepth">EdgeDepth Heatmap</option>
+          <option value="depth">Depth Heat</option>
+          <option value="orderflow">Orderflow</option>
+          <option value="dom">DOM</option>
+          <option value="tape">Tape</option>
+          <option value="footprint">Footprint</option>
+          <option value="vpvr">VPVR</option>
+          <option value="tpo">TPO</option>
+          <option value="cvd">CVD</option>
+          <option value="liquidations">Liquidations</option>
+          <option value="watchlist">Watchlist 1503</option>
+          <option value="indicators">Indicators</option>
+        </select>
+        <div className="flex items-center gap-1 ml-1">
+          <EdgeDepthWidgetMenu onSelect={(id) => layoutStore.setPanelKind(0, id as any)} />
+          <button onClick={() => setEdLayersOpen(v => !v)} className="px-2 py-0.5 bg-[#262626] border border-[#3a3a3a] rounded text-[10px] text-[#e8e8e8] hover:bg-[#343434]">Layers {edLayersOpen?'▲':'▼'}</button>
+          <button onClick={() => setEdFindOpen(true)} className="px-2 py-0.5 bg-[#262626] border border-[#3a3a3a] rounded text-[10px] text-[#e8e8e8] hover:bg-[#343434]">Find Symbol</button>
+        </div>
+        <div className="ml-auto flex items-center gap-1">
+          <span className="text-[10px] text-[#b9b9b9]">RT</span>
+          <div className="w-2 h-2 rounded-full bg-[#21b3a4] animate-pulse" title="follow-live streaming" />
+          <button onClick={() => { setEdProFeature('RT MODE'); setEdProOpen(true); }} className="px-1.5 py-0.5 rounded border border-[#3a3a3a] text-[9px] bg-[#21b3a4]/20 text-[#21b3a4] hover:bg-[#21b3a4]/30">RT MODE ●</button>
+          <button onClick={() => setEdAppearanceOpen(v => !v)} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">⚙ Appearance</button>
+          <button onClick={openIndicatorBrowser} className="px-2 py-0.5 rounded border border-[#3a3a3a] text-[10px] hover:bg-[#343434] text-[#e8e8e8]">Indicators</button>
+        </div>
       </div>
+      <div className="relative flex-1 min-h-0 w-full flex">
+        <EdgeDepthDrawingRail
+          activeTool={edActiveTool}
+          onToolSelect={handleEdToolSelect}
+          magnet={edMagnet}
+          onToggleMagnet={() => setEdMagnet(v => !v)}
+          hiddenAll={drawingsHidden}
+          onToggleHidden={() => setDrawingsHidden(v => !v)}
+          onClearAll={clearAllDrawings}
+          collapsed={edCollapsed}
+          onToggleCollapsed={() => setEdCollapsed(v => !v)}
+        />
+        <div className="hidden">
+          <DrawingToolsPanel
+            activeTool={activeTool}
+            onToolSelect={setActiveTool}
+            drawings={drawings}
+            onClearAllDrawings={clearAllDrawings}
+            selectedDrawingId={selectedDrawingId}
+            onDeleteSelectedDrawing={deleteDrawing}
+            drawingsLocked={drawingsLocked}
+            onToggleLock={() => setDrawingsLocked((v) => !v)}
+            drawingsHidden={drawingsHidden}
+            onToggleHide={() => setDrawingsHidden((v) => !v)}
+            indicatorCount={indicatorCount}
+            onClearIndicators={() => handleIndicatorsChange(DEFAULT_INDICATOR_CONFIG)}
+            onOpenSettings={openIndicatorBrowser}
+          />
+        </div>
 
       <div
         ref={chartAreaRef}
@@ -589,10 +593,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           e.preventDefault();
           setTplOpen(false);
           setOrdForm(null); setOrdErr('');
-          // Price under the cursor, for the menu's trading rows. Only the
-          // single-pane chart has a converter; the multi-grid keeps the menu
-          // but without trading. The flipped chart is pure CSS scaleY(-1),
-          // so the screen y is mirrored back before the converter sees it.
           let price: number | null = null;
           if (layout === '1x1' && converter && chartAreaRef.current) {
             const r = chartAreaRef.current.getBoundingClientRect();
@@ -603,8 +603,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           const trade = (window as any).__lseShell?.tradeInfo?.() || null;
           setCtxMenu({
             x: Math.min(e.clientX, window.innerWidth - 240),
-            // taller menu when the trading rows render; the clamp keeps the
-            // whole thing on screen for clicks near the bottom edge
             y: Math.min(e.clientY, window.innerHeight - (trade?.available ? 360 : 230)),
             price, ref: livePrice, trade,
           });
@@ -621,125 +619,132 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             sourceProvider={provider}
           />
         ) : (layoutState.panelKinds[0] === 'depth' ? (
-          // F1: the single-pane view flips to Depth Heat exactly like the
-          // multi-grid panels do — the 🔥 corner button is on both now.
-          // sourceProvider pins the pane's book to the charted symbol's own
-          // source (binance BTCUSDT → the binance book).
-          <DepthHeatPane
-            symbol={symbol}
-            sourceProvider={provider}
-            colors={colors}
-            onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
-          />
+          <Suspense fallback={<Fallback />}>
+            <DepthHeatPane
+              symbol={symbol}
+              sourceProvider={provider}
+              colors={colors}
+              onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
+            />
+          </Suspense>
+        ) : (layoutState.panelKinds[0] === 'edgedepth' ? (
+          <Suspense fallback={<Fallback />}>
+            <EdgeDepthHeatmapPane
+              symbol={symbol}
+              provider={provider}
+              onToggleKind={() => layoutStore.setPanelKind(0, 'chart')}
+            />
+          </Suspense>
+        ) : (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'].includes(layoutState.panelKinds[0] as string) ? (
+          <Suspense fallback={<Fallback />}>
+            {(() => {
+              const kind = layoutState.panelKinds[0] as string;
+              if (kind === 'orderflow') return <OrderflowPanel symbol={symbol} provider={provider} colors={colors} />;
+              if (kind === 'dom') return <EdgeDepthDOMPanel symbol={symbol} provider={provider} />;
+              if (kind === 'tape') return <EdgeDepthTapePanel symbol={symbol} provider={provider} />;
+              if (kind === 'footprint') return <FootprintPanel symbol={symbol} provider={provider} />;
+              if (kind === 'vpvr') return <VolumeProfilePanel symbol={symbol} provider={provider} />;
+              if (kind === 'tpo') return <TPOPanel symbol={symbol} provider={provider} />;
+              if (kind === 'cvd') return <CVDPanel symbol={symbol} provider={provider} />;
+              if (kind === 'liquidations') return <LiquidationPanel symbol={symbol} provider={provider} />;
+              if (kind === 'watchlist') return <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />;
+              if (kind === 'indicators') return <EdgeDepthIndicatorsPanel symbol={symbol} provider={provider} />;
+              return <OrderflowPanel symbol={symbol} provider={provider} colors={colors} />;
+            })()}
+          </Suspense>
         ) : (<>
-        <ProChart
-          key={scrollKey}
-          candles={allCandles}
-          symbol={symbol}
-          timeframe={timeframe}
-          chartType={chartType}
-          onLoadMore={handleLoadMore}
-          isLoadingMore={isLoadingMore}
-          prependShift={hist.shift}
-          livePrice={livePrice}
-          countdown={countdown}
-          timezone={chartTimezone}
-          // The terminal has no RightToolbar icon strip overlaying the price
-          // axis, so the site's 48px toolbar gap collapses to a 6px breathing
-          // margin: 0 put the digits hard against the window edge, 48 was
-          // ~50px of dead space.
-          rightOffset={6}
-          colors={colors}
-          indicators={withEngineIndicators}
-          onIndicatorsChange={handleIndicatorsChange}
-          // Removing a Python/engine indicator is the SHELL's action, not the
-          // chart's: withEngineIndicators rebuilds customIndicators from the
-          // engine payload on every render, so anything the chart deleted
-          // locally would reappear on the next paint. This drops it from the
-          // shell's active list, exactly like its chip's ×.
-          onRemoveEngineIndicator={(label) => (window as any).__lseShell?.removeIndicator?.(label)}
-          // Same reason for editing: the chart holds only the precomputed
-          // series, so "Settings..." reopens the shell's parameter editor,
-          // exactly what clicking the indicator's chip does. editIndicator
-          // returns false when no active indicator carries that label (a label
-          // the chart derived from the payload no longer matching the shell's
-          // list); fall back to the indicator browser rather than leave the
-          // legend's gear looking dead, which is the failure the engine rows'
-          // trash button already had once.
-          onEditEngineIndicator={(label) => {
-            if (!(window as any).__lseShell?.editIndicator?.(label)) openIndicatorBrowser();
-          }}
-          drawings={drawings}
-          selectedDrawingId={selectedDrawingId}
-          drawingCursorRef={drawingCursorRef}
-          requestRedrawRef={requestRedrawRef}
-          scrollOffsetRef={scrollOffsetRef}
-          onScrollSync={() => scrollSyncRef.current?.()}
-          onConverterReady={setConverter}
-          onOpenSettings={openIndicatorBrowser}
-          positionLines={positionLines}
-          onPositionModify={onPositionModify}
-          onPositionClose={onPositionClose}
-          autoSelectPositionId={autoSelectPositionId}
-          // Broker-convention quote lines: drawn only from a real live quote
-          // (never the hardcoded fallback table; showBidAskSpread stays off
-          // until the first quoted tick arrives, so the renderer's
-          // getSpreadForSymbol branch is unreachable).
-          showBidAskSpread={!!quote}
-          brokerBid={quote?.bid ?? null}
-          brokerAsk={quote?.ask ?? null}
-        />
-        <ChartDrawingOverlay
-          activeTool={activeTool}
-          onToolSelect={setActiveTool}
-          drawings={drawings}
-          onDrawingsChange={handleDrawingsChange}
-          selectedDrawingId={selectedDrawingId}
-          onSelectDrawing={setSelectedDrawingId}
-          converter={converter}
-          scrollSyncRef={scrollSyncRef}
-          scrollOffsetRef={scrollOffsetRef}
-          drawingCursorRef={drawingCursorRef}
-          requestRedrawRef={requestRedrawRef}
-          toolSettings={toolSettings}
-          isLocked={drawingsLocked}
-          isHidden={drawingsHidden}
-          currentSymbol={symbol}
-          timeframeMs={timeframeMs}
-          currentPrice={livePrice ?? undefined}
-          candles={candles}
-        />
-        {((layoutState.panelKinds as (string | undefined)[])[0] !== 'depth') && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              layoutStore.setPanelKind(0, 'depth');
-            }}
-            title="Open the Depth Heat (order-flow liquidity heatmap) pane"
-            style={{
-              position: 'absolute', top: 4, right: 4, zIndex: 5,
-              background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
-              border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
-              fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
-            }}
-          >🔥 depth</button>
+        {allCandles.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0b0e11] text-[#d1d4dc] text-[13px] font-mono p-4 text-center">
+            <div className="font-bold">Loading {symbol} {timeframe} — {provider.toUpperCase()}</div>
+            <div className="text-[11px] opacity-70 mt-2">Provider {provider} • TF {timeframe} • {provider==='hyperliquid'?'15ms ultra-fast ⚡':provider==='binance'?'20ms fast':provider==='coinbase'?'50ms':''}</div>
+            <div className="text-[10px] opacity-50 mt-3">If stuck, fallback to DEMO active — check console for /api/candles errors</div>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => window.location.reload()} className="px-3 py-1 bg-[#2962ff] text-white rounded text-[11px]">Reload</button>
+              <button onClick={() => { try{ localStorage.removeItem('lset-layout-kinds'); }catch{}; window.location.reload(); }} className="px-3 py-1 bg-[#1e222d] border border-[#2a2e39] rounded text-[11px]">Reset Panes</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <ProChart
+              key={scrollKey}
+              candles={allCandles}
+              symbol={symbol}
+              timeframe={timeframe}
+              chartType={proChartType}
+              onLoadMore={handleLoadMore}
+              isLoadingMore={isLoadingMore}
+              prependShift={hist.shift}
+              livePrice={livePrice}
+              countdown={countdown}
+              timezone={chartTimezone}
+              rightOffset={6}
+              colors={colors}
+              indicators={withEngineIndicators}
+              onIndicatorsChange={handleIndicatorsChange}
+              onRemoveEngineIndicator={(label) => (window as any).__lseShell?.removeIndicator?.(label)}
+              onEditEngineIndicator={(label) => {
+                if (!(window as any).__lseShell?.editIndicator?.(label)) openIndicatorBrowser();
+              }}
+              drawings={drawings}
+              selectedDrawingId={selectedDrawingId}
+              drawingCursorRef={drawingCursorRef}
+              requestRedrawRef={requestRedrawRef}
+              scrollOffsetRef={scrollOffsetRef}
+              onScrollSync={() => scrollSyncRef.current?.()}
+              onConverterReady={setConverter}
+              onOpenSettings={openIndicatorBrowser}
+              positionLines={positionLines}
+              onPositionModify={onPositionModify}
+              onPositionClose={onPositionClose}
+              autoSelectPositionId={autoSelectPositionId}
+              showBidAskSpread={!!quote}
+              brokerBid={quote?.bid ?? null}
+              brokerAsk={quote?.ask ?? null}
+            />
+            <ChartDrawingOverlay
+              activeTool={activeTool}
+              onToolSelect={setActiveTool}
+              drawings={drawings}
+              onDrawingsChange={handleDrawingsChange}
+              selectedDrawingId={selectedDrawingId}
+              onSelectDrawing={setSelectedDrawingId}
+              converter={converter}
+              scrollSyncRef={scrollSyncRef}
+              scrollOffsetRef={scrollOffsetRef}
+              drawingCursorRef={drawingCursorRef}
+              requestRedrawRef={requestRedrawRef}
+              toolSettings={toolSettings}
+              isLocked={drawingsLocked}
+              isHidden={drawingsHidden}
+              currentSymbol={symbol}
+              timeframeMs={timeframeMs}
+              currentPrice={livePrice ?? undefined}
+              candles={candles}
+            />
+            {((layoutState.panelKinds as (string | undefined)[])[0] !== 'depth') && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  layoutStore.setPanelKind(0, 'depth');
+                }}
+                title="Open the Depth Heat pane"
+                style={{
+                  position: 'absolute', top: 4, right: 4, zIndex: 5,
+                  background: 'rgba(20, 24, 30, 0.75)', color: '#9aa4b2',
+                  border: '1px solid var(--edge, #2a2e39)', borderRadius: 3,
+                  fontSize: 9, padding: '1px 5px', cursor: 'pointer', opacity: 0.85,
+                }}
+              >🔥 depth</button>
+            )}
+          </>
         )}
-        </>))}
+        </>))))}
       </div>
 
-      {/* The built-in indicator dialog is retired: the indicator library is
-          Python, so the rail's indicator button opens the SHELL's browser
-          (every registry indicator plus the user's own), via the
-          lset:open-indicators event the shell listens for. */}
-
-      {/* Chart colours & settings: floats over the chart's top-right, same
-          panels the site serves from its layout button. */}
       {appearanceOpen && (
         <div
           ref={appearanceRef}
           className="absolute z-[95] w-80"
-          // Opaque shell chrome by explicit vars (the tokens also resolve now,
-          // but the panel over live candles must never depend on them again).
           style={{
             ...(appearancePos
               ? { left: appearancePos.x, top: appearancePos.y }
@@ -749,8 +754,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
             borderRadius: 3,
             boxShadow: '0 10px 32px var(--shadow)',
           }}>
-          {/* Title strip = drag handle (grab anywhere that isn't the close
-              button). Micro-label styling to match the shell's section heads. */}
           <div
             onPointerDown={onAppearanceDrag}
             className="flex items-center justify-between px-3 py-1.5 select-none"
@@ -789,9 +792,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
               ? <AppearancePanel hideHeader onBack={() => setAppearanceOpen(false)} />
               : <ChartSettingsPanel hideHeader onBack={() => setAppearanceOpen(false)} />}
           </div>
-          {/* Done = the explicit exit. Every control above saves as it
-              changes, so Done only closes; it exists because a panel whose
-              only way out is the tiny x reads as unfinished business. */}
           <div
             className="flex justify-end px-3 py-2"
             style={{ borderTop: '1px solid var(--edge)' }}>
@@ -809,20 +809,24 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
         </div>
       )}
 
-      {/* Right-click menu. Rendered OUTSIDE the flippable container so it
-          never renders upside down. Templates come from the shell's LAYOUTS
-          zone over the window bridge. */}
+      {edAppearanceOpen && (
+        <div className="absolute top-10 right-2 z-[90]">
+          <EdgeDepthAppearancePanel settings={edAppearance} onChange={setEdAppearance} onClose={() => setEdAppearanceOpen(false)} />
+        </div>
+      )}
+      {edLayersOpen && (
+        <div className="absolute top-10 left-[320px] z-[90]">
+          <Suspense fallback={<div className="p-2 text-[10px] text-[#b9b9b9]">Loading layers…</div>}>
+            <EdgeDepthLayers onChange={() => {}} />
+          </Suspense>
+        </div>
+      )}
+      <EdgeDepthFindSymbol open={edFindOpen} onClose={() => setEdFindOpen(false)} onSelect={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />
+      <EdgeDepthProModal open={edProOpen} onClose={() => setEdProOpen(false)} feature={edProFeature} />
       {ctxMenu && (
-        // Shell chrome by explicit vars, matching #conn-menu in style.css and
-        // the indicator panel menu ProChart draws: same surface, hairline
-        // border, 2px corners, 12px dense rows. The Tailwind popover tokens it
-        // used before rendered a rounded, airy card that read as generic
-        // dashboard chrome next to the rest of the terminal.
         <div
           className="fixed z-[110]"
           style={{
-            // 190 not 170: the Chart template row puts a caret hard right, and
-            // a tighter box collides it with the label.
             left: ctxMenu.x, top: ctxMenu.y, minWidth: 190,
             padding: '2px 0 6px',
             background: 'var(--panel)', border: '1px solid var(--edge)',
@@ -831,22 +835,11 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Trading rows (MT-style): market both ways, then the pending
-              orders that are VALID at the clicked level: below the market a
-              buy rests as a limit and a sell as a stop, above it the mirror.
-              Offering all four and letting the broker refuse half is the MT4
-              greyed-row pattern; showing only the two that can rest reads
-              cleaner and cannot invite a guaranteed rejection. All values
-              come from the click snapshot, the placement itself is the
-              ticket's (qty box, broker routing, result message). */}
           {ctxMenu.trade?.available && (() => {
             const t = ctxMenu.trade!;
             const fp = (p: number) =>
               (window as any).__lseShell?.fmtPrice?.(p) ?? String(p);
             const cap = (s: string) => s === 'limit' ? 'Limit' : 'Stop';
-            // The two-field step for a pending order. Both values are
-            // editable: the click picked a level by eye, and the size the
-            // ticket happens to hold is not a decision the trader made here.
             if (ordForm) {
               const inp: React.CSSProperties = {
                 flex: 1, minWidth: 0, padding: '3px 6px', fontSize: 12,
@@ -930,14 +923,8 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
                       setCtxMenu(null);
                       return;
                     }
-                    // pending: open the price/size step in place of the rows
                     e.stopPropagation();
                     setOrdForm({ side: r.side, otype: r.otype });
-                    // NOT fp(): the shell's fmt is a display rounding (2dp
-                    // between 10 and 1000) and would move an FX level by
-                    // most of a pip (184.577 -> "184.58"). The prefill is
-                    // the order's actual price, so it keeps working
-                    // precision by magnitude.
                     setOrdPrice(p != null
                       ? String(+p.toFixed(p >= 1000 ? 2 : p >= 100 ? 3 : p >= 1 ? 4 : 6))
                       : '');
@@ -951,9 +938,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           })()}
           <button
             className="w-full text-left"
-            // display must be set HERE, not via a flex class: ctxRow's inline
-            // display:block wins over Tailwind and left the caret glued to the
-            // label instead of pushed to the right edge.
             style={{ ...ctxRow, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}
             onMouseEnter={onCtxRowIn} onMouseLeave={onCtxRowOut}
             onClick={() => setTplOpen((v) => !v)}
@@ -973,7 +957,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
                   onClick={() => { (window as any).__lseShell?.applyLayout?.(l.id); setCtxMenu(null); }}
                 >
                   <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
-                  {/* Two-click delete: first click arms, second deletes. */}
                   <button
                     title={tplPendingDelete === l.id ? 'Click again to delete' : 'Delete template'}
                     style={{
@@ -991,11 +974,6 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
                   >{tplPendingDelete === l.id ? 'sure?' : '×'}</button>
                 </div>
               ))}
-              {/* Save door: an inline name input in the submenu itself, with
-                  the Save button beside it. The button is not decoration:
-                  before it existed the row turned into a bare text box whose
-                  only commit was a blind Enter, and the menu then offered
-                  nothing labelled save at all. Enter still works. */}
               {tplSaving ? (
                 <div
                   style={{ display: 'flex', gap: 4, margin: '3px 12px 5px', alignItems: 'center' }}
@@ -1076,16 +1054,11 @@ function TerminalChart({ provider, symbol, timeframe, candles, chartType = 'cand
           >Settings...</button>
         </div>
       )}
+      </div>
     </div>
   );
 }
 
-// ── imperative shell API ────────────────────────────────────────────────────
-
-// ── multi-pane charts (screen layout, up to 8) ──────────────────────────────
-// Each secondary pane is a self-contained light chart: ProChart only, no
-// drawing rail/overlay (drawings stay a primary-pane feature), own root and
-// props. The shell owns the grid, symbols and data; this is just the renderer.
 function PaneChart({ symbol, timeframe, candles, quote }: {
   symbol: string; timeframe: string; candles: Candle[];
   quote?: { bid: number; ask: number } | null;
@@ -1105,8 +1078,6 @@ function PaneChart({ symbol, timeframe, candles, quote }: {
       rightOffset={6}
       colors={colors}
       indicators={DEFAULT_INDICATOR_CONFIG}
-      // Same timezone wiring as the primary chart: without the prop ProChart
-      // defaults to 'UTC' and ignores the user's Timezone setting.
       timezone={chartSettings?.data?.timezone || 'local'}
       showBidAskSpread={!!quote}
       brokerBid={quote?.bid ?? null}
@@ -1150,9 +1121,6 @@ const LSEChartPanes = {
   },
 };
 
-// The top-bar Layout trigger (the site's grid-preset + sync-toggle picker),
-// mounted by the shell into #sl-slot via LSEChart.mountLayoutButton. It talks
-// to the chart root only through layoutStore.
 function LayoutButton() {
   const s = useLayoutState();
   return (
@@ -1168,12 +1136,7 @@ function LayoutButton() {
 }
 
 let root: Root | null = null;
-// Registered by the mounted TerminalChart; lets the shell's gear button open
-// the appearance dialog without owning any React state.
 let openAppearanceFn: ((view?: 'appearance' | 'chart') => void) | null = null;
-// Indicator overrides pushed in imperatively via LSEChart.setIndicators().
-// Kept outside props because indicators are otherwise owned per-symbol by the
-// component (loaded from, and saved to, the workspace file).
 let indicatorPatch: Record<string, any> | null = null;
 let props: ChartProps = {
   provider: 'demo', symbol: '', timeframe: '1h', candles: [],
@@ -1182,13 +1145,6 @@ let props: ChartProps = {
 
 function render() {
   if (!root) return;
-  // ChartSettingsProvider is required by ProChart and its settings dialogs; it
-  // is the single source of truth for the chart's appearance settings and is
-  // backed by the workspace file via lib/api.
-  // MemoryRouter: some chart components (the sign-in modal reached from the
-  // tool rail) call useNavigate, which throws without a Router ancestor. The
-  // terminal has no routes of its own, so an in-memory router satisfies them
-  // without touching the shell's URL.
   root.render(
     <MemoryRouter>
       <ChartSettingsProvider>
@@ -1198,9 +1154,6 @@ function render() {
   );
 }
 
-// The shell and the engine name chart types differently: the shell
-// offers candles/bars/line/area, the engine takes candlestick/line/area/renko.
-// Normalise here so the shell's existing <select> keeps working unchanged.
 const CHART_TYPE_ALIASES: Record<string, ChartType> = {
   candles: 'candlestick',
   bars: 'candlestick',
@@ -1208,27 +1161,26 @@ const CHART_TYPE_ALIASES: Record<string, ChartType> = {
   line: 'line',
   area: 'area',
   renko: 'renko',
+  heikin_ashi: 'heikin_ashi',
+  heikin: 'heikin_ashi',
+  tpo: 'tpo',
+  footprint_cluster: 'footprint_cluster',
+  fp_cluster: 'footprint_cluster',
+  footprint_profile: 'footprint_profile',
+  fp_profile: 'footprint_profile',
+  flow_positioning: 'flow_positioning',
+  flow: 'flow_positioning',
 };
 
-// Any timestamp below this is far too small to be milliseconds (it would be
-// 1970), so it is epoch seconds and needs scaling. Using a threshold rather
-// than a flag keeps the bridge correct whichever unit a provider hands back.
 const MS_THRESHOLD = 1e12;
 
 function normalise(next: Partial<ChartProps>): Partial<ChartProps> {
   const out: Partial<ChartProps> = { ...next };
   if (next.chartType) out.chartType = CHART_TYPE_ALIASES[next.chartType] ?? 'candlestick';
-  // Null symbols come from the shell before an instrument is selected. Only
-  // touch the key when the caller actually supplied it: update() is used for
-  // partial pushes (chart type alone, trades alone), and coercing an absent
-  // symbol to '' would blank the chart on every one of them.
   if ('symbol' in next && !next.symbol) out.symbol = '';
-  // The engine emits epoch SECONDS; the chart does `new Date(candle.time)`
-  // throughout, which is milliseconds. Without this every bar lands in Jan 1970.
   if (next.candles?.length && next.candles[0].time < MS_THRESHOLD) {
     out.candles = next.candles.map((c) => ({ ...c, time: c.time * 1000 }));
   }
-  // Trade markers arrive on the same clock as the candles.
   if (next.trades?.length && next.trades[0].time < MS_THRESHOLD) {
     out.trades = next.trades.map((t) => ({ ...t, time: t.time * 1000 }));
   }
@@ -1239,13 +1191,9 @@ const LSEChart = {
   async mount(el: HTMLElement, initial: Partial<ChartProps> = {}) {
     props = { ...props, ...normalise(initial) };
     if (!root) root = createRoot(el);
-    // Preferences must be hydrated BEFORE the first render, or the components
-    // read empty defaults and immediately overwrite what the user had saved.
     await initWorkspaceBridge();
     render();
   },
-  // Partial update so the shell can push just a symbol or just new candles
-  // without having to restate the whole prop set.
   update(next: Partial<ChartProps>) {
     props = { ...props, ...normalise(next) };
     render();
@@ -1254,110 +1202,70 @@ const LSEChart = {
     root?.unmount();
     root = null;
   },
-  // Opens the chart colours/settings dialog (shell toolbar buttons).
-  // view picks the tab: 'appearance' (colours) or 'chart' (timezone, zoom);
-  // omitted keeps the old open-on-appearance behaviour.
   openAppearance(view?: 'appearance' | 'chart') {
     openAppearanceFn?.(view);
   },
-  // Drop a cached workspace section after the shell writes it directly over
-  // HTTP (layout apply restores chart settings), so a remount re-reads the
-  // file instead of the stale in-memory copy.
   invalidateWorkspaceSection(section: string) {
     invalidateSection(section as any);
   },
-  // Indicator control for the shell (and for automated checks). Merges over
-  // the current config so callers can flip one indicator without restating
-  // the whole registry.
   setIndicators(patch: Record<string, any>) {
     indicatorPatch = { ...(indicatorPatch || {}), ...patch };
     render();
   },
-  // The indicator keys this chart understands, so a caller can enumerate them
-  // rather than hardcoding a list that drifts from the registry.
   indicatorKeys(): string[] {
     return Object.keys(DEFAULT_INDICATOR_CONFIG);
   },
-  // The registry's default parameters. Callers enabling an indicator should
-  // start from these: several indicators carry required arrays/periods, and
-  // an `{enabled:true}` with no parameters is not a valid config.
   indicatorDefaults(): Record<string, any> {
     return JSON.parse(JSON.stringify(DEFAULT_INDICATOR_CONFIG));
   },
 };
 
-// -- manual backtesting (bar replay) ----------------------------------------
-//
-// A second imperative surface on the same bundle: the shell's BACKTEST mode
-// chooser mounts this when the user picks Manual. It reproduces the website's
-// /backtest flow verbatim: the setup dialog (symbol, timeframe, start
-// date/time, timezone, capital, spread) navigates to /backtest/:pair inside a
-// MemoryRouter, where the Backtesting page runs the replay. Keeping the
-// router contract identical is what lets both page components stay unmodified.
-
+// -- manual backtesting (bar replay) --
+// Now code-split: BacktestingPage + dialog are lazy chunks.
 import { Routes, Route, useLocation, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster as SonnerToaster } from 'sonner';
-import Backtesting from '@/pages/Backtesting';
-import BacktestingSetupDialog from '@/components/backtesting/BacktestingSetupDialog';
 
-// Some chart components reach for react-query hooks; upstream the whole app
-// sits under one QueryClientProvider, so the backtest mount provides its own.
 const btQueryClient = new QueryClient();
-
-// Whether the replay route is currently mounted. The setup dialog closes
-// itself both on cancel AND right after a successful start (navigate() then
-// onOpenChange(false)), and by the time the close settles the setup component
-// has unmounted, so it cannot ask the router which of the two happened. The
-// replay route flips this flag on mount instead.
 const btNav = { inReplay: false };
 
 function ManualBacktestSetup({ onExit }: { onExit: () => void }) {
   const [open, setOpen] = useState(true);
   const location = useLocation();
-
-  // Re-arm the dialog whenever the router returns here (back button from the
-  // replay, report completion navigating to '/' or '/backtests').
   useEffect(() => { setOpen(true); }, [location.key]);
-
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
     if (!next) {
-      // Give a successful start's navigation a beat to mount the replay
-      // route; only a close that did NOT navigate means "user backed out".
       setTimeout(() => {
         if (!btNav.inReplay) onExit();
       }, 150);
     }
   };
-
   return (
     <div className="h-full w-full bg-[#0b0d12]">
-      <BacktestingSetupDialog open={open} onOpenChange={handleOpenChange} />
+      <Suspense fallback={<Fallback />}>
+        <BacktestingSetupDialog open={open} onOpenChange={handleOpenChange} />
+      </Suspense>
     </div>
   );
 }
 
-// Pins the data layer's engine context to the replayed instrument before the
-// page mounts: the engine's fetch layer resolves candles from the mount context,
-// and the URL's slashless pair ("EURUSD") is not reversible to the provider's
-// native symbol ("EUR/USD"), so the native form rides in the `sym` param.
 function ManualBacktestRoute({ provider }: { provider: string }) {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const sym = searchParams.get('sym');
   const pair = location.pathname.split('/').pop() || '';
-  // The setup dialog can pick a source other than the shell's active provider
-  // (its Data Source selector), so the chosen provider rides in the URL and
-  // wins over the mount default; the fetch layer must read candles from the
-  // same source the pair was chosen from.
   const replayProvider = searchParams.get('provider') || provider;
   setEngineContext({ provider: replayProvider, symbol: sym || pair });
   useEffect(() => {
     btNav.inReplay = true;
     return () => { btNav.inReplay = false; };
   }, []);
-  return <Backtesting />;
+  return (
+    <Suspense fallback={<Fallback />}>
+      <BacktestingPage />
+    </Suspense>
+  );
 }
 
 let btRoot: Root | null = null;
@@ -1367,13 +1275,7 @@ const LSEManualBacktest = {
     const provider = opts.provider || 'demo';
     const onExit = opts.onExit || (() => {});
     if (!btRoot) btRoot = createRoot(el);
-    // Pin the data adapter to the shell's active provider BEFORE anything
-    // renders: the setup dialog's symbol search reads the engine context, and
-    // a stale context would offer one provider's universe and then replay
-    // against another's.
     setEngineContext({ provider, symbol: '' });
-    // Same hydration rule as the chart mount: preferences must load before
-    // first render or defaults overwrite the saved workspace.
     await initWorkspaceBridge();
     btRoot.render(
       <QueryClientProvider client={btQueryClient}>
@@ -1381,7 +1283,6 @@ const LSEManualBacktest = {
           <ChartSettingsProvider>
             <Routes>
               <Route path="/backtest/:pair" element={<ManualBacktestRoute provider={provider} />} />
-              {/* '/', '/backtests' (report exit) and anything unknown re-open setup. */}
               <Route path="*" element={<ManualBacktestSetup onExit={onExit} />} />
             </Routes>
             <SonnerToaster theme="dark" position="bottom-right" />
@@ -1396,20 +1297,15 @@ const LSEManualBacktest = {
   },
 };
 
-// The economic calendar is a self-contained page (own fetches, no chart
-// settings context), so its mount is the thin one: render, and re-render with
-// a fresh onBack if the shell remounts it.
-import EconomicCalendarPage from '@/pages/EconomicCalendar';
-
 let ecRoot: Root | null = null;
-
 const LSEEconCalendar = {
-  // `view` is how the ECONOMIC sub-tabs (Calendar / News / Indicators / Bond
-  // yields / Central banks) open the island straight into one of its views;
-  // omitted, the page restores whichever view was last used.
   mount(el: HTMLElement, opts: { onBack?: () => void; view?: string } = {}) {
     if (!ecRoot) ecRoot = createRoot(el);
-    ecRoot.render(<EconomicCalendarPage onBack={opts.onBack} initialView={opts.view as any} />);
+    ecRoot.render(
+      <Suspense fallback={<Fallback />}>
+        <EconomicCalendarPage onBack={opts.onBack} initialView={opts.view as any} />
+      </Suspense>
+    );
   },
   unmount() {
     ecRoot?.unmount();
@@ -1417,16 +1313,15 @@ const LSEEconCalendar = {
   },
 };
 
-// Data Visualisation (WORKSPACE sub-view) is self-contained like the
-// calendar: own fetches, no chart settings context, so the thin mount.
-import DataVizPage from '@/pages/DataViz';
-
 let dvRoot: Root | null = null;
-
 const LSEDataViz = {
   mount(el: HTMLElement) {
     if (!dvRoot) dvRoot = createRoot(el);
-    dvRoot.render(<DataVizPage />);
+    dvRoot.render(
+      <Suspense fallback={<Fallback />}>
+        <DataVizPage />
+      </Suspense>
+    );
   },
   unmount() {
     dvRoot?.unmount();
@@ -1434,18 +1329,15 @@ const LSEDataViz = {
   },
 };
 
-// RESEARCH > QUANT MODELS is self-contained like DataViz: own state, so the
-// same thin mount. Its host div never leaves the DOM (the shell only
-// toggles .hidden), so the root is created once and re-rendered on revisit.
-// (The old knowledge-archive island was removed.)
-import QuantModelsPage from '@/pages/QuantModels';
-
 let qmRoot: Root | null = null;
-
 const LSEQuantModels = {
   mount(el: HTMLElement) {
     if (!qmRoot) qmRoot = createRoot(el);
-    qmRoot.render(<QuantModelsPage />);
+    qmRoot.render(
+      <Suspense fallback={<Fallback />}>
+        <QuantModelsPage />
+      </Suspense>
+    );
   },
   unmount() {
     qmRoot?.unmount();
@@ -1453,17 +1345,15 @@ const LSEQuantModels = {
   },
 };
 
-// WORKSPACE > NOTEBOOKS: the infinite research canvas. Same thin mount as
-// DataViz; it owns its rail, its canvas and its own fetches, so the shell only
-// has to reveal the host div and call mount once.
-import NotebooksPage from '@/pages/Notebooks';
-
 let nbRoot: Root | null = null;
-
 const LSENotebooks = {
   mount(el: HTMLElement) {
     if (!nbRoot) nbRoot = createRoot(el);
-    nbRoot.render(<NotebooksPage />);
+    nbRoot.render(
+      <Suspense fallback={<Fallback />}>
+        <NotebooksPage />
+      </Suspense>
+    );
   },
   unmount() {
     nbRoot?.unmount();
@@ -1482,13 +1372,6 @@ declare global {
     LSENotebooks: typeof LSENotebooks;
   }
 }
-// Shell entry points for the top-bar Layout button. Attached as PROPERTIES of
-// the API object, never as module exports: this file must keep exactly one
-// runtime export (the default). The Vite IIFE wrapper assigns this module's
-// exports to window.LSEChart, and a second runtime export turns that global
-// into a {default, ...} namespace with no .mount, blanking every chart
-// (shipped broken once, commit e71477c). tools/chart_smoke.mjs guards
-// this; run it before committing any bundle.
 (LSEChart as any).mountLayoutButton = (el: HTMLElement) => {
   createRoot(el).render(<LayoutButton />);
 };

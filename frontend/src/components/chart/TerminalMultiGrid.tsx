@@ -14,9 +14,24 @@
 // fetches through the terminal's local engine (fetchLocalCandles) and
 // refreshes its tail on a short timer, so panes stay live without the shell
 // having to fan ticks into React.
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import ProChart from '@/components/chart/ProChart';
 import DepthHeatPane from '@/components/chart/depth/DepthHeatPane';
+const EdgeDepthHeatmapPane = lazy(() => import('@/components/chart/depth/EdgeDepthHeatmapPane'));
+const OrderflowPanel = lazy(() => import('@/components/chart/orderflow/OrderflowPanel'));
+const DOMPanel = lazy(() => import('@/components/chart/orderflow/DOMPanel'));
+const TapePanel = lazy(() => import('@/components/chart/orderflow/TapePanel'));
+const FootprintPanel = lazy(() => import('@/components/chart/orderflow/FootprintPanel'));
+const VolumeProfilePanel = lazy(() => import('@/components/chart/orderflow/VolumeProfilePanel'));
+const TPOPanel = lazy(() => import('@/components/chart/orderflow/TPOPanel'));
+const CVDPanel = lazy(() => import('@/components/chart/orderflow/CVDPanel'));
+const LiquidationPanel = lazy(() => import('@/components/chart/orderflow/LiquidationPanel'));
+const EdgeDepthDOMPanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthDOMPanel'));
+const EdgeDepthTapePanel = lazy(() => import('@/components/chart/edgedepth/EdgeDepthTapePanel'));
+const EdgeDepthWatchlist = lazy(() => import('@/components/chart/edgedepth/EdgeDepthWatchlist'));
+const EdgeDepthIndicators = lazy(() => import('@/components/chart/edgedepth/EdgeDepthIndicators'));
+const Fallback = () => <div className="h-full w-full flex items-center justify-center text-[11px] text-[var(--dim)]">Loading…</div>;
+
 import { DEFAULT_INDICATOR_CONFIG } from '@/components/chart/IndicatorSettings';
 import { getDefaultColors, type Candle } from '@/components/chart/core/types';
 import { type LayoutType, type SyncSettings } from '@/components/chart/MultiTimeframeLayoutSelector';
@@ -89,22 +104,10 @@ function Panel({
     return () => { cancelled = true; clearInterval(t); };
   }, [symbol, timeframe, kind]);
 
-  return (
-    <div
-      onMouseDown={onActivate}
-      style={{
-        position: 'relative', minWidth: 0, minHeight: 0, overflow: 'hidden',
-        // Selected pane: the shell's own selected-element color (--accent-bar:
-        // charcoal on light, light gray on dark), same as active tabs and rows.
-        // The old var(--accent) fallback resolved to a blue no shell rule allows.
-        border: active ? '1px solid var(--accent-bar, #888)' : '1px solid var(--edge, #2a2e39)',
-      }}
-    >
-      {/* No symbol/timeframe overlay on the pane: it sat on top of the
-          OHLC legend and looked wrong. The SELECTED pane's name
-          shows in the window title instead, and a sidebar/search pick
-          retargets the selected pane; ProChart's own legend covers values. */}
-      {kind === 'depth' ? (
+  const renderOrderflow = () => {
+    const k = kind as string;
+    if (k === 'depth') {
+      return (
         <DepthHeatPane
           symbol={symbol}
           sourceProvider={sourceProvider}
@@ -113,28 +116,66 @@ function Panel({
           onCrosshairMove={onCrosshairMove}
           onToggleKind={onToggleKind}
         />
-      ) : candles.length > 0 && (
-        <ProChart
-          candles={candles}
-          symbol={symbol}
-          timeframe={timeframe}
-          chartType="candlestick"
-          livePrice={candles[candles.length - 1]?.close ?? null}
-          rightOffset={6}
-          colors={colors}
-          indicators={DEFAULT_INDICATOR_CONFIG}
-          timezone={chartSettings?.data?.timezone || 'local'}
-          syncedCrosshairTime={syncedCrosshairTime ?? undefined}
-          onCrosshairMove={onCrosshairMove}
-          syncedViewportTime={syncedViewportTime ?? undefined}
-          onViewportTimeChange={onViewportTimeChange}
-          showBidAskSpread={!!quote}
-          brokerBid={quote?.bid ?? null}
-          brokerAsk={quote?.ask ?? null}
-        />
-      )}
-      {/* Pane-kind flip (F1): chart ⇄ Depth Heat. Kept as a quiet corner
-          control so the grid presets stay untouched. */}
+      );
+    }
+    if (k === 'edgedepth') {
+      return (
+        <Suspense fallback={<Fallback />}>
+          <EdgeDepthHeatmapPane
+            symbol={symbol}
+            provider={sourceProvider || 'binance'}
+            onToggleKind={onToggleKind}
+          />
+        </Suspense>
+      );
+    }
+    if (['orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'].includes(k)) {
+      return (
+        <Suspense fallback={<Fallback />}>
+          {k === 'orderflow' && <OrderflowPanel symbol={symbol} provider={sourceProvider || 'binance'} colors={colors} />}
+          {k === 'dom' && <EdgeDepthDOMPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'tape' && <EdgeDepthTapePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'footprint' && <FootprintPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'vpvr' && <VolumeProfilePanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'tpo' && <TPOPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'cvd' && <CVDPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'liquidations' && <LiquidationPanel symbol={symbol} provider={sourceProvider || 'binance'} />}
+          {k === 'watchlist' && <EdgeDepthWatchlist activeSymbol={symbol} onSelectSymbol={(s) => { try { (window as any).__lseShell?.selectSymbol?.(s); } catch {} }} />}
+          {k === 'indicators' && <EdgeDepthIndicators symbol={symbol} provider={sourceProvider || 'binance'} />}
+        </Suspense>
+      );
+    }
+    return candles.length > 0 ? (
+      <ProChart
+        candles={candles}
+        symbol={symbol}
+        timeframe={timeframe}
+        chartType="candlestick"
+        livePrice={candles[candles.length - 1]?.close ?? null}
+        rightOffset={6}
+        colors={colors}
+        indicators={DEFAULT_INDICATOR_CONFIG}
+        timezone={chartSettings?.data?.timezone || 'local'}
+        syncedCrosshairTime={syncedCrosshairTime ?? undefined}
+        onCrosshairMove={onCrosshairMove}
+        syncedViewportTime={syncedViewportTime ?? undefined}
+        onViewportTimeChange={onViewportTimeChange}
+        showBidAskSpread={!!quote}
+        brokerBid={quote?.bid ?? null}
+        brokerAsk={quote?.ask ?? null}
+      />
+    ) : null;
+  };
+
+  return (
+    <div
+      onMouseDown={onActivate}
+      style={{
+        position: 'relative', minWidth: 0, minHeight: 0, overflow: 'hidden',
+        border: active ? '1px solid var(--accent-bar, #888)' : '1px solid var(--edge, #2a2e39)',
+      }}
+    >
+      {renderOrderflow()}
       {kind === 'chart' && (
         <button
           onClick={(e) => { e.stopPropagation(); onToggleKind(); }}
@@ -208,8 +249,13 @@ export default function TerminalMultiGrid({
           active={i === active}
           onActivate={() => layoutStore.setActivePanel(i)}
           kind={panelKinds[i] || 'chart'}
-          onToggleKind={() => layoutStore.setPanelKind(
-            i, (panelKinds[i] || 'chart') === 'chart' ? 'depth' : 'chart')}
+          onToggleKind={() => {
+            const cur = panelKinds[i] || 'chart';
+            const order: PanelKind[] = ['chart','depth','edgedepth','orderflow','dom','tape','footprint','vpvr','tpo','cvd','liquidations','watchlist','indicators'];
+            const idx = order.indexOf(cur as PanelKind);
+            const next = order[(idx+1) % order.length];
+            layoutStore.setPanelKind(i, next);
+          }}
           syncedCrosshairTime={syncSettings.syncCrosshair ? crossT : null}
           onCrosshairMove={onCross}
           syncedViewportTime={syncSettings.syncTime ? viewT : null}

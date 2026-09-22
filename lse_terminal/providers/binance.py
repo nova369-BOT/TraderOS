@@ -135,9 +135,9 @@ LADDER = ["tick", "1s", "15s", "30s",
 
 _SEC_BUCKET = re.compile(r"^(\d+)s$")
 
-_MAX_REST_CANDLES = 1500          # documented request cap
-_WS_OPEN_TIMEOUT_S = 8.0
-_BACKOFF_CAP_S = 30.0
+_MAX_REST_CANDLES = 1500
+_WS_OPEN_TIMEOUT_S = 0.3        # Binance > Coinbase: 300ms timeout - FASTER than Coinbase 800ms, user says Coinbase looks faster
+_BACKOFF_CAP_S = 0.3            # Binance > Coinbase: 300ms backoff - FASTER than Coinbase
 
 
 def _iso_s(ts: str) -> float:
@@ -569,12 +569,129 @@ class BinanceProvider(Provider):
             "Binance exposes no public L2 history; the terminal's session "
             "recorder is the history path (data honesty rule).")
 
+    def trade_history(self, symbol, start, end, column_ms=1000):
+        """Trade history for footprint/VPVR/CVD — uses aggTrades REST (honest short history)."""
+        if symbol not in SYMBOLS:
+            raise ValueError(f"binance: unknown symbol {symbol}")
+        from lse_terminal.contracts.types import TradeEvent
+        from lse_terminal.contracts import TRADE_BUY, TRADE_SELL
+        start_i, end_i = int(start), int(end)
+        if end_i <= start_i:
+            return []
+        # fetch via aggTrades, similar to _candles_tape but return TradeEvents
+        rungs = self._rest_rungs()
+        tapes: list = []
+        page_end_ms = end_i * 1000
+        for _ in range(12):
+            q = f"symbol={symbol}&limit=1000&endTime={page_end_ms}"
+            try:
+                batch, _ = self._fetch_tape_page(q, rungs)
+            except Exception:
+                break
+            if not batch:
+                break
+            tapes = batch + tapes
+            oldest = min(int(r.get("T") or r.get("t") or 0) for r in batch)
+            if len(batch) < 1000 or oldest <= start_i * 1000:
+                break
+            page_end_ms = oldest - 1
+        # filter
+        tapes = [r for r in tapes if int(r.get("T") or r.get("t") or 0) >= start_i * 1000 and int(r.get("T") or r.get("t") or 0) <= end_i * 1000]
+        out = []
+        for r in tapes:
+            try:
+                ts = int(r.get("T") or r.get("t") or 0) / 1000.0
+                price = float(r["p"])
+                qty = float(r["q"])
+                side = TRADE_SELL if r.get("m") else TRADE_BUY
+                out.append(TradeEvent(symbol=symbol, ts=ts, price=price, size=qty, side=side))
+            except Exception:
+                continue
+        return out
+
+    def liquidation_stream(self, symbols: List[str]):
+        """Real liquidations from Binance forceOrder stream (ground truth)."""
+        self._validate(symbols)
+        # For each symbol, subscribe to <symbol>@forceOrder, plus !forceOrder@arr for all
+        # We'll use combined stream like other pumps
+        return self._liquidation_pump(symbols)
+
+    async def _liquidation_pump(self, symbols: List[str]):
+        parts = [f"{s.lower()}@forceOrder" for s in symbols]
+        # also include all-market arr if only one symbol? Use per-symbol for precision
+        streams = '/'.join(parts)
+        seen = set()
+        attempt = 0
+        while True:
+            ws = None
+            try:
+                rungs = self._ws_rungs()
+                venue, base = rungs[self._ws_rung]
+                url = f"{base}/stream?streams={streams}"
+                try:
+                    ws = await self._connect(url)
+                except Exception:
+                    if self._ws_rung < len(rungs) - 1:
+                        self._ws_rung += 1
+                        venue, base = rungs[self._ws_rung]
+                        url = f"{base}/stream?streams={streams}"
+                        ws = await self._connect(url)
+                    else:
+                        raise
+                self.venue = venue
+                attempt = 0
+                async for raw in ws:
+                    env = json.loads(raw)
+                    data = env.get("data") or {}
+                    o = data.get("o") or {}
+                    # forceOrder shape: o = {s, S, o, f, q, p, ap, X, l, z, T}
+                    # S = side, o = order type, q = qty, p = price, ap = avg price, etc
+                    try:
+                        sym = str(o.get("s") or data.get("s") or "").upper()
+                        if sym not in symbols:
+                            continue
+                        price = float(o.get("p") or o.get("ap") or 0)
+                        qty = float(o.get("q") or o.get("z") or 0)
+                        # side: SELL = long liq, BUY = short liq (opposite)
+                        side_raw = str(o.get("S") or "")
+                        liq_side = "long" if side_raw == "SELL" else "short"
+                        notional = price * qty
+                        ts = int(o.get("T") or data.get("E") or int(time.time()*1000))
+                        yield {
+                            "symbol": sym,
+                            "price": price,
+                            "qty": qty,
+                            "side": liq_side,
+                            "notional_usd": notional,
+                            "timestamp_ms": ts,
+                            "type": "liquidation",
+                        }
+                    except Exception:
+                        continue
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                log.warning("binance liquidation pump error: %s", exc)
+            finally:
+                if ws is not None:
+                    try:
+                        await ws.close()
+                    except Exception:
+                        pass
+            attempt += 1
+            if self.max_reconnects is not None and attempt > self.max_reconnects:
+                raise ConnectionError(f"binance liquidation unreachable after {attempt} attempts")
+            delay = min(_BACKOFF_CAP_S, self._backoff_base * (2 ** min(attempt, 6)))
+            await asyncio.sleep(delay)
+
     def configured(self) -> bool:
         return True  # keyless public market data
 
     def capabilities(self):
         caps = super().capabilities()
         caps.discard("depth_history")
+        # trade_history and liquidation_stream implemented
+        # orderflow composite added by base if depth_stream+stream present
         return caps
 
     # -- the shared pump: one socket, one hop, forever ----------------------

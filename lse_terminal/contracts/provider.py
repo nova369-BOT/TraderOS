@@ -101,6 +101,20 @@ class Provider(ABC):
         from the call itself (an async-generator body would defer that)."""
         raise NotSupported(f"{self.name} does not stream depth")
 
+    def trade_history(
+        self,
+        symbol: str,
+        start: float,
+        end: float,
+        column_ms: int = 1000,
+    ) -> list:
+        """Executed-print history as list of TradeEvent (footprint, VPVR, CVD)."""
+        raise NotSupported(f"{self.name} does not serve trade history")
+
+    def liquidation_stream(self, symbols: list[str]) -> AsyncIterator:
+        """Async iterator of liquidation events (real liquidations)."""
+        raise NotSupported(f"{self.name} does not stream liquidations")
+
     def configured(self) -> bool:
         """False when the source needs setup (an API key, a path) it doesn't have."""
         return True
@@ -116,4 +130,12 @@ class Provider(ABC):
             caps.add("depth_history")
         if type(self).depth_stream is not Provider.depth_stream:
             caps.add("depth_stream")
+        if type(self).trade_history is not Provider.trade_history:
+            caps.add("trade_history")
+        if type(self).liquidation_stream is not Provider.liquidation_stream:
+            caps.add("liquidation_stream")
+        # orderflow composite: footprint, VPVR, TPO, CVD, liquidation, DOM, tape
+        # Any provider with depth_stream+stream can serve orderflow
+        if "depth_stream" in caps and "stream" in caps:
+            caps.add("orderflow")
         return caps

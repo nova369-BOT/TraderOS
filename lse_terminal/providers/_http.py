@@ -77,6 +77,24 @@ class HttpPool:
         self.release(key, conn, healthy=resp.status < 500)
         return resp.status, body
 
+    def post(self, base: str, path: str, body_bytes: bytes, headers: dict | None = None):
+        """POST path on base; returns (status, body-bytes). Keep-alive."""
+        key, conn = self.acquire(base)
+        hdrs = {"Accept": "application/json",
+                "User-Agent": _UA,
+                "Content-Type": "application/json"}
+        if headers:
+            hdrs.update(headers)
+        try:
+            conn.request("POST", path, body=body_bytes, headers=hdrs)
+            resp = conn.getresponse()
+            body = resp.read()
+        except Exception:
+            self.release(key, conn, healthy=False)
+            raise
+        self.release(key, conn, healthy=resp.status < 500)
+        return resp.status, body
+
 
 def base_of(url: str) -> tuple:
     """"https://host.tld/fapi/v1/klines?x" -> ("https://host.tld",

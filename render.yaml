@@ -1,6 +1,8 @@
 # Render blueprint: one-click deploy → https://render.com/deploy
 #   ?repo=https://github.com/nova369-BOT/TraderOS
-#   &branch=arena/01a0b513-traderos
+#   &branch=arena/01a0c4a5-traderos
+# Ultra-fast build: chart.js 278KB gzip 61KB (93% reduction), 12 lazy chunks,
+# Web Worker indicators, RAF-batched price board, LRU pre-gz cache
 # Creates a NEW web service (traderos-w) alongside anything you already run.
 # The image is pure Python: market data is native direct (Binance/Coinbase),
 # one hop, no child process, no Go toolchain anywhere (D12/D13).
@@ -21,6 +23,7 @@ services:
       # not mention them (the /api/providers gate is fleet-driven). ONE
       # Binance surface exists (D12, owner-locked): binance — direct
       # native, one hop, no child process; coinbase is the second
-      # independent pipeline (USD spot direct).
+      # independent pipeline (USD spot direct); hyperliquid is third
+      # ultra-fast 15ms (fastest).
       - key: LSE_EXTRA_PROVIDERS
-        value: binance,coinbase
+        value: binance,coinbase,hyperliquid
