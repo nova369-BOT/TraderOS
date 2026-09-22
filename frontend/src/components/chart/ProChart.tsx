@@ -1593,6 +1593,9 @@ const ProChart: React.FC<ProChartProps> = ({
       });
       ctx.stroke();
     } else if (chartType === 'heikin_ashi') {
+      if (visible.candles.length === 0) {
+        // No data: draw grid only, never blank
+      } else {
       let prevHaOpen = visible.candles[0]?.open || 0;
       let prevHaClose = visible.candles[0]?.close || 0;
       const haCandles = visible.candles.map((c, idx) => {
@@ -1623,6 +1626,7 @@ const ProChart: React.FC<ProChartProps> = ({
           bearishBorder: colors.bearishBorder,
         },
       });
+      }
     } else if (chartType === 'tpo') {
       const blockMs = 30 * 60 * 1000;
       const blocks = new Map<number, { high: number; low: number; count: number }>();
@@ -1734,44 +1738,70 @@ const ProChart: React.FC<ProChartProps> = ({
         ctx.fill();
       });
     } else if (chartType === 'renko') {
-      // Calculate Renko bricks
-      const renkoSize = priceRange.range * 0.02; // 2% of visible range as brick size
-      const renkoBricks: Array<{ x: number; isBullish: boolean; top: number; bottom: number }> = [];
-      let lastBrickPrice = visible.candles[0]?.close || 0;
-      let brickIndex = 0;
+      // Robust Renko: guarantee no blank. Use time-aligned bricks.
+      const minSize = Math.max(priceRange.range * 0.015, priceRange.range / 200 || 1);
+      const renkoSize = Math.max(minSize, 0.0001);
+      type RenkoBrick = { gi: number; isBullish: boolean; bottom: number; top: number };
+      const renkoBricks: RenkoBrick[] = [];
+      let lastBrickPrice = visible.candles[0]?.close || priceRange.min + priceRange.range / 2;
+      let lastGi = visible.startIndex;
 
-      visible.candles.forEach((candle) => {
+      visible.candles.forEach((candle, i) => {
+        const gi = visible.startIndex + i;
         const diff = candle.close - lastBrickPrice;
-        const bricksToAdd = Math.floor(Math.abs(diff) / renkoSize);
-
+        let bricksToAdd = Math.floor(Math.abs(diff) / renkoSize);
+        // Ensure at least 1 brick for first visible bar so chart never blank
+        if (i === 0 && bricksToAdd === 0) bricksToAdd = 1;
         for (let j = 0; j < bricksToAdd; j++) {
-          const isBullish = diff > 0;
+          const isBullish = diff >= 0 || (j === 0 && i === 0 && candle.close >= candle.open);
           const brickBottom = lastBrickPrice;
           const brickTop = isBullish ? lastBrickPrice + renkoSize : lastBrickPrice - renkoSize;
-
-          renkoBricks.push({
-            x: brickIndex * candleBodyWidth * 1.2,
-            isBullish,
-            top: mainPriceToY(Math.max(brickBottom, brickTop)),
-            bottom: mainPriceToY(Math.min(brickBottom, brickTop)),
-          });
-
+          // Skip if would go outside reasonable range by >2x
+          if (brickTop < priceRange.min - priceRange.range || brickTop > priceRange.max + priceRange.range) {
+            lastBrickPrice = brickTop;
+            continue;
+          }
+          renkoBricks.push({ gi: lastGi + (j + 1), isBullish, bottom: Math.min(brickBottom, brickTop), top: Math.max(brickBottom, brickTop) });
           lastBrickPrice = brickTop;
-          brickIndex++;
         }
+        if (bricksToAdd > 0) lastGi = gi;
       });
 
-      // Draw Renko bricks
-      renkoBricks.forEach((brick) => {
-        const brickHeight = Math.abs(brick.bottom - brick.top);
-
-        ctx.fillStyle = brick.isBullish ? colors.bullish : colors.bearish;
-        ctx.fillRect(brick.x, brick.top, candleBodyWidth, brickHeight);
-
-        ctx.strokeStyle = brick.isBullish ? colors.bullishBorder : colors.bearishBorder;
-        ctx.lineWidth = 1;
-        ctx.strokeRect(brick.x, brick.top, candleBodyWidth, brickHeight);
-      });
+      // If still empty (flat market), fallback to candlestick bodies so never blank
+      if (renkoBricks.length === 0) {
+        paintCandleBodies({
+          ctx,
+          candles: visible.candles,
+          startIndex: visible.startIndex,
+          indexToX,
+          priceToY: mainPriceToY,
+          morphAt,
+          candleBodyWidth,
+          wickWidth,
+          colors: {
+            bullish: colors.bullish,
+            bearish: colors.bearish,
+            bullishWick: colors.bullishWick,
+            bearishWick: colors.bearishWick,
+            bullishBorder: colors.bullishBorder,
+            bearishBorder: colors.bearishBorder,
+          },
+        });
+      } else {
+        // Draw Renko bricks time-aligned
+        renkoBricks.forEach((brick) => {
+          const x = indexToX(brick.gi, visible.startIndex);
+          const yTop = mainPriceToY(brick.top);
+          const yBottom = mainPriceToY(brick.bottom);
+          const h = Math.max(2, Math.abs(yBottom - yTop));
+          const y = Math.min(yTop, yBottom);
+          ctx.fillStyle = brick.isBullish ? colors.bullish : colors.bearish;
+          ctx.fillRect(x - candleBodyWidth / 2, y, candleBodyWidth, h);
+          ctx.strokeStyle = brick.isBullish ? colors.bullishBorder : colors.bearishBorder;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x - candleBodyWidth / 2, y, candleBodyWidth, h);
+        });
+      }
     }
 
     // ═══════════ Volume overlay (TradingView style) ═══════════
