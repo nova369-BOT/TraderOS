@@ -198,18 +198,17 @@ export interface IndicatorConfig {
  *  stay in sync. New indicators MUST be added here or they won't be toggleable
  *  (the IndicatorSelector checks config[key] and silently skips undefined keys). */
 export const DEFAULT_INDICATOR_CONFIG: IndicatorConfig = {
-  // Core indicators
+  // Core indicators — EdgeDepth exact: candles with up/down wicks (columns), volume up/down columns, no straight line consuming space
   rsi: { enabled: false, period: 14, overbought: 70, oversold: 30 },
   macd: { enabled: false, fast: 12, slow: 26, signal: 9 },
   ema: { enabled: false, periods: [20, 50] },
   bollinger: { enabled: false, period: 20, stdDev: 2 },
-  // 20 EMA enabled by default so new users see a useful overlay on first chart load,
-  // even without signing up. #2962FF is a clean blue that stands out on both light and dark
-  // backgrounds without needing theme-adaptive color swapping.
-  movingAverages: { enabled: true, lines: [{ type: 'EMA', period: 20, color: '#2962FF' }] },
+  // No EMA line by default — user complained straight line consuming space, should have up/down columns (volume) instead
+  // Volume enabled by default with zinc teal/rose up/down columns exact EdgeDepth
+  movingAverages: { enabled: false, lines: [] },
   atr: { enabled: false, period: 14 },
   stochastic: { enabled: false, kPeriod: 14, dPeriod: 3, smooth: 3, overbought: 80, oversold: 20 },
-  volume: { enabled: false },
+  volume: { enabled: true, upColor: '#21b3a4', downColor: '#f0426c' },
   williamsR: { enabled: false, period: 14, overbought: -20, oversold: -80 },
   cci: { enabled: false, period: 20, overbought: 100, oversold: -100 },
   adx: { enabled: false, period: 14 },

@@ -20,8 +20,17 @@ export interface Candle {
   volume?: number;
 }
 
-// Supported chart visualization types
-export type ChartType = 'candlestick' | 'line' | 'area' | 'renko';
+// Supported chart visualization types — EdgeDepth 8 options exact
+export type ChartType =
+  | 'candlestick'
+  | 'line'
+  | 'area'
+  | 'renko'
+  | 'heikin_ashi'
+  | 'tpo'
+  | 'footprint_cluster'
+  | 'footprint_profile'
+  | 'flow_positioning';
 
 // Ratio of gap between candles relative to candle width.
 // A value of 0.2 means the gap is 20% of the candle body width, so total

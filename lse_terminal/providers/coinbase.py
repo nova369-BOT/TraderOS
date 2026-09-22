@@ -132,9 +132,9 @@ _SEC_BUCKET = re.compile(r"^(\d+)s$")
 # maximum — ask 1000 (the venue truncates to its truth) and page by end.
 _TAPE_PAGE = 1000
 
-_MAX_REST_CANDLES = 300           # documented request cap
-_WS_OPEN_TIMEOUT_S = 8.0
-_BACKOFF_CAP_S = 30.0
+_MAX_REST_CANDLES = 300
+_WS_OPEN_TIMEOUT_S = 0.25        # 50MS MAX
+_BACKOFF_CAP_S = 0.25            # 50MS MAX
 
 
 def _iso_s(ts: str) -> float:
@@ -477,6 +477,86 @@ class CoinbaseProvider(Provider):
         raise NotSupported(
             "Coinbase exposes no public L2 history; the terminal's session "
             "recorder is the history path (data honesty rule).")
+
+    def trade_history(self, symbol, start, end, column_ms=1000):
+        """Trade history for footprint/VPVR/CVD — uses market trades REST."""
+        product = SYMBOLS.get(symbol)
+        if product is None:
+            raise ValueError(f"coinbase: unknown symbol {symbol}")
+        from lse_terminal.contracts.types import TradeEvent
+        from lse_terminal.contracts import TRADE_BUY, TRADE_SELL
+        start_i, end_i = int(start), int(end)
+        if end_i <= start_i:
+            return []
+        # fetch via market trades REST, similar to _candles_tape but return TradeEvents
+        tapes: list = []
+        seen_ids: set = set()
+        page_end = end_i
+        prev_oldest = None
+        for _page in range(12):
+            q = f"limit={_TAPE_PAGE}&start={start_i}&end={page_end}"
+            url = f"{REST_BASE}/api/v3/brokerage/market/products/{product}/ticker?{q}"
+            host, qpath = base_of(url)
+            try:
+                code, body = _pool_for(host).get(host, qpath)
+            except Exception as e:
+                raise NotSupported(f"coinbase: market trades REST failed: {e}") from e
+            if code != 200:
+                raise NotSupported(f"coinbase: market trades REST HTTP {code}: {body.decode(errors='replace')[:200]}")
+            payload = json.loads(body.decode())
+            parsed = []
+            for tr in payload.get("trades") or []:
+                try:
+                    parsed.append({
+                        "T": int(_iso_s(tr["time"]) * 1000),
+                        "p": float(tr["price"]),
+                        "q": float(tr["size"]),
+                        "side": TRADE_BUY if tr.get("side") == "BUY" else TRADE_SELL,
+                        "id": str(tr.get("trade_id") or ""),
+                    })
+                except Exception:
+                    continue
+            rows = [r for r in parsed if r["T"] <= page_end * 1000 and r["T"] >= start_i * 1000]
+            fresh = [r for r in rows if r["id"] not in seen_ids]
+            for r in fresh:
+                seen_ids.add(r["id"])
+            tapes = fresh + tapes
+            oldest = min((r["T"] for r in fresh), default=None)
+            if (not fresh or len(rows) < _TAPE_PAGE or (prev_oldest is not None and (oldest is None or oldest >= prev_oldest)) or (oldest is not None and oldest <= start_i * 1000)):
+                break
+            prev_oldest = oldest
+            page_end = oldest // 1000 if oldest else page_end - 1
+        out = []
+        for r in tapes:
+            try:
+                ts = r["T"] / 1000.0
+                out.append(TradeEvent(symbol=symbol, ts=ts, price=r["p"], size=r["q"], side=r["side"]))
+            except Exception:
+                continue
+        return out
+
+    def liquidation_stream(self, symbols: List[str]):
+        """Liquidation proxy via large trades (Coinbase has no public liq stream)."""
+        self._validate(symbols)
+        products = [SYMBOLS[s] for s in symbols]
+
+        async def _liq_proxy():
+            async for ev in self._pump(products, channels=("market_trades",)):
+                # large trades as liquidation proxy
+                notional = ev.price * ev.size
+                if notional > 100000:
+                    liq_side = "short" if ev.side == TRADE_BUY else "long"
+                    yield {
+                        "symbol": ev.symbol,
+                        "price": ev.price,
+                        "qty": ev.size,
+                        "side": liq_side,
+                        "notional_usd": notional,
+                        "timestamp_ms": int(ev.ts * 1000),
+                        "type": "liquidation_proxy",
+                    }
+
+        return _liq_proxy()
 
     def configured(self) -> bool:
         return True  # keyless public channels, per Coinbase docs

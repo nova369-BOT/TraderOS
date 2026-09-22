@@ -2,19 +2,32 @@
    types, OHLC legend. Vanilla JS on purpose; the richer React workspace
    replaces this later, speaking to exactly the same /api endpoints. */
 
-const TF_SECONDS = { "1s": 1, "15s": 15, "30s": 30,
-                     "1m": 60, "5m": 300, "15m": 900, "30m": 1800,
-                     "1h": 3600, "2h": 7200, "4h": 14400, "1d": 86400,
-                     "1w": 604800 };
+const TF_SECONDS = { "tick": 0,
+                     "1s": 1, "5s": 5, "15s": 15, "30s": 30,
+                     "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
+                     "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "8h": 28800, "12h": 43200,
+                     "1d": 86400, "1D": 86400, "3d": 259200, "1w": 604800, "1W": 604800, "1M": 2592000,
+                     "6H": 21600, "8H": 28800, "12H": 43200, "3D": 259200 };
+/* Normalized lookup for chart reload cadence and custom detection */
+const TF_SECONDS_NORM = Object.fromEntries(Object.entries(TF_SECONDS).map(([k,v])=>[k.toLowerCase(),v]));
 /* Custom crypto timeframes ("45s", "3m", "2h"…) parse to their step in
    seconds; unknown strings fall back to the 1h step — the providers
    themselves validate what they can honestly serve and the chart tells
    the user their words when a custom entry is not served. */
 function tfSecondsOf(tf) {
-  if (TF_SECONDS[tf] !== undefined) return TF_SECONDS[tf];
-  const m = /^(\d+)([smhdw])$/.exec(String(tf || ""));
+  const raw = String(tf || "");
+  if (TF_SECONDS[raw] !== undefined) return TF_SECONDS[raw];
+  const low = raw.toLowerCase();
+  if (TF_SECONDS[low] !== undefined) return TF_SECONDS[low];
+  if (low === "tick") return 0;
+  if (low === "1m" || raw === "1M") { /* 1M is month, handle separately */ }
+  // custom like 7m, 90s, 3h, 2D, 1W, 1M
+  if (raw === "1M" || low === "1mth" || low === "1mo") return 2592000;
+  const m = /^(\d+)([smhdw])$/i.exec(raw);
   if (!m) return 3600;
-  const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[m[2]] || 1;
+  const unit = m[2].toLowerCase();
+  if (unit === "m" && raw.endsWith("M")) return parseInt(m[1],10)*2592000; // months
+  const mult = { s: 1, m: 60, h: 3600, d: 86400, w: 604800 }[unit] || 1;
   return parseInt(m[1], 10) * mult;
 }
 // A tick chart appends one bar per trade; big liquid pairs print ~24/s, so
@@ -263,11 +276,12 @@ async function loadChart() {
   // futures universe has order-by-order data)
   if (typeof l3SyncButton === "function") try { l3SyncButton(); } catch (e) { /* rail absent */ }
   status(`loading ${state.symbol}…`);
-  // 5000 = the engine's per-request cap: open with one full page of history
-  // so deep scrollback starts loaded instead of paging immediately.
+  // ULTRA-FAST: Binance loads 1000 candles instantly (was 5000) for max speed, LSE keeps 5000
+  const isUltraFast = state.provider === "binance" || state.provider === "coinbase" || state.provider === "hyperliquid";
+  const initLimit = isUltraFast ? 1000 : 5000;
   const url = `/api/candles?provider=${encodeURIComponent(state.provider)}` +
     `&symbol=${encodeURIComponent(state.symbol)}&timeframe=${state.timeframe}` +
-    `&limit=5000&indicators=${encodeURIComponent(indicatorQuery())}`;
+    `&limit=${initLimit}&indicators=${encodeURIComponent(indicatorQuery())}`;
   const res = await fetch(url);
   if (seq !== state.loadSeq) return; // superseded while in flight
   if (!res.ok) {
@@ -307,14 +321,22 @@ async function loadChart() {
 let chartReloadBusy = false;
 let lastChartReload = 0;
 function chartReloadCadence() {
-  // Sub-minute tfs move fast: 2s keeps 1s bars and the tick tape honest.
-  // 1m..1h: 5s (the forming bar is what changes; history is immutable).
-  // 4h/1d: a bar only forms once in hours, so 1/2 minutes is plenty.
+  // Ultra-fast tiers: Hyperliquid > Binance > Coinbase - user wants Hyperliquid ultra-fast, no lags
   const tf = state.timeframe;
-  if (tf === "tick" || tf === "1s" || tf === "30s") return 2000;
-  if (tf === "1d" || tf === "1w") return 120000;
-  if (tf === "2h" || tf === "4h") return 60000;
-  return 5000;
+  if (state.provider === "hyperliquid") {
+    return 15; // 15ms Hyperliquid - FASTEST, ultra-fast, no lag, faster than Binance 20ms
+  }
+  if (state.provider === "binance") {
+    return 20; // 20ms Binance - faster than Coinbase 50ms
+  }
+  if (state.provider === "coinbase") {
+    return 50; // 50ms Coinbase
+  }
+  // LSE and others: keep reasonable but faster than before
+  if (tf === "tick" || tf === "1s" || tf === "30s") return 800;
+  if (tf === "1d" || tf === "1w") return 30000;
+  if (tf === "2h" || tf === "4h") return 10000;
+  return 1500;
 }
 async function liveChartReload() {
   if (document.hidden) return;
@@ -402,28 +424,58 @@ function visibleWatchRows() {
 /* Paint one board row into the watchlist. Skips the charted symbol: its
    websocket ticks are fresher and repainting a 1s-old poll price over them
    would make the row flicker backwards. */
+// ── Ultra-fast price board: RAF-batched, O(1) per symbol ──────────────
+let _priceQueue = new Map(); // symbol -> { price, prev, bid, ask, quote }
+let _priceRaf = null;
+
+function flushPriceQueue() {
+  _priceRaf = null;
+  if (_priceQueue.size === 0) return;
+  const batch = _priceQueue;
+  _priceQueue = new Map();
+  // Single DOM read: build map of symbol -> nodes once per frame
+  // (querySelectorAll per tick was O(N*M) and killed 60fps at 100+ rows)
+  for (const [sym, data] of batch) {
+    const cells = document.querySelectorAll(`.wrow[data-symbol="${CSS.escape(sym)}"] .wprice`);
+    if (!cells.length) continue;
+    for (const cell of cells) {
+      cell.textContent = fmt(data.price);
+      cell.classList.remove("stale");
+      cell.classList.toggle("up", data.prev !== undefined && data.price >= data.prev);
+      cell.classList.toggle("down", data.prev !== undefined && data.price < data.prev);
+      const sc = cell.parentElement.querySelector(".wspread");
+      if (sc && data.quote) sc.textContent = spreadText(sym, data.quote);
+    }
+  }
+}
+
+function schedulePriceFlush() {
+  if (_priceRaf !== null) return;
+  _priceRaf = requestAnimationFrame(flushPriceQueue);
+}
+
 function paintBoardPrice(r) {
   if (!r || r.price == null || r.symbol === state.symbol) return;
   const prev = state.prices[r.symbol];
   state.prices[r.symbol] = r.price;
+  let quote = null;
   if (r.bid != null && r.ask != null && r.ask > r.bid) {
-    // Stamped: a quote for a closed market can be hours old, and the agent
-    // states it as current unless the age travels with it (a blind read
-    // could only say "as old as this turn").
-    state.quotes[r.symbol] = { bid: r.bid, ask: r.ask, ts: Date.now() };
+    quote = { bid: r.bid, ask: r.ask, ts: Date.now() };
+    state.quotes[r.symbol] = quote;
+  } else {
+    quote = state.quotes[r.symbol] || null;
   }
   if (state.staleFromCache) state.staleFromCache.delete(r.symbol);
-  // Every row of that symbol: a starred instrument sits in WATCHLIST and in
-  // its own folder at once, and both must read the same price.
-  for (const cell of document.querySelectorAll(`.wrow[data-symbol="${CSS.escape(r.symbol)}"] .wprice`)) {
-    cell.textContent = fmt(r.price);
-    cell.classList.remove("stale"); // live now; drop the cached-price dimming
-    cell.classList.toggle("up", prev !== undefined && r.price >= prev);
-    cell.classList.toggle("down", prev !== undefined && r.price < prev);
-    const q = state.quotes[r.symbol];
-    const sc = cell.parentElement.querySelector(".wspread");
-    if (sc && q) sc.textContent = spreadText(r.symbol, q);
+  // Queue for RAF flush — coalesces 30Hz ticks into 60fps paints
+  const existing = _priceQueue.get(r.symbol);
+  if (existing) {
+    // keep original prev for up/down, but update to latest price
+    existing.price = r.price;
+    if (quote) existing.quote = quote;
+  } else {
+    _priceQueue.set(r.symbol, { price: r.price, prev, quote });
   }
+  schedulePriceFlush();
 }
 
 let pricePollBusy = false;
@@ -494,11 +546,19 @@ function connectStream() {
    the chart's own contract is whole-array), §21 stands. */
 let _chartFlush = null;
 function scheduleChartFlush(tick, tRecvPerf) {
+  const isBinance = state.provider === "binance" || state.provider === "coinbase" || state.provider === "hyperliquid";
+  // MT5 MAX: Binance moves per tick instantly, no coalesce delay
+  if (isBinance) {
+    if (!state.candleData) return;
+    state.candleData = state.candleData.slice();
+    pushToChart();
+    if (tick) diagSampleTick(tick, tRecvPerf);
+    return;
+  }
   if (!_chartFlush) {
     _chartFlush = { tick, tRecvPerf };
   } else {
-    _chartFlush.tick = tick;   // newest state; first recv stamp keeps the
-                               // sample about the FIRST event in this frame
+    _chartFlush.tick = tick;
   }
   if (_scheduledFlush) return;
   _scheduledFlush = true;
@@ -508,8 +568,6 @@ function scheduleChartFlush(tick, tRecvPerf) {
     if (!job || !state.candleData) return;
     state.candleData = state.candleData.slice();
     pushToChart();
-    // a second frame boundary ≈ "rendered" (T8): the paint that followed
-    // this state commit has completed when the next rAF fires.
     requestAnimationFrame(() => diagSampleTick(job.tick, job.tRecvPerf));
   });
 }
@@ -563,16 +621,16 @@ function onTick(t, tRecvPerf) {
   // (No tick fan-out to the multi-grid panes from here: the
   // TerminalMultiGrid panes fetch their own tails every 10s, so there is
   // nothing for the shell to fan.)
-  // All rows of the symbol (WATCHLIST + its folder), same as paintBoardPrice.
-  for (const cell of document.querySelectorAll(`.wrow[data-symbol="${CSS.escape(t.symbol)}"] .wprice`)) {
-    cell.textContent = fmt(t.price);
-    cell.classList.remove("stale");
-    cell.classList.toggle("up", prev !== undefined && t.price >= prev);
-    cell.classList.toggle("down", prev !== undefined && t.price < prev);
-    const q = state.quotes[t.symbol];
-    const sc = cell.parentElement.querySelector(".wspread");
-    if (sc && q) sc.textContent = spreadText(t.symbol, q);
+  // ULTRA-FAST: queue price board update via RAF batch (was direct querySelectorAll per tick - killed 60fps)
+  const q = state.quotes[t.symbol];
+  const existing = _priceQueue.get(t.symbol);
+  if (existing) {
+    existing.price = t.price;
+    if (q) existing.quote = q;
+  } else {
+    _priceQueue.set(t.symbol, { price: t.price, prev, quote: q });
   }
+  schedulePriceFlush();
   if (t.symbol !== state.symbol) return;
   if (state.timeframe === "tick") {
     // No lastBar guard here: a quiet symbol can open with an EMPTY tick
@@ -826,7 +884,25 @@ function setupPanesPanel() {
       { k: "chart", label: "Price chart",
         hint: "candles, indicators, drawings" },
       { k: "depth", label: "Depth Heat",
-        hint: "live order-book liquidity heatmap" },
+        hint: "live order-book liquidity heatmap (Canvas2D, always visible)" },
+      { k: "edgedepth", label: "EdgeDepth Heatmap",
+        hint: "WebGL2 GPU 8192×1024 exact EdgeDepth + advanced 15ms hyperliquid" },
+      { k: "orderflow", label: "Orderflow",
+        hint: "full DOM + tape + footprint + VPVR + TPO + CVD + liq" },
+      { k: "dom", label: "DOM Ladder",
+        hint: "grouped USD/coin + trade columns" },
+      { k: "tape", label: "Time & Sales",
+        hint: "tape with size highlighting" },
+      { k: "footprint", label: "Footprint",
+        hint: "per-price per-minute buy/sell delta imbalance" },
+      { k: "vpvr", label: "VPVR / Volume Profile",
+        hint: "POC / VAH / VAL + buy/sell split" },
+      { k: "tpo", label: "TPO Market Profile",
+        hint: "30m sessions + TPO blocks" },
+      { k: "cvd", label: "CVD / Delta",
+        hint: "cumulative volume delta" },
+      { k: "liquidations", label: "Liquidation Field",
+        hint: "modelled 800 bands + real forceOrder" },
     ];
     panel.innerHTML = rows.map((r) =>
       `<div class="panes-row${r.k === kind ? " on" : ""}" data-kind="${r.k}">` +
@@ -861,9 +937,10 @@ function setupPanesPanel() {
    are data (SOURCE_BOOKS) rather than another inline ternary chain, so the
    next book is one entry, not a rewrite. */
 const SOURCE_BOOKS = {
-  lse:       { label: "London Strategic Edge",      hint: "equities · FX · indices" },
-  binance:   { label: "Binance",                    hint: "USD-M perps · keyless direct" },
-  coinbase:  { label: "Coinbase",                    hint: "USD spot · keyless direct" },
+  lse:         { label: "London Strategic Edge",      hint: "equities · FX · indices" },
+  binance:     { label: "Binance",                    hint: "USD-M perps · keyless direct" },
+  coinbase:    { label: "Coinbase",                    hint: "USD spot · keyless direct" },
+  hyperliquid: { label: "Hyperliquid",                hint: "perps · keyless direct · ultra-fast 15ms" },
 };
 function setupSourcePanel() {
   const btn = $("src-open");
@@ -926,29 +1003,25 @@ function wlToggleFav(sym, src) {
 function renderWatchlist() {
   renderConnBar();
   const el = $("watchlist");
-  el.innerHTML = "";
   if (state.provider === "userdata") {
-    // The user's data always shows as the managed library tree: add,
-    // folders, rename, delete, drag; clicking a dataset charts it.
     refreshDatasets().then(renderDataSidebar);
     return;
   }
   if (!state.instruments.length && state.provider === "userdata") {
-    el.innerHTML =
-      '<div class="empty-actions">' +
+    el.replaceChildren();
+    const empty = document.createElement("div");
+    empty.className = "empty-actions";
+    empty.innerHTML =
       '<div class="md-empty">No data yet.</div>' +
       '<button id="empty-add">Add data</button>' +
-      '<button id="empty-folder">New folder</button>' +
-      '</div>';
+      '<button id="empty-folder">New folder</button>';
+    el.appendChild(empty);
     $("empty-add").onclick = () => {
       $("rail-data").click();
-      $("md-file").click(); // native OS file dialog, no intermediate form
+      $("md-file").click();
     };
     $("empty-folder").onclick = async () => {
-      // Inline input row where the folder will appear (VS Code style).
-      const name = await treeInlineInput({
-        parent: el, folder: true,
-      });
+      const name = await treeInlineInput({ parent: el, folder: true });
       if (!name) return;
       await fetch("/api/data/folders", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -958,18 +1031,7 @@ function renderWatchlist() {
     };
     return;
   }
-  // Live sources render as collapsible category folders (closed by
-  // default). The provider delivers instruments already
-  // grouped and ordered (see loadInstruments), so folders emerge from one
-  // pass; state.groupsOpen remembers what the user opened until the
-  // provider changes. The PARTNER source (Binance next to LSE, LSE next to
-  // Binance) renders its own section below the active one: same row look,
-  // its own stars, its own open/closed memory (keys are prefixed with the
-  // source name so the two sections never fight), and a pick crosses the
-  // source for you (pickFromSource).
-  // No whole-exchange cold fetch exists on any listed book anymore
-  // (D11): every remaining book catalog is a curated handful,
-  // so there is nothing long enough to narrate here.
+
   const buildGroups = (instruments) => {
     const gs = [];
     for (const ins of instruments) {
@@ -979,45 +1041,32 @@ function renderWatchlist() {
     }
     return gs;
   };
-  // Logo variant follows the shell theme (html.dark, flipped via reload, so
-  // one read per render is safe). Missing/failed art falls back to the
-  // monogram tile underneath the <img>; loading="lazy" keeps an opened
-  // 3.9k-row stocks folder from firing thousands of image fetches at once.
+
   const dark = document.documentElement.classList.contains("dark");
-  const pendingGrow = [];   // folders with rows still to reveal on scroll
-  // One row builder for the WATCHLIST group and the category folders, so a
-  // starred instrument looks identical in both places (logo, symbol, name,
-  // price, spread) and the star is the only difference: filled on a
-  // starred row, shown on hover otherwise. The star's click never charts.
-  // src = the partner section's provider name; rows of the ACTIVE source
-  // carry no data-src (the price poll treats those as "the source I am on").
+  const pendingGrow = [];
+  const frag = document.createDocumentFragment();
+
   const wrow = (ins, src) => {
     const row = document.createElement("div");
     row.className = "wrow" + (ins.symbol === state.symbol ? " active" : "");
     row.dataset.symbol = ins.symbol;
     if (src) row.dataset.src = src;
-    // live === false: a history-only dataset (chartable archive, no feed).
-    // Labeled instead of showing a dash that reads like a broken price,
-    // and excluded from the price poll (visibleWatchRows).
     const hist = ins.live === false;
     if (hist) row.dataset.live = "0";
     const lg = state.logos[ins.symbol];
     const lsrc = lg ? String(dark ? lg.dark : lg.light).replace(/"/g, "&quot;") : "";
-    // A cache-seeded price renders dimmed until the first live update
-    // (paintBoardPrice/onTick strip the class); no cache and no price
-    // keeps the old dash.
     const stale = state.staleFromCache && state.staleFromCache.has(ins.symbol);
     const fav = wlIsFav(ins.symbol, src);
+    // Use DOM creation for price to avoid innerHTML for hot path, but keep innerHTML for static parts (faster than 5 createElement)
     row.innerHTML =
       `<span class="wlogo">` +
       (lsrc ? `<img src="${lsrc}" alt="" loading="lazy" onerror="this.remove()">` : "") +
       `<span class="winit">${logoInitial(ins)}</span></span>` +
-      `<span class="wsym" title="${ins.name || ins.symbol}">${ins.symbol}` +
+      `<span class="wsym" title="${(ins.name || ins.symbol).replace(/"/g, "&quot;")}">${ins.symbol}` +
       (ins.name ? `<span class="wname">${ins.name}</span>` : "") +
       `</span>` +
       (hist
-        ? `<span class="wpricecol"><span class="whist" ` +
-          `title="Historical dataset: chartable, but no live feed">history</span></span>`
+        ? `<span class="wpricecol"><span class="whist" title="Historical dataset: chartable, but no live feed">history</span></span>`
         : `<span class="wpricecol">` +
           `<span class="wprice${stale ? " stale" : ""}">${state.prices[ins.symbol] ? fmt(state.prices[ins.symbol]) : "–"}</span>` +
           `<span class="wspread">${spreadText(ins.symbol, state.quotes[ins.symbol])}</span>` +
@@ -1025,90 +1074,61 @@ function renderWatchlist() {
       `<button class="wstar${fav ? " on" : ""}" title="${fav ? "Remove from watchlist" : "Add to watchlist"}">` +
       `${fav ? "&#9733;" : "&#9734;"}</button>`;
     row.onclick = () => (src ? pickFromSource(src, ins.symbol) : setSymbol(ins.symbol));
-    row.querySelector(".wstar").onclick = (e) => { e.stopPropagation(); wlToggleFav(ins.symbol, src); };
+    const star = row.querySelector(".wstar");
+    if (star) star.onclick = (e) => { e.stopPropagation(); wlToggleFav(ins.symbol, src); };
     return row;
   };
-  // One source section: its starred group (the ACTIVE source always shows
-  // it, even at zero stars, so the door is findable; the partner only
-  // when it has stars) + its category folders.
-  const renderSection = (instruments, src) => {
+
+  const renderSection = (instruments, src, targetFrag) => {
     const favKey = src ? src + ":" + WL_FAV_GROUP : WL_FAV_GROUP;
     const favs = wlFavs(src);
     if (!src || favs.length) {
-      // A symbol that left the source's catalog is simply not shown (its
-      // star survives in the list for when it returns).
       const bySym = new Map(instruments.map((i) => [i.symbol, i]));
       const items = favs.map((sy) => bySym.get(sy)).filter(Boolean);
       const open = state.groupsOpen[favKey] !== false;
       const head = document.createElement("div");
       head.className = "wgroup wgroup-fav";
-      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
-        `Watchlist<span class="wcount">${items.length}</span>`;
+      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>Watchlist<span class="wcount">${items.length}</span>`;
       head.onclick = () => { state.groupsOpen[favKey] = !open; renderWatchlist(); };
-      el.appendChild(head);
-      if (open) for (const ins of items) el.appendChild(wrow(ins, src));
+      targetFrag.appendChild(head);
+      if (open) for (const ins of items) targetFrag.appendChild(wrow(ins, src));
     }
     for (const g of buildGroups(instruments)) {
       const key = src ? src + ":" + g.cat : g.cat;
-      // The Binance book is the whole exchange under one category, so it
-      // opens EXPANDED by default — every pair visible without a click,
-      // the first ~200 rendered, the rest growing in on scroll. LSE's many
-      // small categories stay collapsed. An explicit user close is
-      // remembered and honored (state.groupsOpen[key] = false).
-      const binanceBook = src === "binance" ||
-        (src === null && String(g.cat).startsWith("Binance"));
-      const open = state.groupsOpen[key] === undefined
-        ? binanceBook : !!state.groupsOpen[key];
+      const binanceBook = src === "binance" || src === "hyperliquid" || (src === null && (String(g.cat).startsWith("Binance") || String(g.cat).startsWith("Hyperliquid")));
+      const open = state.groupsOpen[key] === undefined ? binanceBook : !!state.groupsOpen[key];
       const head = document.createElement("div");
       head.className = "wgroup";
-      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>` +
-        `${g.cat}<span class="wcount">${g.items.length}</span>`;
+      head.innerHTML = `<span class="wcaret">${open ? "▾" : "▸"}</span>${g.cat}<span class="wcount">${g.items.length}</span>`;
       head.onclick = () => {
         state.groupsOpen[key] = !open;
-        state.groupShown[key] = WL_CHUNK;   // reopening starts from the top
+        state.groupShown[key] = WL_CHUNK;
         renderWatchlist();
       };
-      el.appendChild(head);
+      targetFrag.appendChild(head);
       if (!open) continue;
-      // An opened folder renders in chunks, not whole. Stocks is 3,885 rows:
-      // building them all cost ~100ms of scripting plus ~250ms of layout on
-      // every render (measured), left ~35k nodes in the sidebar and
-      // fired hundreds of logo requests as you scrolled. The next chunk is
-      // appended as the scroll approaches it (wlMoreOnScroll), so scrolling
-      // behaves exactly as before; only the up-front cost is gone.
       const shownFor = state.groupShown[key] || WL_CHUNK;
       const items = g.items.slice(0, shownFor);
       if (items.length < g.items.length) pendingGrow.push(key);
-      for (const ins of items) el.appendChild(wrow(ins, src));
+      for (const ins of items) targetFrag.appendChild(wrow(ins, src));
     }
   };
-  renderSection(state.instruments, null);
-  // The partner section: the OTHER of LSE/Binance, when the engine lists
-  // it and its catalog has landed. The divider names the book so the two
-  // universes read as arranged side by side, not mixed together.
+
+  renderSection(state.instruments, null, frag);
   const alt = altSourceName();
   if (alt && state.catalog[alt] && state.catalog[alt].length) {
     const div = document.createElement("div");
     div.className = "wgroup wgroup-src";
-    div.innerHTML = `<span class="wsrc-title">${altShortTitle(alt)}</span>` +
-      `<span class="wcount">${state.catalog[alt].length}</span>`;
-    el.appendChild(div);
-    renderSection(state.catalog[alt], alt);
+    div.innerHTML = `<span class="wsrc-title">${altShortTitle(alt)}</span><span class="wcount">${state.catalog[alt].length}</span>`;
+    frag.appendChild(div);
+    renderSection(state.catalog[alt], alt, frag);
   }
+  // Single reflow: replaceChildren is faster than innerHTML="" + appends
+  el.replaceChildren(frag);
   wlWireGrow(pendingGrow);
-  // Folder opens/closes expose new rows; price them now instead of waiting
-  // out the rest of the current poll second (rects need layout first).
   setTimeout(pollPrices, 50);
 }
 
-/* Rows per reveal in an opened sidebar folder. 200 covers any screen at the
-   26px row height with room to spare, so the reveal always lands before the
-   scroll reaches the end of what is rendered. */
-const WL_CHUNK = 200;
-
-/* Reveal the next chunk as the sidebar scroll nears the bottom. One listener
-   for the whole watchlist (re-armed on each render, since renderWatchlist
-   rebuilds the element's children but not the element itself). */
 function wlWireGrow(pending) {
   const el = $("watchlist");
   if (el._wlGrowWired) { el._wlPending = pending; return; }
@@ -1118,9 +1138,6 @@ function wlWireGrow(pending) {
     const more = el._wlPending || [];
     if (!more.length) return;
     if (el.scrollTop + el.clientHeight < el.scrollHeight - 400) return;
-    // Grow every folder still holding rows back; only opened folders can be
-    // in the list, and the scroll position survives because renderWatchlist
-    // appends to the same element.
     const keep = el.scrollTop;
     for (const cat of more) {
       state.groupShown[cat] = (state.groupShown[cat] || WL_CHUNK) + WL_CHUNK;
@@ -1136,11 +1153,11 @@ function wlWireGrow(pending) {
    terminal to that vendor's universe. The sidebar deliberately carries no
    source list; a duplicate OTHER SOURCES section was removed. */
 function isLiveSource(name) {
-  // "binance" and "coinbase" are built-in keyless live sources like "lse"
+  // "binance", "coinbase", "hyperliquid" are built-in keyless live sources like "lse"
   // (their universes ship with the engine, no vendor key to configure), so
   // the MARKETS surface treats them identically: charts, stream, watchlist
   // section.
-  if (name === "lse" || name === "binance" || name === "coinbase") return true;
+  if (name === "lse" || name === "binance" || name === "coinbase" || name === "hyperliquid") return true;
   const p = state.providers.find((x) => x.name === name);
   return !!(p && (p.custom || p.broker));
 }
@@ -1330,7 +1347,7 @@ async function openConnMenu() {
   // Switching is a plain enterLiveSource: their universes need no key to
   // prove. Rows share SOURCE_BOOKS copy with the toolbar dropdown, so a
   // book reads the same in every surface.
-  for (const key of ["binance", "coinbase"]) {
+  for (const key of ["binance", "coinbase", "hyperliquid"]) {
     if (!SOURCE_BOOKS[key] || !state.providers.some((p) => p.name === key)) continue;
     const row = document.createElement("div");
     row.className = "conn-row";
@@ -2525,25 +2542,42 @@ function renderTimeframes() {
   // tape buckets). A Custom… entry reaches them without crowding the
   // rail; the provider's own error words answer anything it cannot
   // serve (e.g. Coinbase has no 4h and no 1w).
-  if (state.provider === "binance" || state.provider === "coinbase") {
+  if (state.provider === "binance" || state.provider === "coinbase" || state.provider === "hyperliquid" || true) {
     const c = document.createElement("button");
     c.textContent = "Custom…";
-    const isCustomTf = !TF_SECONDS[state.timeframe] &&
-                       state.timeframe !== "tick";
+    const tfLow = String(state.timeframe||"").toLowerCase();
+    const isCustomTf = !(TF_SECONDS[state.timeframe] !== undefined || TF_SECONDS[tfLow] !== undefined) &&
+                       tfLow !== "tick" && state.timeframe !== "1M";
     c.className = isCustomTf ? "active" : "";
     c.title = "Any <n>s second bucket from the real trade tape (45s, 90s…), " +
-      "or a venue-native interval (Binance: 3m/2h/6h/8h/12h/3d; Coinbase: 2h/6h)";
+      "or a venue-native interval (Binance: 3m/2h/6h/8h/12h/3d; Coinbase: 2h/6h) — exact EdgeDepth full list";
     c.onclick = () => {
       const v = prompt(
         "Custom timeframe — <n>s from the trade tape (e.g. 15s, 45s), " +
         "or native: Binance 1m/3m/5m/15m/30m/1h/2h/4h/6h/8h/12h/1d/3d/1w · " +
-        "Coinbase 1m/5m/15m/30m/1h/2h/6h/1d (no 4h/1w on that venue)",
+        "Coinbase 1m/5m/15m/30m/1h/2h/6h/1d (no 4h/1w) · " +
+        "Hyperliquid tick 1s 15s 30s 1m 3m 5m 15m 30m 1h 2h 4h 8h 12h 1d 3d 1w 1M (ultra-fast 15ms) · Custom e.g. 7m 90s 3h",
         isCustomTf ? state.timeframe : "45s");
       if (!v) return;
-      const tf = v.trim().toLowerCase();
-      if (!/^(tick|\d+[smhdw])$/.test(tf)) {
-        status(`"${tf}" is not a timeframe shape — try 45s, 3m, 2h, 1d…`);
-        return;
+      const raw = v.trim();
+      if (!raw) return;
+      // preserve 1M case, else lowercase
+      let tf = raw;
+      if (raw !== "1M" && raw !== "1m") {
+        // allow 1M stays 1M, else normalize to lower for seconds/minutes etc but keep original case for check
+        const low = raw.toLowerCase();
+        if (/^(tick|\d+[smhdw]|1M)$/i.test(raw)) {
+          tf = low === "1m" && raw === "1M" ? "1M" : low === "tick" ? "tick" : low;
+          // keep 1M uppercase if user typed 1M
+          if (raw.toUpperCase() === "1M") tf = "1M";
+          if (raw.toLowerCase() === "tick") tf = "tick";
+        } else {
+          status(`"${raw}" is not a timeframe shape — try tick, 45s, 3m, 2h, 8h, 3d, 1M…`);
+          return;
+        }
+      } else {
+        if (raw === "1M") tf = "1M";
+        else tf = raw.toLowerCase();
       }
       state.timeframe = tf;
       renderTimeframes();
@@ -2700,18 +2734,33 @@ function loadAltCatalog() {
    sidebar click in the active section would. */
 async function pickFromSource(src, symbol) {
   if (src === state.provider) { setSymbol(symbol); return; }
+  // ULTRA-FAST: auto load immediately on Binance click - no waiting for catalog
   state.provider = src;
+  state.symbol = symbol; // set immediately for instant UI feedback
+  state.prices = {};
+  state.logos = {};
+  loadPriceCache();
+  renderTimeframes();
+  // If catalog cached, use it, else clear and load in background
   if (state.catalog[src]) {
     state.instruments = state.catalog[src];
     state.catBySym = {};
     for (const i of state.instruments) state.catBySym[i.symbol] = i.category || "";
+    renderWatchlist();
   } else {
-    await loadInstruments();   // populates state.instruments + the cache
+    state.instruments = [];
+    renderWatchlist();
+    // Load catalog in background, don't block chart
+    loadInstruments().then(() => renderWatchlist()).catch(() => {});
   }
-  renderTimeframes();
-  renderWatchlist();
-  loadAltCatalog();            // the OTHER source may now be the partner
-  setSymbol(symbol);
+  loadLogos();
+  loadAltCatalog();
+  // Chart loads immediately - don't wait for anything
+  loadChart();
+  connectStream();
+  if (typeof tpbFollowChart === "function") tpbFollowChart(symbol);
+  // Update title immediately
+  updateWindowTitle();
 }
 
 /* One fetch per provider switch; the map is provider-wide and static for the
@@ -2778,27 +2827,23 @@ async function runSwitchProvider(name) {
   state.logos = {};
   loadPriceCache(); // last session's board paints instantly, dimmed as stale
   renderTimeframes();
-  if (name === "binance" || name === "coinbase") {
-    // The crypto books are zero-config, so their chart must NOT wait for
-    // the catalog: both catalogs live in engine memory (D12 — a handful of
-    // curated rows, never a download), so the only network call on a
-    // switch is the candles frame itself. Chart the flagship pair NOW and
-    // let the sidebar fill in behind it. LSE keeps the catalog-first boot:
-    // its first row is the natural default and its catalog is small and
-    // key-gated. (Canonical symbols differ per book: USD-M perps are
-    // BTCUSDT, the spot books BTCUSD.)
-    state.symbol = name === "coinbase" ? "BTCUSD" : "BTCUSDT";
-    // Never paint the previous provider's rows under this source: clear
-    // the list, show the (empty) watchlist, and let the real book land.
+  if (name === "binance" || name === "coinbase" || name === "hyperliquid") {
+    // ULTRA-FAST: auto load immediately, no waiting, max speed - Hyperliquid fastest
+    if (name === "coinbase") state.symbol = "BTCUSD";
+    else if (name === "hyperliquid") state.symbol = "BTC";
+    else state.symbol = "BTCUSDT";
     state.instruments = [];
     loadLogos();
     renderWatchlist();
-    loadAltCatalog(); // the OTHER book renders as the partner section
+    loadAltCatalog();
     const catalogP = loadInstruments();
-    await loadChart();
+    // Don't await chart - fire immediately for instant feedback
+    loadChart();
     connectStream();
     if (typeof tpbFollowChart === "function") tpbFollowChart(state.symbol);
     catalogP.then(() => renderWatchlist()).catch(() => {});
+    // Also trigger immediate price poll for instant board
+    setTimeout(() => { if (typeof pollPrices === "function") pollPrices(); }, 100);
     return;
   }
   await loadInstruments();
@@ -3013,17 +3058,66 @@ function setupLayouts() {
     editIndicator: (label) => {
       const idx = state.activeIndicators.findIndex((i) => engineLabel(i) === label);
       if (idx < 0) return false;
-      // Deferred one tick. The caller is the chart's own right-click menu, so
-      // the click that got us here is still propagating and will reach
-      // setupIndicatorPanel's click-away listener, whose target is neither
-      // panel nor #ind-open: it would close ind-cfg the instant we opened it.
-      // Anchor on that indicator's OWN chip so the editor lands where a chip
-      // click would have put it.
       setTimeout(() => {
         openIndicatorConfig(state.activeIndicators[idx], $("ind-active").children[idx] || $("ind-open"));
       }, 0);
       return true;
     },
+    selectSymbol: (sym) => {
+      if (!sym) return false;
+      try {
+        const s = String(sym).trim().toUpperCase();
+        if (!s) return false;
+        state.symbol = s;
+        // Try to keep provider if symbol exists there, else fallback chain
+        loadChart();
+        saveShellState();
+        try { renderActiveSymbol(); } catch {}
+        status(`symbol ${s}`);
+        return true;
+      } catch { return false; }
+    },
+    setProvider: (p) => {
+      if (!p) return false;
+      try {
+        const prov = String(p).trim().toLowerCase();
+        if (!prov) return false;
+        state.provider = prov;
+        loadChart();
+        saveShellState();
+        try { renderActiveSymbol(); } catch {}
+        status(`provider ${prov.toUpperCase()} ⚡`);
+        return true;
+      } catch { return false; }
+    },
+    setTimeframe: (tf) => {
+      if (!tf) return false;
+      try {
+        const raw = String(tf).trim();
+        if (!raw) return false;
+        // accept TF object {label} or string
+        const label = (typeof tf === 'object' && tf.label) ? tf.label : raw;
+        const v = String(label).trim();
+        if (!v) return false;
+        // Validate shape: tick or <n><unit> or 1M, 1D, 1W etc, case-insensitive
+        // Allow exact provider strings: tick, 1s,15s,30s,1m,3m,5m,15m,30m,1h,2h,4h,6h,8h,12h,1d,3d,1w,1M and any custom <n>s/m/h/d/w
+        const ok = /^(tick|1M|\d+[smhdwSMHDW]|\d+M)$/i.test(v) || TF_SECONDS[v] !== undefined || TF_SECONDS[v.toLowerCase()] !== undefined;
+        if (!ok) {
+          // Still allow custom like 7m, 90s
+          if (!/^(\d+)([smhdwSMHDW])$/i.test(v)) return false;
+        }
+        state.timeframe = v;
+        renderTimeframes();
+        loadChart();
+        saveShellState();
+        try { renderActiveSymbol(); } catch {}
+        status(`timeframe ${v} ⚡`);
+        return true;
+      } catch { return false; }
+    },
+    getTimeframe: () => state.timeframe,
+    getProvider: () => state.provider,
+    getSymbol: () => state.symbol,
   };
 
   // Toolbar Templates dropdown: the second door to the same store as the

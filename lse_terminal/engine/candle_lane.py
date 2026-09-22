@@ -48,14 +48,35 @@ import pandas as pd
 
 from lse_terminal.contracts import CANDLE_COLUMNS
 
-_DEPTH_CAP = 5600           # 5000-bar client loads plus forming margin
-_STALE_AFTER_MULT = 2       # intervals of stream silence that heal
-_STALE_FLOOR_S = 30.0       # never refresh tails faster than this
-_TAIL_REFETCH_MAX = 250     # venue-cheap tail window
-_REPAIR_POLL_S = 3.0        # dead-stream repair cadence (weight ~1/poll)
-_REPAIR_GRACE_S = 15.0      # never-born stream gets this dial window first
-_REPAIR_ERR_BACKOFF_S = 30.0  # a refused repair poll waits this long
-_DIAL_BACKOFF_S = 30.0      # a failed WS dial is not re-tried inside this
+_DEPTH_CAP = 5600
+# ── Speed tiers: Hyperliquid > Binance > Coinbase > LSE ───────────────
+# User wants Hyperliquid added ultra-fast, in one go, no lags
+# Hyperliquid: 15ms repair, 15ms grace, 80ms floor, 150ms dial - FASTEST
+# Binance: 20ms repair, 20ms grace, 100ms floor, 200ms dial - faster than Coinbase
+# Coinbase: 50ms repair, 50ms grace, 250ms floor, 500ms dial
+_STALE_AFTER_MULT = 1
+_TAIL_REFETCH_MAX = 250
+
+# Base (Coinbase speed) - 50ms
+_STALE_FLOOR_S = 0.25
+_REPAIR_POLL_S = 0.05
+_REPAIR_GRACE_S = 0.05
+_REPAIR_ERR_BACKOFF_S = 0.5
+_DIAL_BACKOFF_S = 0.5
+
+# Binance ultra - faster than Coinbase
+_STALE_FLOOR_S_BINANCE = 0.10       # 100ms
+_REPAIR_POLL_S_BINANCE = 0.02       # 20ms
+_REPAIR_GRACE_S_BINANCE = 0.02      # 20ms
+_REPAIR_ERR_BACKOFF_S_BINANCE = 0.2 # 200ms
+_DIAL_BACKOFF_S_BINANCE = 0.2       # 200ms
+
+# Hyperliquid ultra - FASTEST, faster than Binance, ultra-fast, no lag
+_STALE_FLOOR_S_HYPERLIQUID = 0.08       # 80ms - fastest
+_REPAIR_POLL_S_HYPERLIQUID = 0.015      # 15ms - FASTEST, faster than Binance 20ms
+_REPAIR_GRACE_S_HYPERLIQUID = 0.015     # 15ms - instant
+_REPAIR_ERR_BACKOFF_S_HYPERLIQUID = 0.15 # 150ms
+_DIAL_BACKOFF_S_HYPERLIQUID = 0.15      # 150ms
 
 
 class CandleLane:
@@ -101,8 +122,54 @@ class CandleLane:
                 for old_ts in sorted(self._rows)[:excess]:
                     del self._rows[old_ts]
 
+    def _is_binance(self) -> bool:
+        return getattr(self.provider, 'name', '') == 'binance'
+
+    def _is_hyperliquid(self) -> bool:
+        return getattr(self.provider, 'name', '') == 'hyperliquid'
+
+    def _floor(self) -> float:
+        name = getattr(self.provider, 'name', '')
+        if name == 'hyperliquid':
+            return _STALE_FLOOR_S_HYPERLIQUID
+        if name == 'binance':
+            return _STALE_FLOOR_S_BINANCE
+        return _STALE_FLOOR_S
+
+    def _repair_poll(self) -> float:
+        name = getattr(self.provider, 'name', '')
+        if name == 'hyperliquid':
+            return _REPAIR_POLL_S_HYPERLIQUID
+        if name == 'binance':
+            return _REPAIR_POLL_S_BINANCE
+        return _REPAIR_POLL_S
+
+    def _grace(self) -> float:
+        name = getattr(self.provider, 'name', '')
+        if name == 'hyperliquid':
+            return _REPAIR_GRACE_S_HYPERLIQUID
+        if name == 'binance':
+            return _REPAIR_GRACE_S_BINANCE
+        return _REPAIR_GRACE_S
+
+    def _err_backoff(self) -> float:
+        name = getattr(self.provider, 'name', '')
+        if name == 'hyperliquid':
+            return _REPAIR_ERR_BACKOFF_S_HYPERLIQUID
+        if name == 'binance':
+            return _REPAIR_ERR_BACKOFF_S_BINANCE
+        return _REPAIR_ERR_BACKOFF_S
+
+    def _dial_backoff(self) -> float:
+        name = getattr(self.provider, 'name', '')
+        if name == 'hyperliquid':
+            return _DIAL_BACKOFF_S_HYPERLIQUID
+        if name == 'binance':
+            return _DIAL_BACKOFF_S_BINANCE
+        return _DIAL_BACKOFF_S
+
     def _horizon(self) -> float:
-        return max(_STALE_FLOOR_S, _STALE_AFTER_MULT * self.tf_s)
+        return max(self._floor(), _STALE_AFTER_MULT * self.tf_s)
 
     def stream_healthy(self) -> bool:
         """The venue's own kline socket is delivering (event within one
@@ -120,7 +187,7 @@ class CandleLane:
         instant any event lands, health returns and repair rests."""
         wall = self._wall()
         if self._last_ws_event is None:
-            return (wall - self._born) > _REPAIR_GRACE_S
+            return (wall - self._born) > self._grace()
         return (wall - self._last_ws_event) > self._horizon()
 
     def repair_tick(self) -> bool:
@@ -147,7 +214,7 @@ class CandleLane:
         if self.stream_healthy():
             return "stream"
         if self._last_repair and \
-                (self._wall() - self._last_repair) <= 4 * _REPAIR_POLL_S:
+                (self._wall() - self._last_repair) <= 4 * self._repair_poll():
             return "rest-repair"
         return "degraded"
 
@@ -207,7 +274,7 @@ class CandleLane:
             runs. Cache serve survives a refusal here — the error rides
             the next cold-or-deep request, where refusals always
             surface verbatim."""
-            if self._wall() - self._last_tail_refetch <= _STALE_FLOOR_S:
+            if self._wall() - self._last_tail_refetch <= self._floor():
                 return False
             self._last_tail_refetch = self._wall()
             if not ordered:
@@ -358,7 +425,7 @@ class CandleLaneManager:
                 lane._streaming = False
             # A dial that died re-earns its attempt after a cool-down,
             # not on the next UI paint — no refused-socket spin.
-            lane._next_dial_wall = lane._wall() + _DIAL_BACKOFF_S
+            lane._next_dial_wall = lane._wall() + lane._dial_backoff()
 
     # -- dead-stream repair (owner's "binance is stiff but coinbase
     #    moves" report, 2026-09-21) --------------------------------------
@@ -388,9 +455,9 @@ class CandleLaneManager:
                 ok = await self._loop.run_in_executor(
                     None, lane.repair_tick)
                 if ok:
-                    await asyncio.sleep(_REPAIR_POLL_S)
+                    await asyncio.sleep(lane._repair_poll())
                 else:
-                    await asyncio.sleep(_REPAIR_ERR_BACKOFF_S)
+                    await asyncio.sleep(lane._err_backoff())
         except asyncio.CancelledError:
             raise
         except Exception:  # noqa: BLE001 - repair dies quietly, re-armed

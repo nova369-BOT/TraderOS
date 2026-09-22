@@ -66,6 +66,7 @@ class Registry:
 def load_builtins(reg: Registry) -> None:
     from lse_terminal.backtest.runner import PythonRunner
     from lse_terminal.providers import (BinanceProvider, CoinbaseProvider,
+                                        HyperliquidProvider,
                                         CryptoL2Provider, DemoProvider,
                                         LseProvider, MboProvider,
                                         UserDataProvider)
@@ -91,6 +92,11 @@ def load_builtins(reg: Registry) -> None:
     # data, keyless by docs — trades, level2 book, candle history. The
     # second independent native pipeline, same shape as Binance.
     reg.register(CoinbaseProvider())
+    # Hyperliquid perps direct (D25): keyless public market data — trades,
+    # l2Book, candleSnapshot + candle WS. Third native pipeline, ULTRA-FAST:
+    # 15ms tick flush, 15ms candle lane, 200ms WS timeout — faster than
+    # Binance 20ms and Coinbase 50ms.
+    reg.register(HyperliquidProvider())
     # One engine, and it runs the user's plain Python. Brue was removed as a
     # strategy language (it is an execution language now); the previous
     # Strategy-subclass engine went with it. Both are archived under
