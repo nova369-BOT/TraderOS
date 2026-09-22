@@ -1,7 +1,5 @@
-// EdgeDepthFootprintPanel.tsx — Footprint cluster/profile exact EdgeDepth
-// Port of footprint_manager.cpp + footprint_transport.cpp
-// Bid/ask volume per price, delta, imbalance 1.8x, POC, trade bubbles large prints
-// Zinc chrome
+// Professional Footprint Panel — own design
+// Cluster/profile, bid/ask volume, delta, imbalance, POC, trade bubbles
 
 import React, { useEffect, useState } from 'react';
 
@@ -14,9 +12,7 @@ export function EdgeDepthFootprintPanel({ symbol, provider = 'binance' }: { symb
     const load = async () => {
       try {
         const r = await fetch(`/api/orderflow/footprint?symbol=${encodeURIComponent(symbol)}&provider=${encodeURIComponent(provider)}`);
-        if (!r.ok) return;
-        const j = await r.json();
-        if (alive) setData(j);
+        if (r.ok) { const j = await r.json(); if (alive) setData(j); return; }
       } catch {}
     };
     load();
@@ -25,7 +21,7 @@ export function EdgeDepthFootprintPanel({ symbol, provider = 'binance' }: { symb
   }, [symbol, provider]);
 
   const columns = data?.columns || [];
-  const demoColumns = columns.length ? columns : Array.from({ length: 12 }, (_, ci) => ({
+  const demo = columns.length ? columns : Array.from({ length: 12 }, (_, ci) => ({
     timestamp_ms: Date.now() - (12 - ci) * 60000,
     levels: Array.from({ length: 20 }, (_, li) => {
       const price = 50000 + (10 - li) * 2 + ci * 0.5;
@@ -36,48 +32,34 @@ export function EdgeDepthFootprintPanel({ symbol, provider = 'binance' }: { symb
   }));
 
   return (
-    <div className="h-full flex flex-col bg-[#1c1c1c] border border-[#3a3a3a]">
-      <div className="flex items-center gap-1 px-2 py-1 bg-[#2a2a2a] border-b border-[#3a3a3a] text-[10px]">
-        <span className="font-bold tracking-wider text-[#e8e8e8]">FOOTPRINT — {symbol}</span>
-        <span className="text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡15ms':provider==='binance'?'20ms':'50ms'}</span>
-        <div className="ml-auto flex gap-1">
-          {(['cluster','profile'] as const).map(m => (
-            <button key={m} onClick={() => setMode(m)} className={`px-2 py-0.5 rounded border text-[9px] capitalize ${mode===m?'bg-[#e8e8e8] text-black border-[#e8e8e8]':'bg-[#262626] border-[#3a3a3a] text-[#b9b9b9]'}`}>{m}</button>
-          ))}
+    <div className="h-full flex flex-col bg-[#1c1c1c] text-[#e8e8e8]">
+      <div className="flex items-center gap-2 px-3 h-10 border-b border-[#2a2a2a] bg-[#1c1c1c] shrink-0">
+        <span className="text-[11px] font-semibold tracking-wider">FOOTPRINT</span>
+        <span className="font-mono text-[13px] font-medium">{symbol}</span>
+        <span className="px-2 py-0.5 rounded-full bg-[#262626] border border-[#3a3a3a] text-[10px] text-[#b9b9b9]">{provider.toUpperCase()} {provider==='hyperliquid'?'⚡':''}</span>
+        <div className="ml-auto flex gap-1 p-0.5 rounded-lg bg-[#262626] border border-[#3a3a3a]">
+          {(['cluster','profile'] as const).map(m => (<button key={m} onClick={() => setMode(m)} className={`px-3 py-1 rounded-md text-[11px] font-medium capitalize ${mode===m?'bg-[#e8e8e8] text-[#1c1c1c]':'text-[#b9b9b9] hover:bg-[#343434] hover:text-[#e8e8e8]'}`}>{m}</button>))}
         </div>
       </div>
-      <div className="flex-1 overflow-auto flex gap-1 p-1 bg-[#0b0e11]">
-        {demoColumns.slice(-12).map((col: any, ci: number) => (
-          <div key={ci} className="min-w-[90px] border border-[#3a3a3a]/30 bg-[#1c1c1c] flex flex-col">
-            <div className="text-[8px] bg-[#2a2a2a] px-1 py-0.5 text-[#b9b9b9] border-b border-[#3a3a3a]/30">{new Date(col.timestamp_ms).toLocaleTimeString()}</div>
+      <div className="flex-1 overflow-auto flex gap-2 p-2 bg-[#121212]">
+        {demo.slice(-12).map((col: any, ci: number) => (
+          <div key={ci} className="min-w-[110px] rounded-lg border border-[#2a2a2a] bg-[#1c1c1c] overflow-hidden flex flex-col">
+            <div className="px-2 py-1 bg-[#262626] border-b border-[#2a2a2a] text-[10px] text-[#b9b9b9]">{new Date(col.timestamp_ms).toLocaleTimeString()}</div>
             <div className="flex-1">
-              {(col.levels || []).slice(0, 24).map((lv: any, li: number) => {
-                const buy = lv.buy || 0, sell = lv.sell || 0, delta = buy - sell;
-                const imb = buy > sell * 1.8 ? 'buy' : sell > buy * 1.8 ? 'sell' : '';
-                const isWhale = buy + sell > 100;
+              {(col.levels||[]).slice(0,24).map((lv: any, li: number) => {
+                const buy=lv.buy||0, sell=lv.sell||0, delta=buy-sell;
+                const imb = buy>sell*1.8?'buy':sell>buy*1.8?'sell':'';
                 return (
-                  <div key={li} className={`flex justify-between px-1 py-0.5 text-[9px] font-mono border-b border-[#3a3a3a]/10 ${imb==='buy'?'bg-[#21b3a4]/20':imb==='sell'?'bg-[#f0426c]/20':''} ${lv.is_poc?'ring-1 ring-[#f0b350]/50 bg-[#f0b350]/10':''} ${isWhale?'ring-1 ring-[#e8e8e8]/20':''}`}>
+                  <div key={li} className={`flex justify-between items-center px-2 py-1 text-[11px] font-mono border-b border-[#2a2a2a]/30 ${imb==='buy'?'bg-[#21b3a4]/10':imb==='sell'?'bg-[#f0426c]/10':''} ${lv.is_poc?'bg-[#f59e0b]/10 ring-1 ring-[#f59e0b]/20':''}`}>
                     <span className="text-[#e8e8e8]">{Number(lv.price).toFixed(1)}</span>
-                    {mode==='cluster' ? (
-                      <span className="flex gap-1">
-                        <span className="text-[#21b3a4]">{buy.toFixed(1)}</span>
-                        <span className="text-[#f0426c]">{sell.toFixed(1)}</span>
-                      </span>
-                    ) : (
-                      <span className={`${delta>0?'text-[#21b3a4]':'text-[#f0426c]'}`}>{delta>0?'+':''}{delta.toFixed(1)}</span>
-                    )}
-                    {isWhale && <span className="text-[7px] bg-[#e8e8e8] text-black px-0.5 rounded ml-1">●</span>}
+                    {mode==='cluster' ? <span className="flex gap-1.5"><span className="text-[#21b3a4]">{buy.toFixed(1)}</span><span className="text-[#f0426c]">{sell.toFixed(1)}</span></span> : <span className={`${delta>0?'text-[#21b3a4]':'text-[#f0426c]'} font-medium`}>{delta>0?'+':''}{delta.toFixed(1)}</span>}
                   </div>
                 );
               })}
             </div>
-            <div className="text-[7px] px-1 py-0.5 bg-[#2a2a2a]/50 text-[#b9b9b9]/60 border-t border-[#3a3a3a]/20">
-              Δ {(col.levels || []).reduce((s: number, l: any) => s + ((l.buy||0)-(l.sell||0)), 0).toFixed(1)}
-            </div>
           </div>
         ))}
       </div>
-      <div className="px-2 py-1 text-[8px] text-[#b9b9b9]/50 border-t border-[#3a3a3a] bg-[#262626]">Footprint {mode} — bid/ask volume per price, delta, imbalance 1.8x, POC amber, whale bubble ● large prints, exact footprint_manager.cpp</div>
     </div>
   );
 }
